@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://playable-replays.invalid/schemas/moment.schema.json",
+  "title": "Playable replay fixture",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "moments"],
+  "properties": {
+    "version": {"const": "1.0"},
+    "moments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id", "slug", "title", "description", "map", "startTimeSeconds",
+          "seed", "maxTurns", "controlledUnitId", "reasonTags", "signals", "units"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "slug": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "map": {"type": "string"},
+          "startTimeSeconds": {"type": "integer", "minimum": 0},
+          "seed": {"type": "integer"},
+          "maxTurns": {"type": "integer", "minimum": 1, "maximum": 20},
+          "controlledUnitId": {"type": "string"},
+          "reasonTags": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "signals": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["winProbabilitySwing", "eventDensity", "entityProximity", "resourceAsymmetry"],
+            "properties": {
+              "winProbabilitySwing": {"type": "number", "minimum": 0, "maximum": 1},
+              "eventDensity": {"type": "number", "minimum": 0, "maximum": 1},
+              "entityProximity": {"type": "number", "minimum": 0, "maximum": 1},
+              "resourceAsymmetry": {"type": "number", "minimum": 0, "maximum": 1}
+            }
+          },
+          "units": {"type": "array", "minItems": 2}
+        }
+      }
+    }
+  }
+}
+

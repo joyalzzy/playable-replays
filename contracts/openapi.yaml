@@ -1,0 +1,201 @@
+openapi: 3.1.0
+info:
+  title: Playable Replays API
+  version: 0.1.0
+  description: Deterministic tactical replay prototype API.
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /healthz:
+    get:
+      operationId: health
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, const: ok}
+                required: [status]
+  /api/v1/moments:
+    get:
+      operationId: listMoments
+      responses:
+        "200":
+          description: Available replay moments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  moments:
+                    type: array
+                    items: {$ref: "#/components/schemas/MomentSummary"}
+                required: [moments]
+  /api/v1/sessions:
+    post:
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                momentId: {type: string}
+              required: [momentId]
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Session"}
+        "400": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+  /api/v1/sessions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string}
+    get:
+      operationId: getSession
+      responses:
+        "200":
+          description: Current session state
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Session"}
+        "404": {$ref: "#/components/responses/Error"}
+  /api/v1/sessions/{id}/turns:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string}
+    post:
+      operationId: takeTurn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                action: {$ref: "#/components/schemas/Action"}
+              required: [action]
+      responses:
+        "200":
+          description: Resolved turn
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Session"}
+        "400": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "422": {$ref: "#/components/responses/Error"}
+  /api/v1/sessions/{id}/reset:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string}
+    post:
+      operationId: resetSession
+      responses:
+        "200":
+          description: Reset session
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Session"}
+        "404": {$ref: "#/components/responses/Error"}
+components:
+  schemas:
+    Point:
+      type: object
+      additionalProperties: false
+      properties:
+        x: {type: number, minimum: 0, maximum: 100}
+        y: {type: number, minimum: 0, maximum: 100}
+      required: [x, y]
+    Action:
+      type: object
+      additionalProperties: false
+      properties:
+        type: {type: string, enum: [move, hold, contest, retreat]}
+        target: {$ref: "#/components/schemas/Point"}
+      required: [type]
+    Unit:
+      type: object
+      properties:
+        id: {type: string}
+        team: {type: string, enum: [blue, red]}
+        role: {type: string}
+        position: {$ref: "#/components/schemas/Point"}
+        hp: {type: integer, minimum: 0}
+        maxHp: {type: integer, minimum: 1}
+        cooldownTurns: {type: integer, minimum: 0}
+        visible: {type: boolean}
+        alive: {type: boolean}
+      required: [id, team, role, position, hp, maxHp, cooldownTurns, visible, alive]
+    Session:
+      type: object
+      properties:
+        id: {type: string}
+        momentId: {type: string}
+        turn: {type: integer}
+        maxTurns: {type: integer}
+        status: {type: string, enum: [active, won, lost]}
+        score: {type: integer}
+        winProbability: {type: number, minimum: 0, maximum: 1}
+        referenceAction: {$ref: "#/components/schemas/Action"}
+        legalActions:
+          type: array
+          items: {type: string, enum: [move, hold, contest, retreat]}
+        units:
+          type: array
+          items: {$ref: "#/components/schemas/Unit"}
+        log:
+          type: array
+          items:
+            type: object
+            properties:
+              turn: {type: integer}
+              actor: {type: string, enum: [user, policy]}
+              action: {type: string}
+              message: {type: string}
+            required: [turn, actor, action, message]
+      required: [id, momentId, turn, maxTurns, status, score, winProbability, referenceAction, legalActions, units, log]
+    MomentSummary:
+      type: object
+      properties:
+        id: {type: string}
+        slug: {type: string}
+        title: {type: string}
+        description: {type: string}
+        map: {type: string}
+        reasonTags:
+          type: array
+          items: {type: string}
+        highlightScore: {type: number, minimum: 0, maximum: 1}
+      required: [id, slug, title, description, map, reasonTags, highlightScore]
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: {type: string}
+            message: {type: string}
+          required: [code, message]
+      required: [error]
+  responses:
+    Error:
+      description: Structured error
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+

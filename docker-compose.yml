@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      LISTEN_ADDR: 0.0.0.0:8080
+      FIXTURE_PATH: /app/fixtures/moments.json
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  web:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_TARGET: http://api:8080
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      - api
+

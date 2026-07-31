@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "moments": [
+    {
+      "id": "objective-steal-742",
+      "slug": "river-pit-steal",
+      "title": "The River Pit Steal",
+      "description": "Blue carry is outnumbered near the objective. Choose whether to contest, reposition, or preserve the escape route.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 742,
+      "seed": 104729,
+      "maxTurns": 5,
+      "controlledUnitId": "blue-carry",
+      "reasonTags": ["objective-steal", "one-versus-many", "win-probability-swing"],
+      "signals": {
+        "winProbabilitySwing": 0.88,
+        "eventDensity": 0.81,
+        "entityProximity": 0.18,
+        "resourceAsymmetry": 0.72
+      },
+      "units": [
+        {"id":"blue-carry","team":"blue","role":"carry","position":{"x":31,"y":54},"hp":68,"maxHp":100,"cooldownTurns":0,"visible":true,"alive":true},
+        {"id":"blue-support","team":"blue","role":"support","position":{"x":18,"y":65},"hp":42,"maxHp":100,"cooldownTurns":1,"visible":true,"alive":true},
+        {"id":"red-jungle","team":"red","role":"jungler","position":{"x":48,"y":51},"hp":55,"maxHp":100,"cooldownTurns":0,"visible":true,"alive":true},
+        {"id":"red-mid","team":"red","role":"mage","position":{"x":61,"y":43},"hp":73,"maxHp":100,"cooldownTurns":0,"visible":true,"alive":true},
+        {"id":"red-support","team":"red","role":"support","position":{"x":72,"y":70},"hp":88,"maxHp":100,"cooldownTurns":1,"visible":false,"alive":true}
+      ]
+    },
+    {
+      "id": "teamfight-reversal-1091",
+      "slug": "base-gate-reversal",
+      "title": "Base Gate Reversal",
+      "description": "A low-health blue squad can turn on an overextended opponent or disengage through the gate.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 1091,
+      "seed": 130363,
+      "maxTurns": 5,
+      "controlledUnitId": "blue-carry",
+      "reasonTags": ["team-fight-reversal", "successful-escape", "high-risk-decision"],
+      "signals": {
+        "winProbabilitySwing": 0.74,
+        "eventDensity": 0.93,
+        "entityProximity": 0.12,
+        "resourceAsymmetry": 0.61
+      },
+      "units": [
+        {"id":"blue-carry","team":"blue","role":"carry","position":{"x":26,"y":45},"hp":51,"maxHp":100,"cooldownTurns":0,"visible":true,"alive":true},
+        {"id":"blue-tank","team":"blue","role":"tank","position":{"x":34,"y":54},"hp":33,"maxHp":120,"cooldownTurns":0,"visible":true,"alive":true},
+        {"id":"red-carry","team":"red","role":"carry","position":{"x":51,"y":47},"hp":38,"maxHp":100,"cooldownTurns":1,"visible":true,"alive":true},
+        {"id":"red-tank","team":"red","role":"tank","position":{"x":66,"y":57},"hp":82,"maxHp":120,"cooldownTurns":0,"visible":false,"alive":true}
+      ]
+    }
+  ]
+}
+
