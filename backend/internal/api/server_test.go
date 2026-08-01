@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -9,16 +10,26 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/joyalzzy/playable-replays/backend/internal/engine"
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
 )
+
+type apiOpponentModel struct {
+	called bool
+}
+
+func (stub *apiOpponentModel) NextPositions(_ context.Context, _ engine.OpponentSnapshot) ([]engine.PositionSuggestion, error) {
+	stub.called = true
+	return []engine.PositionSuggestion{{UnitID: "red", Position: model.Point{X: 100, Y: 50}}}, nil
+}
 
 func testServer() *Server {
 	moment := model.Moment{
 		ID: "m1", Slug: "test", Title: "Test moment", Seed: 1, MaxTurns: 2,
 		ControlledUnitID: "blue", ReasonTags: []string{"clutch"},
 		Units: []model.Unit{
-			{ID: "blue", Team: "blue", Position: model.Point{X: 30, Y: 50}, HP: 100, MaxHP: 100, Alive: true},
-			{ID: "red", Team: "red", Position: model.Point{X: 45, Y: 50}, HP: 100, MaxHP: 100, Alive: true},
+			{ID: "blue", Team: "blue", Role: "carry", Class: model.ClassMarksman, Position: model.Point{X: 30, Y: 50}, HP: 80, MaxHP: 90, Alive: true},
+			{ID: "red", Team: "red", Role: "tank", Class: model.ClassTank, Position: model.Point{X: 45, Y: 50}, HP: 120, MaxHP: 160, Alive: true},
 		},
 	}
 	return New([]model.Moment{moment}, slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -49,6 +60,12 @@ func TestJourney(t *testing.T) {
 	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
 		t.Fatal(err)
 	}
+	if session.ControlledUnitID != "blue" || session.Units[0].MoveRange != 11 || session.Units[1].MaxHP != 160 {
+		t.Fatalf("class/session contract was not serialized: %+v", session)
+	}
+	if len(session.LegalActions) != 6 {
+		t.Fatalf("expected expanded legal action set, got %v", session.LegalActions)
+	}
 	turn := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns", `{"action":{"type":"contest"}}`)
 	if turn.Code != http.StatusOK {
 		t.Fatalf("turn: %d %s", turn.Code, turn.Body.String())
@@ -56,6 +73,51 @@ func TestJourney(t *testing.T) {
 	reset := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/reset", "")
 	if reset.Code != http.StatusOK {
 		t.Fatalf("reset: %d", reset.Code)
+	}
+}
+
+func TestRejectsOverRangeMovementWithoutAdvancingTurn(t *testing.T) {
+	handler := testServer().Handler()
+	created := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	var session model.Session
+	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	result := request(
+		t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns",
+		`{"action":{"type":"move","target":{"x":100,"y":50}}}`,
+	)
+	if result.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d: %s", result.Code, result.Body.String())
+	}
+	current := request(t, handler, http.MethodGet, "/api/v1/sessions/"+session.ID, "")
+	if err := json.Unmarshal(current.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	if session.Turn != 0 || session.Units[0].Position != (model.Point{X: 30, Y: 50}) {
+		t.Fatalf("illegal movement mutated session: %+v", session)
+	}
+}
+
+func TestServerUsesOpponentPositionModel(t *testing.T) {
+	stub := &apiOpponentModel{}
+	base := testServer()
+	server := NewWithOpponentModel(base.ordered, slog.New(slog.NewTextHandler(io.Discard, nil)), stub)
+	handler := server.Handler()
+	created := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	var session model.Session
+	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	turn := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns", `{"action":{"type":"hold"}}`)
+	if turn.Code != http.StatusOK {
+		t.Fatalf("turn: %d %s", turn.Code, turn.Body.String())
+	}
+	if err := json.Unmarshal(turn.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	if !stub.called || session.Units[1].Position != (model.Point{X: 52, Y: 50}) {
+		t.Fatalf("opponent connector was not applied with tank limit: %+v", session)
 	}
 }
 

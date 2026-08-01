@@ -30,5 +30,19 @@ describe("ActionPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /commit decision/i }));
     expect(commit).toHaveBeenCalledOnce();
   });
-});
 
+  it("offers dodge and outplay with descriptive labels", () => {
+    render(
+      <ActionPanel
+        legalActions={["dodge", "outplay"]}
+        selected="dodge"
+        disabled={false}
+        onSelect={vi.fn()}
+        onCommit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /dodge.*incoming skillshot/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /outplay.*high-risk mechanical/i })).toBeInTheDocument();
+  });
+});

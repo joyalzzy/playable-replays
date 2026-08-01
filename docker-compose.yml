@@ -6,6 +6,7 @@ services:
     environment:
       LISTEN_ADDR: 0.0.0.0:8080
       FIXTURE_PATH: /app/fixtures/moments.json
+      OPPONENT_MODEL_URL: ${OPPONENT_MODEL_URL:-}
     ports:
       - "127.0.0.1:8080:8080"
 
@@ -19,4 +20,3 @@ services:
       - "127.0.0.1:5173:5173"
     depends_on:
       - api
-

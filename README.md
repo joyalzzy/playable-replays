@@ -14,6 +14,10 @@ estimates.
 
 - React + strict TypeScript tactical board
 - Go HTTP API and authoritative deterministic simulator
+- Six unit classes with distinct health, movement, and attack profiles
+- Click-to-inspect unit details and movement/attack range indicators
+- `dodge` and `outplay` decisions alongside the original tactical actions
+- Optional HTTP connector for model-suggested opponent positions
 - Synthetic, versioned telemetry fixtures
 - Offline Python highlight scorer using interpretable signals
 - OpenAPI contract and JSON schemas
@@ -60,8 +64,47 @@ The web app is then available at <http://localhost:5173>.
 ## Core design rule
 
 The browser requests a legal high-level action. The Go simulator validates and
-resolves that action using a scenario seed. An LLM is never trusted to invent
-physics, hidden state, damage, or victory conditions.
+resolves that action using a scenario seed. An optional model may suggest where
+opponents should try to move in the next frame, but its output is only a target:
+the simulator validates unit ownership and coordinates, applies class movement
+limits and map bounds, and remains solely responsible for physics, damage,
+cooldowns, hidden state, and victory conditions.
+
+## Unit classes
+
+Every fixture unit has an explicit class. The class controls maximum health,
+per-frame movement, and attack radius; the API exposes `moveRange` and
+`attackRange` so the board can explain those limits rather than hiding them.
+Tanks are the toughest and slowest class, while marksmen trade health for range.
+
+| Class | Maximum health | Move range | Attack range |
+| --- | ---: | ---: | ---: |
+| Tank | 160 | 7 | 10 |
+| Fighter | 125 | 10 | 14 |
+| Marksman | 90 | 11 | 28 |
+| Mage | 95 | 9 | 24 |
+| Support | 110 | 8 | 20 |
+| Assassin | 100 | 13 | 12 |
+
+Ranges are map units per frame.
+
+## Optional opponent-model connector
+
+No model, API key, or network service is required by default. Without a
+connector, opponents use the seeded built-in policy.
+
+To test an HTTP position model, set `OPPONENT_MODEL_URL` for the API process:
+
+```bash
+OPPONENT_MODEL_URL=http://127.0.0.1:9000/v1/positions make dev-api
+```
+
+For Docker Compose, copy `.env.example` to `.env`, set the URL to an endpoint
+reachable from the `api` container, and run `docker compose up --build`. Once per
+turn the API posts the session snapshot and accepts desired next-frame opponent
+positions. Invalid data, timeouts, and connection failures use the deterministic
+fallback; a model can never directly mutate simulator state. See
+[`contracts/openapi.yaml`](contracts/openapi.yaml) for the exact webhook shapes.
 
 ## API
 
@@ -80,6 +123,7 @@ shapes.
 ## Data and safety
 
 All included data is synthetic and contains no player identity or proprietary
-telemetry. Production ingestion must require authorization, data minimization,
-retention controls, and game-publisher review.
-
+telemetry. The optional connector receives a server-side unit snapshot, so only
+an operator-controlled URL should be configured. Production ingestion and model
+calls must require authorization, encrypted transport, data minimization,
+retention controls, egress restrictions, and game-publisher review.

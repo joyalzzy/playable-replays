@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/joyalzzy/playable-replays/backend/internal/api"
+	"github.com/joyalzzy/playable-replays/backend/internal/engine"
 	"github.com/joyalzzy/playable-replays/backend/internal/fixtures"
+	"github.com/joyalzzy/playable-replays/backend/internal/opponent"
 )
 
 func main() {
@@ -23,10 +25,19 @@ func main() {
 		logger.Error("load fixtures", "error", err)
 		os.Exit(1)
 	}
+	var opponentModel engine.OpponentPositionModel
+	if endpoint := os.Getenv("OPPONENT_MODEL_URL"); endpoint != "" {
+		opponentModel, err = opponent.NewHTTPModel(endpoint, nil)
+		if err != nil {
+			logger.Error("configure opponent model", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("opponent position model enabled")
+	}
 
 	server := &http.Server{
 		Addr:              env("LISTEN_ADDR", "127.0.0.1:8080"),
-		Handler:           api.New(moments, logger).Handler(),
+		Handler:           api.NewWithOpponentModel(moments, logger, opponentModel).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,

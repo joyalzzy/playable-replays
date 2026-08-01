@@ -4,7 +4,9 @@ const labels: Record<ActionType, { title: string; detail: string }> = {
   move: { title: "Move", detail: "Reposition toward a chosen point" },
   hold: { title: "Hold", detail: "Recover slightly and keep formation" },
   contest: { title: "Contest", detail: "Commit to the nearest visible threat" },
-  retreat: { title: "Retreat", detail: "Disengage toward the safe edge" }
+  retreat: { title: "Retreat", detail: "Disengage toward the safe edge" },
+  dodge: { title: "Dodge", detail: "Evade an incoming skillshot with a defensive sidestep" },
+  outplay: { title: "Outplay", detail: "Attempt a high-risk mechanical counterplay" }
 };
 
 type Props = {
@@ -52,4 +54,3 @@ export function ActionPanel({
     </section>
   );
 }
-

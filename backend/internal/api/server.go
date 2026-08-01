@@ -18,15 +18,20 @@ import (
 const maxBodyBytes = 64 << 10
 
 type Server struct {
-	moments  map[string]model.Moment
-	ordered  []model.Moment
-	sessions map[string]*engine.Engine
-	nextID   atomic.Uint64
-	mu       sync.RWMutex
-	log      *slog.Logger
+	moments       map[string]model.Moment
+	ordered       []model.Moment
+	sessions      map[string]*engine.Engine
+	opponentModel engine.OpponentPositionModel
+	nextID        atomic.Uint64
+	mu            sync.RWMutex
+	log           *slog.Logger
 }
 
 func New(moments []model.Moment, logger *slog.Logger) *Server {
+	return NewWithOpponentModel(moments, logger, nil)
+}
+
+func NewWithOpponentModel(moments []model.Moment, logger *slog.Logger, opponentModel engine.OpponentPositionModel) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -36,7 +41,7 @@ func New(moments []model.Moment, logger *slog.Logger) *Server {
 	}
 	return &Server{
 		moments: indexed, ordered: moments,
-		sessions: make(map[string]*engine.Engine), log: logger,
+		sessions: make(map[string]*engine.Engine), opponentModel: opponentModel, log: logger,
 	}
 }
 
@@ -77,7 +82,7 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := "session-" + strconv.FormatUint(s.nextID.Add(1), 36)
-	instance := engine.New(moment, id)
+	instance := engine.NewWithOpponentModel(moment, id, s.opponentModel)
 	s.mu.Lock()
 	s.sessions[id] = instance
 	s.mu.Unlock()
@@ -106,7 +111,7 @@ func (s *Server) applyTurn(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "session_not_found", "the requested session does not exist")
 		return
 	}
-	state, err := instance.Apply(request.Action)
+	state, err := instance.ApplyContext(r.Context(), request.Action)
 	if errors.Is(err, engine.ErrIllegalAction) {
 		writeError(w, http.StatusUnprocessableEntity, "illegal_action", err.Error())
 		return

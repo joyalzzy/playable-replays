@@ -1,13 +1,18 @@
 openapi: 3.1.0
 info:
   title: Playable Replays API
-  version: 0.1.0
-  description: Deterministic tactical replay prototype API.
+  version: 0.2.0
+  description: |
+    Deterministic tactical replay prototype API. An optional opponent-model
+    connector may suggest next-frame positions, but the simulator remains
+    authoritative over movement limits, physics, damage, and outcomes.
 servers:
   - url: http://127.0.0.1:8080
+security: []
 paths:
   /healthz:
     get:
+      summary: Check API health
       operationId: health
       responses:
         "200":
@@ -21,6 +26,7 @@ paths:
                 required: [status]
   /api/v1/moments:
     get:
+      summary: List playable replay moments
       operationId: listMoments
       responses:
         "200":
@@ -36,6 +42,7 @@ paths:
                 required: [moments]
   /api/v1/sessions:
     post:
+      summary: Create a replay session
       operationId: createSession
       requestBody:
         required: true
@@ -62,6 +69,7 @@ paths:
         required: true
         schema: {type: string}
     get:
+      summary: Get current replay session state
       operationId: getSession
       responses:
         "200":
@@ -77,6 +85,7 @@ paths:
         required: true
         schema: {type: string}
     post:
+      summary: Resolve one replay turn
       operationId: takeTurn
       requestBody:
         required: true
@@ -104,6 +113,7 @@ paths:
         required: true
         schema: {type: string}
     post:
+      summary: Reset a replay session
       operationId: resetSession
       responses:
         "200":
@@ -112,6 +122,32 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/Session"}
         "404": {$ref: "#/components/responses/Error"}
+webhooks:
+  opponentModelTurn:
+    post:
+      operationId: suggestOpponentPositions
+      summary: Suggest opponent positions for the next frame
+      description: |
+        When `OPPONENT_MODEL_URL` is configured, the API sends this request
+        once per resolved user turn. `turn` is the one-based index of the
+        next frame being resolved. The response is advisory: unknown units,
+        controlled or allied units, non-finite coordinates, and out-of-bounds
+        or over-range movement are rejected or clamped by the simulator. A
+        timeout, transport failure, malformed response, or invalid suggestion
+        activates the deterministic built-in opponent policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/OpponentModelRequest"}
+      responses:
+        "200":
+          description: Advisory positions returned; simulator validation still applies
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/OpponentModelResponse"}
+        default:
+          description: Any non-200 response activates the deterministic fallback policy
 components:
   schemas:
     Point:
@@ -125,27 +161,56 @@ components:
       type: object
       additionalProperties: false
       properties:
-        type: {type: string, enum: [move, hold, contest, retreat]}
+        type: {type: string, enum: [move, hold, contest, retreat, dodge, outplay]}
         target: {$ref: "#/components/schemas/Point"}
       required: [type]
     Unit:
       type: object
+      additionalProperties: false
       properties:
         id: {type: string}
         team: {type: string, enum: [blue, red]}
         role: {type: string}
+        class:
+          type: string
+          enum: [tank, fighter, marksman, mage, support, assassin]
         position: {$ref: "#/components/schemas/Point"}
-        hp: {type: integer, minimum: 0}
-        maxHp: {type: integer, minimum: 1}
+        hp: {type: integer, minimum: 0, maximum: 160}
+        maxHp: {type: integer, enum: [90, 95, 100, 110, 125, 160]}
+        moveRange:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Maximum map units this class can move in one frame.
+        attackRange:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Class attack radius in map units.
         cooldownTurns: {type: integer, minimum: 0}
         visible: {type: boolean}
         alive: {type: boolean}
-      required: [id, team, role, position, hp, maxHp, cooldownTurns, visible, alive]
+      required: [id, team, role, class, position, hp, maxHp, moveRange, attackRange, cooldownTurns, visible, alive]
+      allOf:
+        - if: {properties: {class: {const: tank}}, required: [class]}
+          then: {properties: {hp: {type: integer, maximum: 160}, maxHp: {type: integer, const: 160}, moveRange: {type: number, const: 7}, attackRange: {type: number, const: 10}}}
+        - if: {properties: {class: {const: fighter}}, required: [class]}
+          then: {properties: {hp: {type: integer, maximum: 125}, maxHp: {type: integer, const: 125}, moveRange: {type: number, const: 10}, attackRange: {type: number, const: 14}}}
+        - if: {properties: {class: {const: marksman}}, required: [class]}
+          then: {properties: {hp: {type: integer, maximum: 90}, maxHp: {type: integer, const: 90}, moveRange: {type: number, const: 11}, attackRange: {type: number, const: 28}}}
+        - if: {properties: {class: {const: mage}}, required: [class]}
+          then: {properties: {hp: {type: integer, maximum: 95}, maxHp: {type: integer, const: 95}, moveRange: {type: number, const: 9}, attackRange: {type: number, const: 24}}}
+        - if: {properties: {class: {const: support}}, required: [class]}
+          then: {properties: {hp: {type: integer, maximum: 110}, maxHp: {type: integer, const: 110}, moveRange: {type: number, const: 8}, attackRange: {type: number, const: 20}}}
+        - if: {properties: {class: {const: assassin}}, required: [class]}
+          then: {properties: {hp: {type: integer, maximum: 100}, maxHp: {type: integer, const: 100}, moveRange: {type: number, const: 13}, attackRange: {type: number, const: 12}}}
     Session:
       type: object
+      additionalProperties: false
       properties:
         id: {type: string}
         momentId: {type: string}
+        controlledUnitId: {type: string}
         turn: {type: integer}
         maxTurns: {type: integer}
         status: {type: string, enum: [active, won, lost]}
@@ -154,7 +219,7 @@ components:
         referenceAction: {$ref: "#/components/schemas/Action"}
         legalActions:
           type: array
-          items: {type: string, enum: [move, hold, contest, retreat]}
+          items: {type: string, enum: [move, hold, contest, retreat, dodge, outplay]}
         units:
           type: array
           items: {$ref: "#/components/schemas/Unit"}
@@ -165,10 +230,12 @@ components:
             properties:
               turn: {type: integer}
               actor: {type: string, enum: [user, policy]}
-              action: {type: string}
+              action:
+                type: string
+                description: User entries use a legal action type; policy entries describe the opponent response.
               message: {type: string}
             required: [turn, actor, action, message]
-      required: [id, momentId, turn, maxTurns, status, score, winProbability, referenceAction, legalActions, units, log]
+      required: [id, momentId, controlledUnitId, turn, maxTurns, status, score, winProbability, referenceAction, legalActions, units, log]
     MomentSummary:
       type: object
       properties:
@@ -192,10 +259,82 @@ components:
             message: {type: string}
           required: [code, message]
       required: [error]
+    MapBounds:
+      type: object
+      additionalProperties: false
+      properties:
+        minX: {type: number}
+        maxX: {type: number}
+        minY: {type: number}
+        maxY: {type: number}
+      required: [minX, maxX, minY, maxY]
+    OpponentModelRequest:
+      type: object
+      additionalProperties: false
+      description: Server-side snapshot sent to the optional opponent model.
+      properties:
+        schemaVersion:
+          type: string
+          const: "1.0"
+          description: Version of the opponent connector wire contract.
+        stateScope:
+          type: string
+          const: authoritative_server_state
+          description: Marks this as privileged server state, not the browser view.
+        sessionId: {type: string, minLength: 1}
+        momentId: {type: string, minLength: 1}
+        turn:
+          type: integer
+          minimum: 1
+          description: One-based index of the next frame being resolved.
+        mapBounds: {$ref: "#/components/schemas/MapBounds"}
+        controlledUnitId: {type: string, minLength: 1}
+        units:
+          type: array
+          minItems: 2
+          maxItems: 64
+          items: {$ref: "#/components/schemas/OpponentSnapshotUnit"}
+      required: [schemaVersion, stateScope, sessionId, momentId, turn, mapBounds, controlledUnitId, units]
+    OpponentSnapshotUnit:
+      type: object
+      additionalProperties: false
+      description: Bounded authoritative unit state sent to the trusted model connector.
+      properties:
+        id: {type: string, minLength: 1}
+        team: {type: string, enum: [blue, red]}
+        role: {type: string, minLength: 1}
+        class:
+          type: string
+          enum: [tank, fighter, marksman, mage, support, assassin]
+        position: {$ref: "#/components/schemas/Point"}
+        hp: {type: integer, minimum: 0}
+        maxHp: {type: integer, minimum: 1}
+        moveRange: {type: number, minimum: 0, maximum: 100}
+        attackRange: {type: number, minimum: 0, maximum: 100}
+        cooldownTurns: {type: integer, minimum: 0}
+        visible: {type: boolean}
+        alive: {type: boolean}
+      required: [id, team, role, class, position, hp, maxHp, moveRange, attackRange, cooldownTurns, visible, alive]
+    OpponentPosition:
+      type: object
+      additionalProperties: false
+      properties:
+        unitId: {type: string, minLength: 1}
+        position: {$ref: "#/components/schemas/Point"}
+      required: [unitId, position]
+    OpponentModelResponse:
+      type: object
+      additionalProperties: false
+      description: Advisory next-frame targets; omitted opponents use the fallback policy.
+      properties:
+        positions:
+          type: array
+          maxItems: 64
+          items: {$ref: "#/components/schemas/OpponentPosition"}
+      required: [positions]
   responses:
     Error:
       description: Structured error
       content:
         application/json:
           schema: {$ref: "#/components/schemas/Error"}
-

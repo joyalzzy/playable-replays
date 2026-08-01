@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createSession, listMoments, resetSession, takeTurn } from "./api";
 import { ActionPanel } from "./components/ActionPanel";
 import { TacticalBoard } from "./components/TacticalBoard";
@@ -33,11 +33,6 @@ export default function App() {
       )
       .finally(() => setBusy(false));
   }, []);
-
-  const controlledUnitId = useMemo(
-    () => session?.units.find((unit) => unit.team === "blue" && unit.role === "carry")?.id ?? "",
-    [session]
-  );
 
   async function chooseMoment(next: MomentSummary) {
     setBusy(true);
@@ -154,7 +149,7 @@ export default function App() {
         <div>
           <TacticalBoard
             units={session.units}
-            controlledUnitId={controlledUnitId}
+            controlledUnitId={session.controlledUnitId}
             target={target}
             targeting={action === "move" && session.status === "active"}
             onTarget={setTarget}
@@ -190,4 +185,3 @@ export default function App() {
     </main>
   );
 }
-
