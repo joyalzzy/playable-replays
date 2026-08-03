@@ -394,9 +394,6 @@ applicable, and explanatory UI/docs in one PR.
 
 These are current prototype limitations, not conventions to copy into new code:
 
-- `Session` omits `controlledUnitId`, so React currently infers a blue carry.
-  When this is corrected, add the explicit field across Go, OpenAPI, TypeScript,
-  UI, and tests, then stop inferring the controlled unit by team/role.
 - Unknown paths and wrong methods use Go's plain-text 404/405 even though the
   middleware labels responses as JSON. New routing work should make these
   structured and test them.
@@ -408,12 +405,6 @@ These are current prototype limitations, not conventions to copy into new code:
 - The reset client sends `{}` although the endpoint declares no body.
 - The frontend trusts successful JSON through TypeScript casts; there is no
   generated client or runtime response validator.
-- `Engine.State()` shallow-copies `ReferenceAction.Target`; callers can mutate
-  that pointer. New state fields must be defensively copied, and this existing
-  pointer should be fixed when session-copy behavior is touched.
-- Session reads do not have per-session synchronization, so a concurrent `GET`
-  and turn/reset mutation can race. Introduce per-session locking before adding
-  model network I/O, without holding the global registry lock during that call.
 - `npm run lint` exists, but no ESLint configuration is committed and lint is not
   a Make/CI gate. Do not report lint as passing until that is deliberately fixed.
 - `make build` writes `backend/server`, which is not currently ignored. Treat it

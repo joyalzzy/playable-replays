@@ -8,7 +8,9 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/joyalzzy/playable-replays/backend/internal/engine"
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
@@ -21,6 +23,22 @@ type apiOpponentModel struct {
 func (stub *apiOpponentModel) NextPositions(_ context.Context, _ engine.OpponentSnapshot) ([]engine.PositionSuggestion, error) {
 	stub.called = true
 	return []engine.PositionSuggestion{{UnitID: "red", Position: model.Point{X: 100, Y: 50}}}, nil
+}
+
+type blockingOpponentModel struct {
+	started chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func (stub *blockingOpponentModel) NextPositions(ctx context.Context, _ engine.OpponentSnapshot) ([]engine.PositionSuggestion, error) {
+	stub.once.Do(func() { close(stub.started) })
+	select {
+	case <-stub.release:
+		return nil, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func testServer() *Server {
@@ -37,6 +55,10 @@ func testServer() *Server {
 
 func request(t *testing.T, handler http.Handler, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
+	return performRequest(handler, method, path, body)
+}
+
+func performRequest(handler http.Handler, method, path, body string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
@@ -118,6 +140,68 @@ func TestServerUsesOpponentPositionModel(t *testing.T) {
 	}
 	if !stub.called || session.Units[1].Position != (model.Point{X: 52, Y: 50}) {
 		t.Fatalf("opponent connector was not applied with tank limit: %+v", session)
+	}
+}
+
+func TestSlowOpponentModelDoesNotBlockOtherSessions(t *testing.T) {
+	stub := &blockingOpponentModel{started: make(chan struct{}), release: make(chan struct{})}
+	defer func() {
+		select {
+		case <-stub.release:
+		default:
+			close(stub.release)
+		}
+	}()
+	base := testServer()
+	server := NewWithOpponentModel(base.ordered, slog.New(slog.NewTextHandler(io.Discard, nil)), stub)
+	handler := server.Handler()
+
+	first := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	second := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	var firstSession, secondSession model.Session
+	if err := json.Unmarshal(first.Body.Bytes(), &firstSession); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(second.Body.Bytes(), &secondSession); err != nil {
+		t.Fatal(err)
+	}
+
+	turnDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		turnDone <- performRequest(
+			handler,
+			http.MethodPost,
+			"/api/v1/sessions/"+firstSession.ID+"/turns",
+			`{"action":{"type":"hold"}}`,
+		)
+	}()
+	select {
+	case <-stub.started:
+	case <-time.After(time.Second):
+		t.Fatal("opponent model call did not start")
+	}
+
+	readDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		readDone <- performRequest(handler, http.MethodGet, "/api/v1/sessions/"+secondSession.ID, "")
+	}()
+	select {
+	case result := <-readDone:
+		if result.Code != http.StatusOK {
+			t.Fatalf("read other session: %d %s", result.Code, result.Body.String())
+		}
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("slow model call blocked an unrelated session")
+	}
+
+	close(stub.release)
+	select {
+	case result := <-turnDone:
+		if result.Code != http.StatusOK {
+			t.Fatalf("turn after model release: %d %s", result.Code, result.Body.String())
+		}
+	case <-time.After(time.Second):
+		t.Fatal("turn did not finish after model release")
 	}
 }
 

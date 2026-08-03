@@ -20,11 +20,16 @@ const maxBodyBytes = 64 << 10
 type Server struct {
 	moments       map[string]model.Moment
 	ordered       []model.Moment
-	sessions      map[string]*engine.Engine
+	sessions      map[string]*sessionInstance
 	opponentModel engine.OpponentPositionModel
 	nextID        atomic.Uint64
 	mu            sync.RWMutex
 	log           *slog.Logger
+}
+
+type sessionInstance struct {
+	mu     sync.RWMutex
+	engine *engine.Engine
 }
 
 func New(moments []model.Moment, logger *slog.Logger) *Server {
@@ -41,7 +46,7 @@ func NewWithOpponentModel(moments []model.Moment, logger *slog.Logger, opponentM
 	}
 	return &Server{
 		moments: indexed, ordered: moments,
-		sessions: make(map[string]*engine.Engine), opponentModel: opponentModel, log: logger,
+		sessions: make(map[string]*sessionInstance), opponentModel: opponentModel, log: logger,
 	}
 }
 
@@ -82,11 +87,12 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := "session-" + strconv.FormatUint(s.nextID.Add(1), 36)
-	instance := engine.NewWithOpponentModel(moment, id, s.opponentModel)
+	instance := &sessionInstance{engine: engine.NewWithOpponentModel(moment, id, s.opponentModel)}
+	state := instance.engine.State()
 	s.mu.Lock()
 	s.sessions[id] = instance
 	s.mu.Unlock()
-	writeJSON(w, http.StatusCreated, instance.State())
+	writeJSON(w, http.StatusCreated, state)
 }
 
 func (s *Server) getSession(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +101,10 @@ func (s *Server) getSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "session_not_found", "the requested session does not exist")
 		return
 	}
-	writeJSON(w, http.StatusOK, instance.State())
+	instance.mu.RLock()
+	state := instance.engine.State()
+	instance.mu.RUnlock()
+	writeJSON(w, http.StatusOK, state)
 }
 
 func (s *Server) applyTurn(w http.ResponseWriter, r *http.Request) {
@@ -104,14 +113,14 @@ func (s *Server) applyTurn(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	instance, ok := s.sessions[r.PathValue("id")]
+	instance, ok := s.session(r.PathValue("id"))
 	if !ok {
 		writeError(w, http.StatusNotFound, "session_not_found", "the requested session does not exist")
 		return
 	}
-	state, err := instance.ApplyContext(r.Context(), request.Action)
+	instance.mu.Lock()
+	state, err := instance.engine.ApplyContext(r.Context(), request.Action)
+	instance.mu.Unlock()
 	if errors.Is(err, engine.ErrIllegalAction) {
 		writeError(w, http.StatusUnprocessableEntity, "illegal_action", err.Error())
 		return
@@ -124,17 +133,18 @@ func (s *Server) applyTurn(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) resetSession(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	instance, ok := s.sessions[r.PathValue("id")]
+	instance, ok := s.session(r.PathValue("id"))
 	if !ok {
 		writeError(w, http.StatusNotFound, "session_not_found", "the requested session does not exist")
 		return
 	}
-	writeJSON(w, http.StatusOK, instance.Reset(r.PathValue("id")))
+	instance.mu.Lock()
+	state := instance.engine.Reset(r.PathValue("id"))
+	instance.mu.Unlock()
+	writeJSON(w, http.StatusOK, state)
 }
 
-func (s *Server) session(id string) (*engine.Engine, bool) {
+func (s *Server) session(id string) (*sessionInstance, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	instance, ok := s.sessions[id]
