@@ -16,7 +16,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from ml.highlight import Candidate, Signals, select_candidates
+from ml.highlight import Candidate, Signals, score as highlight_score, select_candidates
 
 
 SCHEMA_VERSION = "1.0"
@@ -407,17 +407,7 @@ def semantic_evidence(
     frames: Sequence[TelemetryFrame], candidate: Candidate
 ) -> SemanticEvidence:
     """Return deterministic evidence from the exact selected candidate window."""
-    checked = validate_frames(frames)
-    timestamps = [frame.second for frame in checked]
-    start_index = bisect_left(timestamps, candidate.start_second)
-    end_index = bisect_right(timestamps, candidate.end_second)
-    window = checked[start_index:end_index]
-    if (
-        len(window) < 2
-        or window[0].second != candidate.start_second
-        or window[-1].second != candidate.end_second
-    ):
-        raise ValueError("candidate window must be fully covered by telemetry")
+    window = _candidate_window(frames, candidate)
     return SemanticEvidence(
         one_versus_many_unit_ids=one_versus_many_unit_ids(window),
         successful_escape_unit_ids=successful_escape_unit_ids(window),
@@ -425,16 +415,41 @@ def semantic_evidence(
     )
 
 
+def signals_for_candidate(
+    frames: Sequence[TelemetryFrame],
+    candidate: Candidate,
+    *,
+    event_rate_cap: float = DEFAULT_EVENT_RATE_CAP,
+) -> Signals:
+    """Recompute canonical signals from the exact selected candidate window."""
+    return extract_signals(
+        _candidate_window(frames, candidate), event_rate_cap=event_rate_cap
+    )
+
+
 def detection_record(
-    candidate: Candidate, evidence: SemanticEvidence
+    candidate: Candidate, evidence: SemanticEvidence, signals: Signals
 ) -> dict[str, Any]:
     """Build one versioned, JSON-serializable detector output record."""
+    if not math.isclose(
+        candidate.score,
+        highlight_score(signals),
+        rel_tol=0,
+        abs_tol=1e-12,
+    ):
+        raise ValueError("candidate score does not match signals")
     return {
         "schemaVersion": DETECTION_SCHEMA_VERSION,
         "startSecond": candidate.start_second,
         "endSecond": candidate.end_second,
         "score": round(candidate.score, 4),
         "reasonTags": list(candidate.reason_tags),
+        "signals": {
+            "winProbabilitySwing": signals.win_probability_swing,
+            "eventDensity": signals.event_density,
+            "entityProximity": signals.entity_proximity,
+            "resourceAsymmetry": signals.resource_asymmetry,
+        },
         "semanticEvidence": {
             "oneVersusManyUnitIds": list(evidence.one_versus_many_unit_ids),
             "successfulEscapeUnitIds": list(evidence.successful_escape_unit_ids),
@@ -578,6 +593,23 @@ def _add_semantic_tags(
     return replace(candidate, reason_tags=tuple(tags))
 
 
+def _candidate_window(
+    frames: Sequence[TelemetryFrame], candidate: Candidate
+) -> tuple[TelemetryFrame, ...]:
+    checked = validate_frames(frames)
+    timestamps = [frame.second for frame in checked]
+    start_index = bisect_left(timestamps, candidate.start_second)
+    end_index = bisect_right(timestamps, candidate.end_second)
+    window = checked[start_index:end_index]
+    if (
+        len(window) < 2
+        or window[0].second != candidate.start_second
+        or window[-1].second != candidate.end_second
+    ):
+        raise ValueError("candidate window must be fully covered by telemetry")
+    return window
+
+
 def _validate_radius(value: float, name: str) -> None:
     if (
         isinstance(value, bool)
@@ -653,7 +685,11 @@ def main() -> None:
     for candidate in candidates:
         print(
             json.dumps(
-                detection_record(candidate, semantic_evidence(frames, candidate))
+                detection_record(
+                    candidate,
+                    semantic_evidence(frames, candidate),
+                    signals_for_candidate(frames, candidate),
+                )
             )
         )
 

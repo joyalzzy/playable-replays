@@ -117,8 +117,13 @@ The command emits one version `1.0` JSON object per selected candidate as
 newline-delimited JSON (NDJSON):
 
 ```json
-{"schemaVersion":"1.0","startSecond":742,"endSecond":754,"score":0.81,"reasonTags":["team-fight","one-versus-many","team-fight-reversal"],"semanticEvidence":{"oneVersusManyUnitIds":["blue-carry"],"successfulEscapeUnitIds":[],"teamFightReversalSecond":746}}
+{"schemaVersion":"1.0","startSecond":742,"endSecond":754,"score":0.754,"reasonTags":["win-probability-swing","team-fight","one-versus-many","team-fight-reversal"],"signals":{"winProbabilitySwing":0.82,"eventDensity":0.7,"entityProximity":0.18,"resourceAsymmetry":0.54},"semanticEvidence":{"oneVersusManyUnitIds":["blue-carry"],"successfulEscapeUnitIds":[],"teamFightReversalSecond":746}}
 ```
+
+`signals` contains the exact four normalized inputs used by the canonical
+scorer and matches the fixture contract's signal names. Output construction
+rejects a candidate if those inputs do not recompute to its score, preventing a
+downstream fixture from silently carrying different scoring evidence.
 
 `semanticEvidence` records the deterministic facts that caused semantic tags:
 sorted qualifying unit IDs and the selected reversal timestamp. Empty arrays

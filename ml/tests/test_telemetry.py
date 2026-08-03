@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ml.highlight import Candidate
+from ml.highlight import Candidate, Signals, score
 from ml.telemetry import (
     SemanticEvidence,
     TelemetryFrame,
@@ -14,6 +14,7 @@ from ml.telemetry import (
     one_versus_many_unit_ids,
     select_pivotal_windows,
     semantic_evidence,
+    signals_for_candidate,
     successful_escape_unit_ids,
     team_fight_reversal_second,
     telemetry_windows,
@@ -341,13 +342,23 @@ class TelemetryTests(unittest.TestCase):
         self.assertIn("team-fight-reversal", candidate.reason_tags)
 
     def test_detection_record_is_versioned_and_json_serializable(self):
-        candidate = Candidate(10, 22, 0.81234, ("team-fight-reversal",))
+        signals = Signals(0.8, 0.7, 0.2, 0.6)
+        candidate = Candidate(10, 22, score(signals), ("team-fight-reversal",))
         evidence = SemanticEvidence(("blue-carry",), (), 16)
 
-        record = detection_record(candidate, evidence)
+        record = detection_record(candidate, evidence, signals)
 
         self.assertEqual(record["schemaVersion"], "1.0")
-        self.assertEqual(record["score"], 0.8123)
+        self.assertEqual(record["score"], 0.75)
+        self.assertEqual(
+            record["signals"],
+            {
+                "winProbabilitySwing": 0.8,
+                "eventDensity": 0.7,
+                "entityProximity": 0.2,
+                "resourceAsymmetry": 0.6,
+            },
+        )
         self.assertEqual(
             record["semanticEvidence"],
             {
@@ -357,6 +368,25 @@ class TelemetryTests(unittest.TestCase):
             },
         )
         json.dumps(record)
+
+    def test_candidate_signals_recompute_score_and_reject_mismatch(self):
+        frames = tuple(
+            frame(
+                second,
+                0.85 if second == 12 else 0.1,
+                events=("damage",),
+            )
+            for second in range(13)
+        )
+        candidate = select_pivotal_windows(
+            frames, threshold=0.6, window_seconds=12
+        )[0]
+        signals = signals_for_candidate(frames, candidate)
+
+        self.assertAlmostEqual(score(signals), candidate.score)
+        detection_record(candidate, semantic_evidence(frames, candidate), signals)
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            detection_record(candidate, SemanticEvidence(), Signals(0, 0, 1, 0))
 
     def test_semantic_evidence_rejects_uncovered_candidate_bounds(self):
         frames = (frame(0, 0.5), frame(12, 0.5))
