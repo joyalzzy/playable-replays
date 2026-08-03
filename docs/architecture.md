@@ -25,11 +25,12 @@ unchanged.
 
 ## Information boundary
 
-The full simulator state remains on the server. The returned `visible` flag is
-the browser's display boundary; a production implementation should instead
-serialize a filtered view that omits hidden coordinates altogether. The
-prototype keeps coordinates in the synthetic response to make tests and
-debugging inspectable, so it must not be described as anti-cheat hardened.
+The full simulator state remains on the server. Public session responses omit
+hidden enemy units entirely, including their coordinates and statistics, and
+instead return visible and unknown enemy counts. Terrain can block long-range
+vision, and reveal events are logged only when a blue unit obtains vision.
+This is a meaningful information boundary, but it is still a prototype rather
+than an anti-cheat-hardened production service.
 
 ## AI boundary
 
@@ -48,3 +49,14 @@ and rejected unless valid.
 - Durable session storage, authentication, abuse controls, and rate limiting
 - In-game engine integration and publisher approval
 
+## Authored simulation rules
+
+Fixture version 2.0 declares unit combat statistics and policies, terrain,
+vision, objectives, escape routes, explicit victory conditions, and reference
+plans. The server resolves a turn in this order: cooldown and defense reset,
+user action, allied policies, enemy policies, visibility, objective and escape
+progress, state-derived advantage, then terminal conditions.
+
+Reference advice is withheld until the user commits. Complete deterministic
+rollouts for all four legal first actions are returned only when the scenario
+ends. They are labelled as authored baselines rather than historical outcomes.

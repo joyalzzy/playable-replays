@@ -1,13 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createSession, listMoments, resetSession, takeTurn } from "./api";
 import { ActionPanel } from "./components/ActionPanel";
+import { OutcomeDebrief } from "./components/OutcomeDebrief";
 import { TacticalBoard } from "./components/TacticalBoard";
 import { Timeline } from "./components/Timeline";
+import { actionLabel, advantageLabel } from "./format";
 import type { ActionType, MomentSummary, Point, Session } from "./types";
 
 function momentFromLocation(moments: MomentSummary[]) {
   const slug = new URLSearchParams(window.location.search).get("moment");
   return moments.find((moment) => moment.slug === slug) ?? moments[0];
+}
+
+function objectiveSummary(session: Session) {
+  if (session.objective) {
+    return `${session.objective.blueProgress}/${session.objective.requiredProgress} blue`;
+  }
+  return `${session.escapeProgress}/${session.escapeTurnsRequired} safe`;
 }
 
 export default function App() {
@@ -33,11 +42,6 @@ export default function App() {
       )
       .finally(() => setBusy(false));
   }, []);
-
-  const controlledUnitId = useMemo(
-    () => session?.units.find((unit) => unit.team === "blue" && unit.role === "carry")?.id ?? "",
-    [session]
-  );
 
   async function chooseMoment(next: MomentSummary) {
     setBusy(true);
@@ -80,8 +84,11 @@ export default function App() {
     setBusy(true);
     try {
       setSession(await resetSession(session.id));
+      setAction("move");
       setTarget(undefined);
       setError(undefined);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The scenario could not be reset.");
     } finally {
       setBusy(false);
     }
@@ -134,27 +141,34 @@ export default function App() {
         </div>
       </section>
 
+      <section className="goal-card">
+        <div>
+          <p className="eyebrow">EXPLICIT WIN CONDITION</p>
+          <strong>{session.scenarioGoal}</strong>
+        </div>
+        {session.visionLimited && (
+          <span className="goal-card__warning">Limited vision · {session.unknownEnemyCount} unknown enemy contact{session.unknownEnemyCount === 1 ? "" : "s"}</span>
+        )}
+      </section>
+
       <section className="stats" aria-label="Replay status">
         <div><span>Turn</span><strong>{session.turn}/{session.maxTurns}</strong></div>
-        <div><span>Estimated win</span><strong>{Math.round(session.winProbability * 100)}%</strong></div>
-        <div><span>Score</span><strong className={session.score < 0 ? "negative" : ""}>{session.score}</strong></div>
-        <div><span>Status</span><strong>{session.status}</strong></div>
+        <div><span>Scenario advantage</span><strong>{advantageLabel(session.advantage)}</strong></div>
+        <div><span>{session.objective?.label ?? "Escape route"}</span><strong>{objectiveSummary(session)}</strong></div>
+        <div><span>Known threats</span><strong>{session.visibleEnemyCount} visible · {session.unknownEnemyCount} unknown</strong></div>
       </section>
 
       {error && <div className="error" role="alert">{error}</div>}
-      {session.status !== "active" && (
-        <div className={`result result--${session.status}`}>
-          <strong>{session.status === "won" ? "Scenario secured" : "Scenario lost"}</strong>
-          <span>This is a deterministic counterfactual estimate, not a factual match outcome.</span>
-          <button type="button" onClick={() => void reset()} disabled={busy}>Replay moment</button>
-        </div>
-      )}
+      <OutcomeDebrief session={session} busy={busy} onReplay={() => void reset()} />
 
       <div className="workspace">
         <div>
           <TacticalBoard
             units={session.units}
-            controlledUnitId={controlledUnitId}
+            terrain={session.terrain}
+            objective={session.objective}
+            controlledUnitId={session.controlledUnitId}
+            unknownEnemyCount={session.unknownEnemyCount}
             target={target}
             targeting={action === "move" && session.status === "active"}
             onTarget={setTarget}
@@ -173,9 +187,18 @@ export default function App() {
         </div>
         <aside>
           <section className="reference">
-            <p className="eyebrow">REFERENCE POLICY</p>
-            <strong>{session.referenceAction.type}</strong>
-            <span>Shown for learning; matching it is not required.</span>
+            <p className="eyebrow">POST-COMMIT REFERENCE</p>
+            {session.lastReferenceAction ? (
+              <>
+                <strong>{actionLabel(session.lastReferenceAction)}</strong>
+                <span>{session.referenceReason}</span>
+              </>
+            ) : (
+              <>
+                <strong className="reference__hidden">Hidden until you decide</strong>
+                <span>Your first choice remains independent. The authored baseline appears after commitment.</span>
+              </>
+            )}
           </section>
           <Timeline entries={session.log} />
           <button className="secondary" type="button" onClick={() => void reset()} disabled={busy}>
@@ -185,9 +208,8 @@ export default function App() {
       </div>
 
       <footer>
-        Synthetic data · deterministic simulator · no proprietary game integration
+        Synthetic data · deterministic authored rules · advantage is not a win probability
       </footer>
     </main>
   );
 }
-

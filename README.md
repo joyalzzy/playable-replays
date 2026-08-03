@@ -13,7 +13,7 @@ estimates.
 ## What is included
 
 - React + strict TypeScript tactical board
-- Go HTTP API and authoritative deterministic simulator
+- Go HTTP API and authoritative deterministic simulator with authored scenario rules
 - Synthetic, versioned telemetry fixtures
 - Offline Python highlight scorer using interpretable signals
 - OpenAPI contract and JSON schemas
@@ -63,6 +63,25 @@ The browser requests a legal high-level action. The Go simulator validates and
 resolves that action using a scenario seed. An LLM is never trusted to invent
 physics, hidden state, damage, or victory conditions.
 
+## Simulator rules
+
+Every fixture now declares its combat statistics, terrain, visibility, objective or escape state,
+victory and defeat conditions, safe zone, unit policies, and an authored reference plan. Turns
+produce causal events for movement, shielding, attacks, damage, eliminations, vision changes,
+objective control, escape progress, and terminal outcomes.
+
+The displayed **scenario advantage** is derived from remaining health, surviving units, objective
+control, target pressure, and escape progress. It is deliberately not presented as a calibrated
+win probability. At the end of a scenario, the API exposes deterministic rollouts for each legal
+first action so the user can compare openings without claiming that any rollout is a historical
+match result.
+
+The terminal debrief can also reveal a calculated best allied line. Each turn is
+selectable and shows the chosen command, its causal events, and how the strongest
+continuation after every alternative command compared.
+
+See [`docs/simulator-rules.md`](docs/simulator-rules.md) for the exact resolution order and limits.
+
 ## API
 
 ```text
@@ -82,4 +101,3 @@ shapes.
 All included data is synthetic and contains no player identity or proprietary
 telemetry. Production ingestion must require authorization, data minimization,
 retention controls, and game-publisher review.
-

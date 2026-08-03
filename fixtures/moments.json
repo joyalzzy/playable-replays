@@ -1,11 +1,11 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "moments": [
     {
       "id": "objective-steal-742",
       "slug": "river-pit-steal",
       "title": "The River Pit Steal",
-      "description": "Blue carry is outnumbered near the objective. Choose whether to contest, reposition, or preserve the escape route.",
+      "description": "Blue carry is outnumbered near the objective. Secure the pit before red completes control, or stabilize an escape through the lower river.",
       "map": "Synthetic Rift",
       "startTimeSeconds": 742,
       "seed": 104729,
@@ -19,18 +19,62 @@
         "resourceAsymmetry": 0.72
       },
       "units": [
-        {"id":"blue-carry","team":"blue","role":"carry","position":{"x":31,"y":54},"hp":68,"maxHp":100,"cooldownTurns":0,"visible":true,"alive":true},
-        {"id":"blue-support","team":"blue","role":"support","position":{"x":18,"y":65},"hp":42,"maxHp":100,"cooldownTurns":1,"visible":true,"alive":true},
-        {"id":"red-jungle","team":"red","role":"jungler","position":{"x":48,"y":51},"hp":55,"maxHp":100,"cooldownTurns":0,"visible":true,"alive":true},
-        {"id":"red-mid","team":"red","role":"mage","position":{"x":61,"y":43},"hp":73,"maxHp":100,"cooldownTurns":0,"visible":true,"alive":true},
-        {"id":"red-support","team":"red","role":"support","position":{"x":72,"y":70},"hp":88,"maxHp":100,"cooldownTurns":1,"visible":false,"alive":true}
-      ]
+        {"id":"blue-carry","team":"blue","role":"carry","policy":"controlled","position":{"x":31,"y":54},"hp":68,"maxHp":100,"attackRange":24,"attackDamage":22,"moveSpeed":16,"armor":15,"visionRange":34,"attackCooldown":2,"cooldownTurns":0,"visible":true,"alive":true},
+        {"id":"blue-support","team":"blue","role":"support","policy":"support","position":{"x":18,"y":65},"hp":42,"maxHp":100,"attackRange":18,"attackDamage":9,"moveSpeed":14,"armor":18,"visionRange":36,"attackCooldown":2,"cooldownTurns":1,"visible":true,"alive":true},
+        {"id":"red-jungle","team":"red","role":"jungler","policy":"aggressive","position":{"x":48,"y":51},"hp":55,"maxHp":100,"attackRange":9,"attackDamage":19,"moveSpeed":15,"armor":20,"visionRange":32,"attackCooldown":2,"cooldownTurns":0,"visible":true,"alive":true},
+        {"id":"red-mid","team":"red","role":"mage","policy":"skirmisher","position":{"x":61,"y":43},"hp":73,"maxHp":100,"attackRange":25,"attackDamage":22,"moveSpeed":13,"armor":10,"visionRange":34,"attackCooldown":2,"cooldownTurns":0,"visible":true,"alive":true},
+        {"id":"red-support","team":"red","role":"support","policy":"support","position":{"x":72,"y":70},"hp":88,"maxHp":100,"attackRange":18,"attackDamage":8,"moveSpeed":13,"armor":18,"visionRange":36,"attackCooldown":2,"cooldownTurns":1,"visible":false,"alive":true}
+      ],
+      "rules": {
+        "initialAdvantage": 0.36,
+        "objective": {"id":"river-core","label":"River core","position":{"x":52,"y":51},"radius":14,"captureTurns":2},
+        "victory": {
+          "kind":"secure-objective",
+          "description":"Secure the River core before red completes control, or hold the lower-river safe zone for two turns.",
+          "defeatDescription":"The blue carry was eliminated before the objective or escape route was secured.",
+          "allowEscape":true,
+          "safeZone":{"x":10,"y":68},
+          "safeRadius":9,
+          "escapeTurns":2
+        },
+        "terrain": [
+          {"id":"river","label":"River","kind":"river","position":{"x":50,"y":52},"radius":23,"moveMultiplier":0.90,"blocksVision":false},
+          {"id":"lower-brush","label":"Lower brush","kind":"brush","position":{"x":67,"y":69},"radius":11,"moveMultiplier":0.82,"blocksVision":true},
+          {"id":"pit-wall","label":"Pit wall","kind":"wall","position":{"x":53,"y":34},"radius":8,"moveMultiplier":0.70,"blocksVision":true}
+        ],
+        "referencePlan": [
+          {"type":"move","target":{"x":43,"y":54}},
+          {"type":"contest"},
+          {"type":"retreat"},
+          {"type":"retreat"},
+          {"type":"hold"}
+        ],
+        "referenceReasons": [
+          "Enter the edge of objective range without crossing behind the enemy front line.",
+          "Pressure the closest visible objective threat while support is in shielding range.",
+          "Disengage once the enemy formation collapses on the carry.",
+          "Complete the route toward lower-river safety.",
+          "Hold the safe zone long enough to complete the escape condition."
+        ],
+        "referenceContinuations": {
+          "move":[{"type":"contest"},{"type":"retreat"},{"type":"retreat"},{"type":"hold"}],
+          "hold":[{"type":"contest"},{"type":"retreat"},{"type":"retreat"},{"type":"hold"}],
+          "contest":[{"type":"contest"},{"type":"hold"},{"type":"retreat"},{"type":"retreat"}],
+          "retreat":[{"type":"retreat"},{"type":"hold"},{"type":"hold"},{"type":"hold"}]
+        },
+        "actionDefaults": {
+          "move":{"type":"move","target":{"x":43,"y":54}},
+          "hold":{"type":"hold"},
+          "contest":{"type":"contest"},
+          "retreat":{"type":"retreat"}
+        }
+      }
     },
     {
       "id": "teamfight-reversal-1091",
       "slug": "base-gate-reversal",
       "title": "Base Gate Reversal",
-      "description": "A low-health blue squad can turn on an overextended opponent or disengage through the gate.",
+      "description": "A low-health blue squad can punish an isolated carry before the tank arrives, or disengage through the base gate.",
       "map": "Synthetic Rift",
       "startTimeSeconds": 1091,
       "seed": 130363,
@@ -44,12 +88,55 @@
         "resourceAsymmetry": 0.61
       },
       "units": [
-        {"id":"blue-carry","team":"blue","role":"carry","position":{"x":26,"y":45},"hp":51,"maxHp":100,"cooldownTurns":0,"visible":true,"alive":true},
-        {"id":"blue-tank","team":"blue","role":"tank","position":{"x":34,"y":54},"hp":33,"maxHp":120,"cooldownTurns":0,"visible":true,"alive":true},
-        {"id":"red-carry","team":"red","role":"carry","position":{"x":51,"y":47},"hp":38,"maxHp":100,"cooldownTurns":1,"visible":true,"alive":true},
-        {"id":"red-tank","team":"red","role":"tank","position":{"x":66,"y":57},"hp":82,"maxHp":120,"cooldownTurns":0,"visible":false,"alive":true}
-      ]
+        {"id":"blue-carry","team":"blue","role":"carry","policy":"controlled","position":{"x":26,"y":45},"hp":51,"maxHp":100,"attackRange":24,"attackDamage":23,"moveSpeed":16,"armor":12,"visionRange":34,"attackCooldown":2,"cooldownTurns":0,"visible":true,"alive":true},
+        {"id":"blue-tank","team":"blue","role":"tank","policy":"protector","position":{"x":34,"y":54},"hp":33,"maxHp":120,"attackRange":9,"attackDamage":15,"moveSpeed":13,"armor":32,"visionRange":32,"attackCooldown":2,"cooldownTurns":0,"visible":true,"alive":true},
+        {"id":"red-carry","team":"red","role":"carry","policy":"skirmisher","position":{"x":51,"y":47},"hp":38,"maxHp":100,"attackRange":23,"attackDamage":21,"moveSpeed":15,"armor":10,"visionRange":33,"attackCooldown":2,"cooldownTurns":1,"visible":true,"alive":true},
+        {"id":"red-tank","team":"red","role":"tank","policy":"protector","position":{"x":66,"y":57},"hp":82,"maxHp":120,"attackRange":9,"attackDamage":16,"moveSpeed":13,"armor":34,"visionRange":32,"attackCooldown":2,"cooldownTurns":0,"visible":false,"alive":true}
+      ],
+      "rules": {
+        "initialAdvantage": 0.44,
+        "victory": {
+          "kind":"eliminate-target",
+          "targetUnitId":"red-carry",
+          "description":"Eliminate the isolated red carry before reinforcements stabilize, or hold inside the base gate for two turns.",
+          "defeatDescription":"The blue carry was eliminated before the target or escape condition was secured.",
+          "allowEscape":true,
+          "safeZone":{"x":10,"y":48},
+          "safeRadius":9,
+          "escapeTurns":2
+        },
+        "terrain": [
+          {"id":"base-gate","label":"Base gate","kind":"safe-zone","position":{"x":10,"y":48},"radius":9,"moveMultiplier":1.00,"blocksVision":false},
+          {"id":"gate-wall","label":"Gate wall","kind":"wall","position":{"x":42,"y":67},"radius":9,"moveMultiplier":0.72,"blocksVision":true},
+          {"id":"upper-brush","label":"Upper brush","kind":"brush","position":{"x":64,"y":55},"radius":10,"moveMultiplier":0.84,"blocksVision":true}
+        ],
+        "referencePlan": [
+          {"type":"contest"},
+          {"type":"contest"},
+          {"type":"hold"},
+          {"type":"contest"},
+          {"type":"hold"}
+        ],
+        "referenceReasons": [
+          "Pressure the exposed carry before the red tank enters protection range.",
+          "Continue only while the target remains isolated and in attack range.",
+          "Brace as the reinforcement closes and let allied protection absorb pressure.",
+          "Take the final attack window before the reinforcement can fully protect the carry.",
+          "If the target survives, brace and reassess rather than inventing another attack."
+        ],
+        "referenceContinuations": {
+          "move":[{"type":"contest"},{"type":"hold"},{"type":"contest"},{"type":"hold"}],
+          "hold":[{"type":"contest"},{"type":"hold"},{"type":"contest"},{"type":"hold"}],
+          "contest":[{"type":"contest"},{"type":"hold"},{"type":"contest"},{"type":"hold"}],
+          "retreat":[{"type":"retreat"},{"type":"hold"},{"type":"hold"},{"type":"hold"}]
+        },
+        "actionDefaults": {
+          "move":{"type":"move","target":{"x":42,"y":47}},
+          "hold":{"type":"hold"},
+          "contest":{"type":"contest"},
+          "retreat":{"type":"retreat"}
+        }
+      }
     }
   ]
 }
-

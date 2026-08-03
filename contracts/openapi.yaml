@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Playable Replays API
-  version: 0.1.0
-  description: Deterministic tactical replay prototype API.
+  version: 0.2.0
+  description: Deterministic tactical replay API with authored scenario rules and causal outcomes.
 servers:
   - url: http://127.0.0.1:8080
 paths:
@@ -130,28 +130,146 @@ components:
       required: [type]
     Unit:
       type: object
+      additionalProperties: false
       properties:
         id: {type: string}
         team: {type: string, enum: [blue, red]}
         role: {type: string}
+        policy: {type: string}
         position: {$ref: "#/components/schemas/Point"}
         hp: {type: integer, minimum: 0}
         maxHp: {type: integer, minimum: 1}
+        attackRange: {type: number, exclusiveMinimum: 0}
+        attackDamage: {type: integer, minimum: 1}
+        moveSpeed: {type: number, exclusiveMinimum: 0}
+        armor: {type: integer, minimum: 0}
+        visionRange: {type: number, exclusiveMinimum: 0}
+        attackCooldown: {type: integer, minimum: 1}
         cooldownTurns: {type: integer, minimum: 0}
+        shield: {type: integer, minimum: 0}
+        guarded: {type: boolean}
         visible: {type: boolean}
         alive: {type: boolean}
-      required: [id, team, role, position, hp, maxHp, cooldownTurns, visible, alive]
+      required: [id, team, role, policy, position, hp, maxHp, attackRange, attackDamage, moveSpeed, armor, visionRange, attackCooldown, cooldownTurns, shield, guarded, visible, alive]
+    TerrainFeature:
+      type: object
+      additionalProperties: false
+      properties:
+        id: {type: string}
+        label: {type: string}
+        kind: {type: string}
+        position: {$ref: "#/components/schemas/Point"}
+        radius: {type: number, exclusiveMinimum: 0}
+        moveMultiplier: {type: number, exclusiveMinimum: 0}
+        blocksVision: {type: boolean}
+      required: [id, label, kind, position, radius, moveMultiplier, blocksVision]
+    ObjectiveState:
+      type: object
+      additionalProperties: false
+      properties:
+        id: {type: string}
+        label: {type: string}
+        position: {$ref: "#/components/schemas/Point"}
+        radius: {type: number, exclusiveMinimum: 0}
+        blueProgress: {type: integer, minimum: 0}
+        redProgress: {type: integer, minimum: 0}
+        requiredProgress: {type: integer, minimum: 1}
+        status: {type: string, enum: [neutral, contested, blue-control, red-control, secured-blue, secured-red]}
+      required: [id, label, position, radius, blueProgress, redProgress, requiredProgress, status]
+    LogEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        turn: {type: integer}
+        actor: {type: string, enum: [user, ally, enemy, system]}
+        kind: {type: string}
+        action: {type: string}
+        actorId: {type: string}
+        targetId: {type: string}
+        value: {type: integer}
+        message: {type: string}
+      required: [turn, actor, kind, action, message]
+    ReferenceOutcome:
+      type: object
+      additionalProperties: false
+      properties:
+        firstAction: {$ref: "#/components/schemas/Action"}
+        status: {type: string, enum: [won, lost]}
+        turns: {type: integer, minimum: 1}
+        advantage: {type: number, minimum: 0, maximum: 1}
+        outcomeReason: {type: string}
+        keyEvents:
+          type: array
+          items: {type: string}
+      required: [firstAction, status, turns, advantage, outcomeReason, keyEvents]
+    BestCaseAlternative:
+      type: object
+      additionalProperties: false
+      properties:
+        action: {$ref: "#/components/schemas/Action"}
+        status: {type: string, enum: [won, lost]}
+        turns: {type: integer, minimum: 1}
+        advantage: {type: number, minimum: 0, maximum: 1}
+        outcomeReason: {type: string}
+      required: [action, status, turns, advantage, outcomeReason]
+    BestCaseStep:
+      type: object
+      additionalProperties: false
+      properties:
+        turn: {type: integer, minimum: 1}
+        action: {$ref: "#/components/schemas/Action"}
+        reason: {type: string}
+        advantageBefore: {type: number, minimum: 0, maximum: 1}
+        advantageAfter: {type: number, minimum: 0, maximum: 1}
+        keyEvents:
+          type: array
+          items: {type: string}
+        alternatives:
+          type: array
+          items: {$ref: "#/components/schemas/BestCaseAlternative"}
+      required: [turn, action, reason, advantageBefore, advantageAfter, keyEvents, alternatives]
+    BestCaseLine:
+      type: object
+      additionalProperties: false
+      properties:
+        status: {type: string, enum: [won, lost]}
+        turns: {type: integer, minimum: 1}
+        advantage: {type: number, minimum: 0, maximum: 1}
+        outcomeReason: {type: string}
+        method: {type: string}
+        steps:
+          type: array
+          minItems: 1
+          items: {$ref: "#/components/schemas/BestCaseStep"}
+      required: [status, turns, advantage, outcomeReason, method, steps]
     Session:
       type: object
+      additionalProperties: false
       properties:
         id: {type: string}
         momentId: {type: string}
+        controlledUnitId: {type: string}
+        scenarioGoal: {type: string}
         turn: {type: integer}
         maxTurns: {type: integer}
         status: {type: string, enum: [active, won, lost]}
-        score: {type: integer}
-        winProbability: {type: number, minimum: 0, maximum: 1}
-        referenceAction: {$ref: "#/components/schemas/Action"}
+        outcomeReason: {type: string}
+        advantage: {type: number, minimum: 0, maximum: 1, description: Rules-based state indicator; not a calibrated probability.}
+        escapeProgress: {type: integer, minimum: 0}
+        escapeTurnsRequired: {type: integer, minimum: 0}
+        visibleEnemyCount: {type: integer, minimum: 0}
+        unknownEnemyCount: {type: integer, minimum: 0}
+        visionLimited: {type: boolean}
+        objective: {$ref: "#/components/schemas/ObjectiveState"}
+        terrain:
+          type: array
+          items: {$ref: "#/components/schemas/TerrainFeature"}
+        lastReferenceAction: {$ref: "#/components/schemas/Action"}
+        referenceReason: {type: string}
+        referenceOutcomes:
+          type: array
+          items: {$ref: "#/components/schemas/ReferenceOutcome"}
+        bestCase: {$ref: "#/components/schemas/BestCaseLine"}
         legalActions:
           type: array
           items: {type: string, enum: [move, hold, contest, retreat]}
@@ -160,15 +278,11 @@ components:
           items: {$ref: "#/components/schemas/Unit"}
         log:
           type: array
-          items:
-            type: object
-            properties:
-              turn: {type: integer}
-              actor: {type: string, enum: [user, policy]}
-              action: {type: string}
-              message: {type: string}
-            required: [turn, actor, action, message]
-      required: [id, momentId, turn, maxTurns, status, score, winProbability, referenceAction, legalActions, units, log]
+          items: {$ref: "#/components/schemas/LogEntry"}
+        debrief:
+          type: array
+          items: {type: string}
+      required: [id, momentId, controlledUnitId, scenarioGoal, turn, maxTurns, status, advantage, escapeProgress, escapeTurnsRequired, visibleEnemyCount, unknownEnemyCount, visionLimited, terrain, legalActions, units, log]
     MomentSummary:
       type: object
       properties:
@@ -198,4 +312,3 @@ components:
       content:
         application/json:
           schema: {$ref: "#/components/schemas/Error"}
-

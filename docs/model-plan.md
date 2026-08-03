@@ -2,6 +2,10 @@
 
 The runnable prototype needs no model, GPU, or API key.
 
+The current `advantage` field is a rules-based summary of simulator state, not
+a learned or calibrated probability. It must not be relabelled as win
+probability without a representative labelled dataset and calibration study.
+
 ## Highlight selection
 
 Start with the included weighted baseline and an analyst-labelled validation
@@ -29,4 +33,3 @@ If free-text commands or coaching are added, fine-tune a permissively licensed
 2B–4B instruction model with QLoRA. It should only emit validated command JSON
 or explanations grounded in simulator output. Keep it outside the authoritative
 simulation path.
-
