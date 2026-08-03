@@ -44,7 +44,7 @@ authorized or synthetic telemetry into short, replayable decision scenarios.
 | `frontend/src/components/` | Implemented | Presentational and interaction-focused React components plus colocated tests. |
 | `contracts/openapi.yaml` | Implemented | Public Go API contract. Update it with every public request or response change. |
 | `contracts/moment.schema.json` | Implemented | Draft 2020-12 schema for fixture files. |
-| `fixtures/moments.json` | Implemented | Version `1.0` synthetic replay moments. |
+| `fixtures/moments.json` | Implemented | Version `2.1` synthetic authored scenario pack. |
 | `ml/` | Implemented baseline | Offline highlight scoring, future model-training/evaluation code, and Python tests. It is never imported by the live Go server. |
 | `model-daemon/` | Reserved; not on `main` yet | Future optional online inference service. It must expose the versioned model contract below and remain non-authoritative. Do not create a second simulator here. |
 | `docs/` | Implemented | Architecture, limitations, model plan, and decisions that outgrow this file. |
@@ -156,6 +156,7 @@ Run commands from the repository root unless noted.
 | Format Go | `cd backend && gofmt -w .` |
 | CI-equivalent Go checks | `cd backend && test -z "$(gofmt -l .)" && go vet ./... && go test -race ./...` |
 | Offline scorer smoke run | `python3 -m ml.highlight` |
+| Validate authored scenarios | `cd backend && go run ./cmd/validate-fixtures -path ../fixtures/moments.json` |
 | Pre-PR whitespace check | `git diff --check` |
 
 After `gofmt -w .`, run `git diff --check` and inspect the diff. Formatting must
@@ -310,7 +311,10 @@ validated action JSON outside the authoritative path.
 
 ## Contract and fixture invariants
 
-- Fixture files use top-level version `1.0`; reject unknown versions.
+- Fixture files use top-level version `2.1`; reject unknown versions.
+- The authored pack contains 10–20 scenarios and covers objective contest,
+  team-fight engagement, escape, positioning, resource trade, vision
+  uncertainty, and beginner/intermediate/advanced skill levels.
 - Moment IDs are stable and include event kind plus start window, such as
   `objective-steal-742`. Slugs use lowercase letters, digits, and hyphens.
 - `controlledUnitId` must identify an included live unit. IDs must be unique;
@@ -403,8 +407,8 @@ These are current prototype limitations, not conventions to copy into new code:
 - Go zero-value decoding does not fully enforce OpenAPI-required fields; partial
   points and empty semantic requests need stricter presence validation. The
   trailing-JSON check also needs a regression test that requires `io.EOF`.
-- Runtime fixture validation covers fewer invariants than the JSON Schema, and
-  CI does not currently run OpenAPI or JSON Schema validation.
+- CI does not currently evaluate OpenAPI or JSON Schema with an independent
+  standards validator; Go performs strict fixture decoding and semantic checks.
 - The reset client sends `{}` although the endpoint declares no body.
 - The frontend trusts successful JSON through TypeScript casts; there is no
   generated client or runtime response validator.

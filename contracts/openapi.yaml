@@ -291,11 +291,17 @@ components:
         title: {type: string}
         description: {type: string}
         map: {type: string}
+        category:
+          type: string
+          enum: [objective-contest, team-fight-engagement, escape, positioning, resource-trade, vision-uncertainty]
+        skillLevel:
+          type: string
+          enum: [beginner, intermediate, advanced]
         reasonTags:
           type: array
           items: {type: string}
         highlightScore: {type: number, minimum: 0, maximum: 1}
-      required: [id, slug, title, description, map, reasonTags, highlightScore]
+      required: [id, slug, title, description, map, category, skillLevel, reasonTags, highlightScore]
     Error:
       type: object
       properties:

@@ -1068,6 +1068,19 @@ func keyEvents(log []model.LogEntry, limit int) []string {
 func cloneMoment(moment model.Moment) model.Moment {
 	moment.Units = cloneUnits(moment.Units)
 	moment.ReasonTags = slices.Clone(moment.ReasonTags)
+	moment.Authoring.IntendedTradeoffs = slices.Clone(moment.Authoring.IntendedTradeoffs)
+	alternatives := moment.Authoring.PlausibleAlternatives
+	moment.Authoring.PlausibleAlternatives = make([]model.ScenarioAlternative, len(alternatives))
+	for i, alternative := range alternatives {
+		moment.Authoring.PlausibleAlternatives[i] = alternative
+		moment.Authoring.PlausibleAlternatives[i].Action = cloneAction(alternative.Action)
+	}
+	acceptanceTests := moment.Authoring.AcceptanceTests
+	moment.Authoring.AcceptanceTests = make([]model.ScenarioAcceptanceTest, len(acceptanceTests))
+	for i, acceptanceTest := range acceptanceTests {
+		moment.Authoring.AcceptanceTests[i] = acceptanceTest
+		moment.Authoring.AcceptanceTests[i].Actions = cloneActions(acceptanceTest.Actions)
+	}
 	moment.Rules.Terrain = slices.Clone(moment.Rules.Terrain)
 	moment.Rules.ReferenceReasons = slices.Clone(moment.Rules.ReferenceReasons)
 	referencePlan := moment.Rules.ReferencePlan

@@ -129,6 +129,8 @@ export type MomentSummary = {
   title: string;
   description: string;
   map: string;
+  category: "objective-contest" | "team-fight-engagement" | "escape" | "positioning" | "resource-trade" | "vision-uncertainty";
+  skillLevel: "beginner" | "intermediate" | "advanced";
   reasonTags: string[];
   highlightScore: number;
 };

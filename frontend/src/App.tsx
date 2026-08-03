@@ -5,6 +5,7 @@ import { OutcomeDebrief } from "./components/OutcomeDebrief";
 import { TacticalBoard } from "./components/TacticalBoard";
 import { Timeline } from "./components/Timeline";
 import { actionLabel, advantageLabel } from "./format";
+import { scenarioOptionLabel, sortMomentsByDifficulty } from "./scenarioOrder";
 import type { ActionType, MomentSummary, Point, Session } from "./types";
 
 function momentFromLocation(moments: MomentSummary[]) {
@@ -31,8 +32,9 @@ export default function App() {
   useEffect(() => {
     listMoments()
       .then(async (items) => {
-        setMoments(items);
-        const chosen = momentFromLocation(items);
+        const orderedMoments = sortMomentsByDifficulty(items);
+        setMoments(orderedMoments);
+        const chosen = momentFromLocation(orderedMoments);
         if (!chosen) throw new Error("No replay moments are available.");
         setMoment(chosen);
         setSession(await createSession(chosen.id));
@@ -121,7 +123,7 @@ export default function App() {
             disabled={busy}
           >
             {moments.map((item) => (
-              <option key={item.id} value={item.id}>{item.title}</option>
+              <option key={item.id} value={item.id}>{scenarioOptionLabel(item)}</option>
             ))}
           </select>
         </label>
@@ -132,6 +134,8 @@ export default function App() {
           <p className="eyebrow">PIVOTAL MOMENT · {moment.map}</p>
           <p>{moment.description}</p>
           <div className="tags">
+            <span>{moment.skillLevel}</span>
+            <span>{moment.category.replaceAll("-", " ")}</span>
             {moment.reasonTags.map((tag) => <span key={tag}>{tag.replaceAll("-", " ")}</span>)}
           </div>
         </div>

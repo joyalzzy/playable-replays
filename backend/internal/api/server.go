@@ -59,6 +59,7 @@ func (s *Server) listMoments(w http.ResponseWriter, _ *http.Request) {
 		items = append(items, model.MomentSummary{
 			ID: moment.ID, Slug: moment.Slug, Title: moment.Title,
 			Description: moment.Description, Map: moment.Map,
+			Category: moment.Authoring.Category, SkillLevel: moment.Authoring.SkillLevel,
 			ReasonTags: moment.ReasonTags, Score: highlightScore(moment.Signals),
 		})
 	}

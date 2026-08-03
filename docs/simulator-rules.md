@@ -9,7 +9,7 @@ feedback rather than from false precision.
 
 ## Authored fixture data
 
-Fixture version 2.0 defines:
+Fixture version 2.1 defines:
 
 - Per-unit health, armor, attack range, attack damage, movement speed, vision,
   cooldown, and policy.
@@ -19,8 +19,12 @@ Fixture version 2.0 defines:
 - A turn-by-turn reference plan with a plain-language reason, plus a coherent
   continuation for each possible opening action.
 - A valid default for each possible first action, including a target for Move.
+- Analyst-authored category, skill level, rationale, tradeoffs, plausible
+  alternatives, and deterministic win/loss acceptance cases.
 
-The loader rejects fixtures that omit these requirements.
+The loader rejects fixtures that omit these requirements. The dedicated fixture
+validator also executes every authored acceptance case against the authoritative
+engine. See [`scenario-authoring.md`](scenario-authoring.md).
 
 ## Turn resolution
 

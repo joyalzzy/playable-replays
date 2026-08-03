@@ -14,7 +14,8 @@ estimates.
 
 - React + strict TypeScript tactical board
 - Go HTTP API and authoritative deterministic simulator with authored scenario rules
-- Synthetic, versioned telemetry fixtures
+- Twelve synthetic, versioned scenarios spanning six tactical categories and three skill levels
+- Fixture authoring validator with analyst rationale, tradeoffs, alternatives, and executable acceptance cases
 - Offline Python highlight scorer using interpretable signals
 - OpenAPI contract and JSON schemas
 - Unit, API, frontend, and preprocessing tests
@@ -81,6 +82,13 @@ selectable and shows the chosen command, its causal events, and how the stronges
 continuation after every alternative command compared.
 
 See [`docs/simulator-rules.md`](docs/simulator-rules.md) for the exact resolution order and limits.
+See [`docs/scenario-authoring.md`](docs/scenario-authoring.md) to add or validate a scenario.
+
+Validate the complete authored pack from `backend/`:
+
+```bash
+go run ./cmd/validate-fixtures -path ../fixtures/moments.json
+```
 
 ## API
 

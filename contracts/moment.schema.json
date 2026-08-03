@@ -6,16 +6,17 @@
   "additionalProperties": false,
   "required": ["version", "moments"],
   "properties": {
-    "version": {"const": "2.0"},
+    "version": {"const": "2.1"},
     "moments": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 10,
+      "maxItems": 20,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": [
           "id", "slug", "title", "description", "map", "startTimeSeconds",
-          "seed", "maxTurns", "controlledUnitId", "reasonTags", "signals", "units", "rules"
+          "seed", "maxTurns", "controlledUnitId", "reasonTags", "signals", "units", "rules", "authoring"
         ],
         "properties": {
           "id": {"type": "string", "minLength": 1},
@@ -115,7 +116,8 @@
                 }
               }
             }
-          }
+          },
+          "authoring": {"$ref": "#/$defs/authoring"}
         }
       }
     }
@@ -137,6 +139,54 @@
       "properties": {
         "type": {"type": "string", "enum": ["move", "hold", "contest", "retreat"]},
         "target": {"$ref": "#/$defs/point"}
+      }
+    },
+    "authoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "skillLevel", "analystRationale", "intendedTradeoffs", "plausibleAlternatives", "acceptanceTests"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["objective-contest", "team-fight-engagement", "escape", "positioning", "resource-trade", "vision-uncertainty"]
+        },
+        "skillLevel": {"type": "string", "enum": ["beginner", "intermediate", "advanced"]},
+        "analystRationale": {"type": "string", "minLength": 1},
+        "intendedTradeoffs": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "plausibleAlternatives": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action", "when", "tradeoff"],
+            "properties": {
+              "action": {"$ref": "#/$defs/action"},
+              "when": {"type": "string", "minLength": 1},
+              "tradeoff": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "acceptanceTests": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "actions", "expectedStatus", "expectedTerminalTurn", "expectedOutcomeContains"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "actions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+              "expectedStatus": {"type": "string", "enum": ["won", "lost"]},
+              "expectedTerminalTurn": {"type": "integer", "minimum": 1, "maximum": 20},
+              "expectedOutcomeContains": {"type": "string", "minLength": 1}
+            }
+          }
+        }
       }
     },
     "unit": {

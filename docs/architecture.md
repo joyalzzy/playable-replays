@@ -51,7 +51,7 @@ and rejected unless valid.
 
 ## Authored simulation rules
 
-Fixture version 2.0 declares unit combat statistics and policies, terrain,
+Fixture version 2.1 declares unit combat statistics and policies, terrain,
 vision, objectives, escape routes, explicit victory conditions, and reference
 plans. The server resolves a turn in this order: cooldown and defense reset,
 user action, allied policies, enemy policies, visibility, objective and escape

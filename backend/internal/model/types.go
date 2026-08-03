@@ -73,20 +73,44 @@ type Signals struct {
 	ResourceAsymmetry   float64 `json:"resourceAsymmetry"`
 }
 
+type ScenarioAlternative struct {
+	Action   Action `json:"action"`
+	When     string `json:"when"`
+	Tradeoff string `json:"tradeoff"`
+}
+
+type ScenarioAcceptanceTest struct {
+	Name                    string   `json:"name"`
+	Actions                 []Action `json:"actions"`
+	ExpectedStatus          string   `json:"expectedStatus"`
+	ExpectedTerminalTurn    int      `json:"expectedTerminalTurn"`
+	ExpectedOutcomeContains string   `json:"expectedOutcomeContains"`
+}
+
+type ScenarioAuthoring struct {
+	Category              string                   `json:"category"`
+	SkillLevel            string                   `json:"skillLevel"`
+	AnalystRationale      string                   `json:"analystRationale"`
+	IntendedTradeoffs     []string                 `json:"intendedTradeoffs"`
+	PlausibleAlternatives []ScenarioAlternative    `json:"plausibleAlternatives"`
+	AcceptanceTests       []ScenarioAcceptanceTest `json:"acceptanceTests"`
+}
+
 type Moment struct {
-	ID               string        `json:"id"`
-	Slug             string        `json:"slug"`
-	Title            string        `json:"title"`
-	Description      string        `json:"description"`
-	Map              string        `json:"map"`
-	StartTimeSeconds int           `json:"startTimeSeconds"`
-	Seed             int64         `json:"seed"`
-	MaxTurns         int           `json:"maxTurns"`
-	ControlledUnitID string        `json:"controlledUnitId"`
-	ReasonTags       []string      `json:"reasonTags"`
-	Signals          Signals       `json:"signals"`
-	Units            []Unit        `json:"units"`
-	Rules            ScenarioRules `json:"rules"`
+	ID               string            `json:"id"`
+	Slug             string            `json:"slug"`
+	Title            string            `json:"title"`
+	Description      string            `json:"description"`
+	Map              string            `json:"map"`
+	StartTimeSeconds int               `json:"startTimeSeconds"`
+	Seed             int64             `json:"seed"`
+	MaxTurns         int               `json:"maxTurns"`
+	ControlledUnitID string            `json:"controlledUnitId"`
+	ReasonTags       []string          `json:"reasonTags"`
+	Signals          Signals           `json:"signals"`
+	Units            []Unit            `json:"units"`
+	Rules            ScenarioRules     `json:"rules"`
+	Authoring        ScenarioAuthoring `json:"authoring"`
 }
 
 type Action struct {
@@ -193,6 +217,8 @@ type MomentSummary struct {
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
 	Map         string   `json:"map"`
+	Category    string   `json:"category"`
+	SkillLevel  string   `json:"skillLevel"`
 	ReasonTags  []string `json:"reasonTags"`
 	Score       float64  `json:"highlightScore"`
 }
