@@ -10,9 +10,9 @@ from __future__ import annotations
 import argparse
 import json
 import math
-from bisect import bisect_left
+from bisect import bisect_left, bisect_right
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +24,8 @@ MAP_MIN = 0.0
 MAP_MAX = 100.0
 MAP_DIAGONAL = math.hypot(MAP_MAX - MAP_MIN, MAP_MAX - MAP_MIN)
 DEFAULT_EVENT_RATE_CAP = 2.0
+DEFAULT_ENGAGEMENT_RADIUS = 20.0
+DEFAULT_MINIMUM_EXPOSURE_SECONDS = 2
 COUNTED_EVENT_TYPES = frozenset({"damage", "kill", "objective"})
 
 
@@ -191,9 +193,10 @@ def select_pivotal_windows(
     if not math.isfinite(max_overlap_fraction) or not 0 <= max_overlap_fraction <= 1:
         raise ValueError("max_overlap_fraction must be between 0 and 1")
 
+    checked = validate_frames(frames)
     ranked = select_candidates(
         telemetry_windows(
-            frames,
+            checked,
             window_seconds=window_seconds,
             stride_seconds=stride_seconds,
             event_rate_cap=event_rate_cap,
@@ -206,8 +209,56 @@ def select_pivotal_windows(
             _overlap_fraction(candidate, existing) <= max_overlap_fraction
             for existing in selected
         ):
-            selected.append(candidate)
+            selected.append(_add_semantic_tags(candidate, checked))
     return selected
+
+
+def one_versus_many_unit_ids(
+    frames: Sequence[TelemetryFrame],
+    *,
+    engagement_radius: float = DEFAULT_ENGAGEMENT_RADIUS,
+    minimum_exposure_seconds: int = DEFAULT_MINIMUM_EXPOSURE_SECONDS,
+) -> tuple[str, ...]:
+    """Return isolated live units continuously exposed to two or more opponents.
+
+    A unit qualifies while at least two live opponents, but no other live ally,
+    are within ``engagement_radius``. The same unit must remain qualified across
+    sampled frames spanning ``minimum_exposure_seconds``; a single-frame
+    proximity spike is therefore not enough for the default configuration.
+    """
+    checked = validate_frames(frames)
+    if (
+        not math.isfinite(engagement_radius)
+        or engagement_radius <= 0
+        or engagement_radius > MAP_DIAGONAL
+    ):
+        raise ValueError("engagement_radius must be between 0 and the map diagonal")
+    if (
+        isinstance(minimum_exposure_seconds, bool)
+        or not isinstance(minimum_exposure_seconds, int)
+        or minimum_exposure_seconds < 0
+    ):
+        raise ValueError("minimum_exposure_seconds must be a non-negative integer")
+
+    streak_starts: dict[str, int] = {}
+    previous_qualifiers: set[str] = set()
+    detected: set[str] = set()
+    for frame in checked:
+        live_units = tuple(unit for unit in frame.units if unit.alive)
+        qualifiers = {
+            unit.id
+            for unit in live_units
+            if _is_one_versus_many(unit, live_units, engagement_radius)
+        }
+        for unit_id in qualifiers:
+            if unit_id not in previous_qualifiers:
+                streak_starts[unit_id] = frame.second
+            if frame.second - streak_starts[unit_id] >= minimum_exposure_seconds:
+                detected.add(unit_id)
+        for unit_id in previous_qualifiers - qualifiers:
+            streak_starts.pop(unit_id, None)
+        previous_qualifiers = qualifiers
+    return tuple(sorted(detected))
 
 
 def load_frames(path: Path) -> tuple[TelemetryFrame, ...]:
@@ -299,6 +350,38 @@ def _resource_asymmetry(frame: TelemetryFrame) -> float:
     combined_gold = first[2] + second[2]
     gold_gap = abs(first[2] - second[2]) / combined_gold if combined_gold else 0.0
     return (hp_gap + gold_gap) / 2
+
+
+def _is_one_versus_many(
+    focal: TelemetryUnit,
+    live_units: Sequence[TelemetryUnit],
+    engagement_radius: float,
+) -> bool:
+    nearby_allies = 0
+    nearby_opponents = 0
+    for other in live_units:
+        if other.id == focal.id:
+            continue
+        if math.hypot(focal.x - other.x, focal.y - other.y) > engagement_radius:
+            continue
+        if other.team == focal.team:
+            nearby_allies += 1
+        else:
+            nearby_opponents += 1
+    return nearby_allies == 0 and nearby_opponents >= 2
+
+
+def _add_semantic_tags(
+    candidate: Candidate, frames: Sequence[TelemetryFrame]
+) -> Candidate:
+    timestamps = [frame.second for frame in frames]
+    start_index = bisect_left(timestamps, candidate.start_second)
+    end_index = bisect_right(timestamps, candidate.end_second)
+    window = frames[start_index:end_index]
+    tags = list(candidate.reason_tags)
+    if one_versus_many_unit_ids(window):
+        tags.append("one-versus-many")
+    return replace(candidate, reason_tags=tuple(tags))
 
 
 def _overlap_fraction(first: Candidate, second: Candidate) -> float:

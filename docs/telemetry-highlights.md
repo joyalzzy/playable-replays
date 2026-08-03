@@ -73,6 +73,19 @@ then removes windows whose overlap exceeds the configured fraction of the
 shorter window. This prevents a single fight from producing many nearly
 identical share links.
 
+## Semantic labels
+
+Selected windows receive a `one-versus-many` reason tag when the same live unit
+is observed within 20 normalized map units of at least two live opponents, with
+no other live ally in that radius, across sampled frames spanning at least two
+seconds. The detector is deterministic and does not change the canonical score;
+it makes an already-selected interactive window easier to classify and route to
+an appropriate tactical-board scenario.
+
+The qualifying unit ID is available through
+`one_versus_many_unit_ids(...)` for future fixture generation. IDs are sorted so
+results do not depend on roster input order.
+
 ## Command
 
 From the repository root:
@@ -89,8 +102,9 @@ stride, and overlap controls are available through `--help`.
 - A high score means the heuristic found an interactive candidate; it is not a
   calibrated probability that the moment is a clutch.
 - The generic input does not yet carry objective ownership history, escape
-  state, or team-fight phase labels, so those semantic event types are not
-  inferred by this module.
+  state, terrain, vision, ability ranges, or team-fight phase labels. The
+  one-versus-many tag is therefore a proximity-based observation, not a claim
+  that the isolated player initiated, survived, or won the engagement.
 - Source timestamps, win-probability estimates, event classification, and unit
   resources must be validated by the source adapter. Corrupt inputs are rejected
   where detectable, but a structurally valid frame can still be semantically

@@ -8,6 +8,7 @@ from ml.telemetry import (
     TelemetryUnit,
     extract_signals,
     load_frames,
+    one_versus_many_unit_ids,
     select_pivotal_windows,
     telemetry_windows,
     validate_frames,
@@ -135,6 +136,57 @@ class TelemetryTests(unittest.TestCase):
             [(0, 12), (8, 20)],
         )
         self.assertIn("win-probability-swing", candidates[0].reason_tags)
+
+    def test_one_versus_many_requires_sustained_isolation(self):
+        def engagement_frame(second: int, *, ally_x: float = 90) -> TelemetryFrame:
+            return TelemetryFrame(
+                second,
+                0.5,
+                (
+                    unit("blue-carry", "blue", x=50, y=50),
+                    unit("blue-support", "blue", x=ally_x, y=50),
+                    unit("red-top", "red", x=44, y=50),
+                    unit("red-jungle", "red", x=56, y=50),
+                ),
+            )
+
+        sustained = tuple(engagement_frame(second) for second in (0, 1, 2))
+        interrupted = (
+            engagement_frame(0),
+            engagement_frame(1, ally_x=52),
+            engagement_frame(2),
+        )
+
+        self.assertEqual(one_versus_many_unit_ids(sustained), ("blue-carry",))
+        self.assertEqual(one_versus_many_unit_ids(interrupted), ())
+
+    def test_selected_window_gets_one_versus_many_reason_tag(self):
+        frames = tuple(
+            TelemetryFrame(
+                second,
+                0.9 if second >= 2 else 0.1,
+                (
+                    unit("blue-carry", "blue", x=50, y=50),
+                    unit("blue-support", "blue", x=90, y=50),
+                    unit("red-top", "red", x=44, y=50),
+                    unit("red-jungle", "red", x=56, y=50),
+                ),
+                ("damage",),
+            )
+            for second in range(13)
+        )
+
+        candidates = select_pivotal_windows(frames, window_seconds=12)
+
+        self.assertEqual(len(candidates), 1)
+        self.assertIn("one-versus-many", candidates[0].reason_tags)
+
+    def test_one_versus_many_parameters_are_bounded(self):
+        frames = (frame(0, 0.5), frame(2, 0.5))
+        with self.assertRaisesRegex(ValueError, "engagement_radius"):
+            one_versus_many_unit_ids(frames, engagement_radius=0)
+        with self.assertRaisesRegex(ValueError, "minimum_exposure_seconds"):
+            one_versus_many_unit_ids(frames, minimum_exposure_seconds=True)
 
     def test_load_frames_enforces_version_and_unknown_fields(self):
         payload = {
