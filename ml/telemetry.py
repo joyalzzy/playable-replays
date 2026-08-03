@@ -20,6 +20,7 @@ from ml.highlight import Candidate, Signals, select_candidates
 
 
 SCHEMA_VERSION = "1.0"
+DETECTION_SCHEMA_VERSION = "1.0"
 MAP_MIN = 0.0
 MAP_MAX = 100.0
 MAP_DIAGONAL = math.hypot(MAP_MAX - MAP_MIN, MAP_MAX - MAP_MIN)
@@ -83,6 +84,15 @@ class TelemetryFrame:
         if unknown_events:
             formatted = ", ".join(sorted(unknown_events))
             raise ValueError(f"unknown event types: {formatted}")
+
+
+@dataclass(frozen=True)
+class SemanticEvidence:
+    """Auditable detector evidence for one selected telemetry window."""
+
+    one_versus_many_unit_ids: tuple[str, ...] = ()
+    successful_escape_unit_ids: tuple[str, ...] = ()
+    team_fight_reversal_second: int | None = None
 
 
 def validate_frames(frames: Sequence[TelemetryFrame]) -> tuple[TelemetryFrame, ...]:
@@ -393,6 +403,46 @@ def team_fight_reversal_second(
     return max(reversals, key=lambda reversal: (reversal[0], -reversal[1]))[1]
 
 
+def semantic_evidence(
+    frames: Sequence[TelemetryFrame], candidate: Candidate
+) -> SemanticEvidence:
+    """Return deterministic evidence from the exact selected candidate window."""
+    checked = validate_frames(frames)
+    timestamps = [frame.second for frame in checked]
+    start_index = bisect_left(timestamps, candidate.start_second)
+    end_index = bisect_right(timestamps, candidate.end_second)
+    window = checked[start_index:end_index]
+    if (
+        len(window) < 2
+        or window[0].second != candidate.start_second
+        or window[-1].second != candidate.end_second
+    ):
+        raise ValueError("candidate window must be fully covered by telemetry")
+    return SemanticEvidence(
+        one_versus_many_unit_ids=one_versus_many_unit_ids(window),
+        successful_escape_unit_ids=successful_escape_unit_ids(window),
+        team_fight_reversal_second=team_fight_reversal_second(window),
+    )
+
+
+def detection_record(
+    candidate: Candidate, evidence: SemanticEvidence
+) -> dict[str, Any]:
+    """Build one versioned, JSON-serializable detector output record."""
+    return {
+        "schemaVersion": DETECTION_SCHEMA_VERSION,
+        "startSecond": candidate.start_second,
+        "endSecond": candidate.end_second,
+        "score": round(candidate.score, 4),
+        "reasonTags": list(candidate.reason_tags),
+        "semanticEvidence": {
+            "oneVersusManyUnitIds": list(evidence.one_versus_many_unit_ids),
+            "successfulEscapeUnitIds": list(evidence.successful_escape_unit_ids),
+            "teamFightReversalSecond": evidence.team_fight_reversal_second,
+        },
+    }
+
+
 def load_frames(path: Path) -> tuple[TelemetryFrame, ...]:
     """Load the strict normalized telemetry JSON contract from ``path``."""
     try:
@@ -517,16 +567,13 @@ def _is_one_versus_many(
 def _add_semantic_tags(
     candidate: Candidate, frames: Sequence[TelemetryFrame]
 ) -> Candidate:
-    timestamps = [frame.second for frame in frames]
-    start_index = bisect_left(timestamps, candidate.start_second)
-    end_index = bisect_right(timestamps, candidate.end_second)
-    window = frames[start_index:end_index]
+    evidence = semantic_evidence(frames, candidate)
     tags = list(candidate.reason_tags)
-    if one_versus_many_unit_ids(window):
+    if evidence.one_versus_many_unit_ids:
         tags.append("one-versus-many")
-    if successful_escape_unit_ids(window):
+    if evidence.successful_escape_unit_ids:
         tags.append("successful-escape")
-    if team_fight_reversal_second(window) is not None:
+    if evidence.team_fight_reversal_second is not None:
         tags.append("team-fight-reversal")
     return replace(candidate, reason_tags=tuple(tags))
 
@@ -595,8 +642,9 @@ def main() -> None:
     parser.add_argument("--max-overlap", type=float, default=0.5)
     args = parser.parse_args()
 
+    frames = load_frames(args.path)
     candidates = select_pivotal_windows(
-        load_frames(args.path),
+        frames,
         threshold=args.threshold,
         window_seconds=args.window_seconds,
         stride_seconds=args.stride_seconds,
@@ -605,12 +653,7 @@ def main() -> None:
     for candidate in candidates:
         print(
             json.dumps(
-                {
-                    "startSecond": candidate.start_second,
-                    "endSecond": candidate.end_second,
-                    "score": round(candidate.score, 4),
-                    "reasonTags": candidate.reason_tags,
-                }
+                detection_record(candidate, semantic_evidence(frames, candidate))
             )
         )
 

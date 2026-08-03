@@ -113,8 +113,19 @@ From the repository root:
 python3 -m ml.telemetry path/to/normalized-telemetry.json
 ```
 
-The command emits one JSON object per selected candidate. Threshold, window,
-stride, and overlap controls are available through `--help`.
+The command emits one version `1.0` JSON object per selected candidate as
+newline-delimited JSON (NDJSON):
+
+```json
+{"schemaVersion":"1.0","startSecond":742,"endSecond":754,"score":0.81,"reasonTags":["team-fight","one-versus-many","team-fight-reversal"],"semanticEvidence":{"oneVersusManyUnitIds":["blue-carry"],"successfulEscapeUnitIds":[],"teamFightReversalSecond":746}}
+```
+
+`semanticEvidence` records the deterministic facts that caused semantic tags:
+sorted qualifying unit IDs and the selected reversal timestamp. Empty arrays
+and `null` are emitted when a detector does not qualify. This lets downstream
+fixture generation audit each label without exposing the underlying authorized
+telemetry. Threshold, window, stride, and overlap controls are available
+through `--help`.
 
 ## Accuracy boundaries
 

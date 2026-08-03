@@ -3,13 +3,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from ml.highlight import Candidate
 from ml.telemetry import (
+    SemanticEvidence,
     TelemetryFrame,
     TelemetryUnit,
+    detection_record,
     extract_signals,
     load_frames,
     one_versus_many_unit_ids,
     select_pivotal_windows,
+    semantic_evidence,
     successful_escape_unit_ids,
     team_fight_reversal_second,
     telemetry_windows,
@@ -310,6 +314,55 @@ class TelemetryTests(unittest.TestCase):
             team_fight_reversal_second(frames, engagement_radius=0)
         with self.assertRaisesRegex(ValueError, "minimum_combat_events"):
             team_fight_reversal_second(frames, minimum_combat_events=True)
+
+    def test_semantic_evidence_matches_selected_window_tags(self):
+        frames = tuple(
+            TelemetryFrame(
+                second,
+                0.2 if second == 6 else 0.85 if second == 12 else 0.75,
+                (
+                    unit("blue-carry", "blue", x=50, y=50),
+                    unit("blue-support", "blue", x=90, y=50),
+                    unit("red-top", "red", x=44, y=50),
+                    unit("red-jungle", "red", x=56, y=50),
+                ),
+                ("damage", "kill"),
+            )
+            for second in range(13)
+        )
+
+        candidate = select_pivotal_windows(frames, window_seconds=12)[0]
+        evidence = semantic_evidence(frames, candidate)
+
+        self.assertEqual(evidence.one_versus_many_unit_ids, ("blue-carry",))
+        self.assertEqual(evidence.successful_escape_unit_ids, ())
+        self.assertEqual(evidence.team_fight_reversal_second, 6)
+        self.assertIn("one-versus-many", candidate.reason_tags)
+        self.assertIn("team-fight-reversal", candidate.reason_tags)
+
+    def test_detection_record_is_versioned_and_json_serializable(self):
+        candidate = Candidate(10, 22, 0.81234, ("team-fight-reversal",))
+        evidence = SemanticEvidence(("blue-carry",), (), 16)
+
+        record = detection_record(candidate, evidence)
+
+        self.assertEqual(record["schemaVersion"], "1.0")
+        self.assertEqual(record["score"], 0.8123)
+        self.assertEqual(
+            record["semanticEvidence"],
+            {
+                "oneVersusManyUnitIds": ["blue-carry"],
+                "successfulEscapeUnitIds": [],
+                "teamFightReversalSecond": 16,
+            },
+        )
+        json.dumps(record)
+
+    def test_semantic_evidence_rejects_uncovered_candidate_bounds(self):
+        frames = (frame(0, 0.5), frame(12, 0.5))
+
+        with self.assertRaisesRegex(ValueError, "fully covered"):
+            semantic_evidence(frames, Candidate(1, 12, 0.7, ()))
 
     def test_load_frames_enforces_version_and_unknown_fields(self):
         payload = {
