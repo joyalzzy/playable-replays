@@ -45,7 +45,7 @@ authorized or synthetic telemetry into short, replayable decision scenarios.
 | `contracts/openapi.yaml` | Implemented | Public Go API contract. Update it with every public request or response change. |
 | `contracts/moment.schema.json` | Implemented | Draft 2020-12 schema for fixture files. |
 | `fixtures/moments.json` | Implemented | Version `1.0` synthetic replay moments. |
-| `ml/` | Implemented baseline | Offline highlight scoring, future model-training/evaluation code, and Python tests. It is never imported by the live Go server. |
+| `ml/` | Implemented baseline | Offline normalized-telemetry validation/windowing, highlight scoring, future model-training/evaluation code, and Python tests. It is never imported by the live Go server. |
 | `model-daemon/` | Reserved; not on `main` yet | Future optional online inference service. It must expose the versioned model contract below and remain non-authoritative. Do not create a second simulator here. |
 | `docs/` | Implemented | Architecture, limitations, model plan, and decisions that outgrow this file. |
 | `.github/workflows/ci.yml` | Implemented | Go, frontend, and offline-ML validation on pushes to `main`, on PRs, and by manual dispatch. |
@@ -73,8 +73,9 @@ model-daemon/
 
 ## Intended runtime flow
 
-The current prototype begins with hand-authored synthetic fixtures; telemetry
-ingestion and automatic fixture generation are future work.
+The current prototype begins with hand-authored synthetic fixtures. A strict
+game-agnostic normalized-telemetry highlighter exists in `ml/telemetry.py`, but
+source-specific ingestion and automatic fixture generation are future work.
 
 1. Authorized or synthetic telemetry is processed offline in `ml/`.
 2. Selected windows become versioned fixtures under `fixtures/`.
@@ -156,6 +157,7 @@ Run commands from the repository root unless noted.
 | Format Go | `cd backend && gofmt -w .` |
 | CI-equivalent Go checks | `cd backend && test -z "$(gofmt -l .)" && go vet ./... && go test -race ./...` |
 | Offline scorer smoke run | `python3 -m ml.highlight` |
+| Normalized telemetry scan | `python3 -m ml.telemetry <path>` |
 | Pre-PR whitespace check | `git diff --check` |
 
 After `gofmt -w .`, run `git diff --check` and inspect the diff. Formatting must

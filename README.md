@@ -15,7 +15,7 @@ estimates.
 - React + strict TypeScript tactical board
 - Go HTTP API and authoritative deterministic simulator
 - Synthetic, versioned telemetry fixtures
-- Offline Python highlight scorer using interpretable signals
+- Offline Python telemetry windowing and highlight scoring using interpretable signals
 - OpenAPI contract and JSON schemas
 - Unit, API, frontend, and preprocessing tests
 - Docker Compose and GitHub Actions
@@ -83,3 +83,11 @@ All included data is synthetic and contains no player identity or proprietary
 telemetry. Production ingestion must require authorization, data minimization,
 retention controls, and game-publisher review.
 
+Normalized authorized or synthetic telemetry can be ranked offline with:
+
+```bash
+python3 -m ml.telemetry path/to/normalized-telemetry.json
+```
+
+See [`docs/telemetry-highlights.md`](docs/telemetry-highlights.md) for the strict
+input contract, signal calculations, overlap suppression, and accuracy limits.
