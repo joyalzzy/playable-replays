@@ -26,6 +26,8 @@ MAP_DIAGONAL = math.hypot(MAP_MAX - MAP_MIN, MAP_MAX - MAP_MIN)
 DEFAULT_EVENT_RATE_CAP = 2.0
 DEFAULT_ENGAGEMENT_RADIUS = 20.0
 DEFAULT_MINIMUM_EXPOSURE_SECONDS = 2
+DEFAULT_ESCAPE_SAFE_RADIUS = 35.0
+DEFAULT_LOW_HEALTH_FRACTION = 0.35
 COUNTED_EVENT_TYPES = frozenset({"damage", "kill", "objective"})
 
 
@@ -227,12 +229,7 @@ def one_versus_many_unit_ids(
     proximity spike is therefore not enough for the default configuration.
     """
     checked = validate_frames(frames)
-    if (
-        not math.isfinite(engagement_radius)
-        or engagement_radius <= 0
-        or engagement_radius > MAP_DIAGONAL
-    ):
-        raise ValueError("engagement_radius must be between 0 and the map diagonal")
+    _validate_radius(engagement_radius, "engagement_radius")
     if (
         isinstance(minimum_exposure_seconds, bool)
         or not isinstance(minimum_exposure_seconds, int)
@@ -258,6 +255,74 @@ def one_versus_many_unit_ids(
         for unit_id in previous_qualifiers - qualifiers:
             streak_starts.pop(unit_id, None)
         previous_qualifiers = qualifiers
+    return tuple(sorted(detected))
+
+
+def successful_escape_unit_ids(
+    frames: Sequence[TelemetryFrame],
+    *,
+    danger_radius: float = DEFAULT_ENGAGEMENT_RADIUS,
+    safe_radius: float = DEFAULT_ESCAPE_SAFE_RADIUS,
+    low_health_fraction: float = DEFAULT_LOW_HEALTH_FRACTION,
+    minimum_safe_seconds: int = DEFAULT_MINIMUM_EXPOSURE_SECONDS,
+) -> tuple[str, ...]:
+    """Return low-health units transitioning from danger to safe separation.
+
+    A qualifying unit must first be alive, at or below ``low_health_fraction``,
+    and within ``danger_radius`` of a live opponent. It must finish the sampled
+    window alive and at least ``safe_radius`` from every live opponent for a
+    continuous span of ``minimum_safe_seconds``. At least one opponent must
+    remain alive, preventing an elimination from being classified as an escape.
+    """
+    checked = validate_frames(frames)
+    _validate_radius(danger_radius, "danger_radius")
+    _validate_radius(safe_radius, "safe_radius")
+    if safe_radius <= danger_radius:
+        raise ValueError("safe_radius must be greater than danger_radius")
+    if (
+        isinstance(low_health_fraction, bool)
+        or not math.isfinite(low_health_fraction)
+        or low_health_fraction <= 0
+        or low_health_fraction > 1
+    ):
+        raise ValueError("low_health_fraction must be between 0 and 1")
+    if (
+        isinstance(minimum_safe_seconds, bool)
+        or not isinstance(minimum_safe_seconds, int)
+        or minimum_safe_seconds < 0
+    ):
+        raise ValueError("minimum_safe_seconds must be a non-negative integer")
+
+    exposed: set[str] = set()
+    safe_starts: dict[str, int] = {}
+    detected: set[str] = set()
+    for frame in checked:
+        live_units = tuple(unit for unit in frame.units if unit.alive)
+        for unit in frame.units:
+            if not unit.alive:
+                exposed.discard(unit.id)
+                safe_starts.pop(unit.id, None)
+                detected.discard(unit.id)
+                continue
+            nearest = _nearest_distance_to_opponent(unit, live_units)
+            if (
+                nearest is not None
+                and unit.hp / unit.max_hp <= low_health_fraction
+                and nearest <= danger_radius
+            ):
+                exposed.add(unit.id)
+            safe = (
+                unit.id in exposed
+                and nearest is not None
+                and nearest >= safe_radius
+            )
+            if safe:
+                safe_starts.setdefault(unit.id, frame.second)
+                if frame.second - safe_starts[unit.id] >= minimum_safe_seconds:
+                    detected.add(unit.id)
+            else:
+                safe_starts.pop(unit.id, None)
+                detected.discard(unit.id)
     return tuple(sorted(detected))
 
 
@@ -338,6 +403,17 @@ def _nearest_opponent_distance(frame: TelemetryFrame) -> float:
     return nearest
 
 
+def _nearest_distance_to_opponent(
+    focal: TelemetryUnit, live_units: Sequence[TelemetryUnit]
+) -> float | None:
+    distances = (
+        math.hypot(focal.x - other.x, focal.y - other.y)
+        for other in live_units
+        if other.team != focal.team
+    )
+    return min(distances, default=None)
+
+
 def _resource_asymmetry(frame: TelemetryFrame) -> float:
     totals: dict[str, list[float]] = {}
     for unit in frame.units:
@@ -381,7 +457,19 @@ def _add_semantic_tags(
     tags = list(candidate.reason_tags)
     if one_versus_many_unit_ids(window):
         tags.append("one-versus-many")
+    if successful_escape_unit_ids(window):
+        tags.append("successful-escape")
     return replace(candidate, reason_tags=tuple(tags))
+
+
+def _validate_radius(value: float, name: str) -> None:
+    if (
+        isinstance(value, bool)
+        or not math.isfinite(value)
+        or value <= 0
+        or value > MAP_DIAGONAL
+    ):
+        raise ValueError(f"{name} must be between 0 and the map diagonal")
 
 
 def _overlap_fraction(first: Candidate, second: Candidate) -> float:

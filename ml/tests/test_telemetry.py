@@ -10,6 +10,7 @@ from ml.telemetry import (
     load_frames,
     one_versus_many_unit_ids,
     select_pivotal_windows,
+    successful_escape_unit_ids,
     telemetry_windows,
     validate_frames,
 )
@@ -187,6 +188,72 @@ class TelemetryTests(unittest.TestCase):
             one_versus_many_unit_ids(frames, engagement_radius=0)
         with self.assertRaisesRegex(ValueError, "minimum_exposure_seconds"):
             one_versus_many_unit_ids(frames, minimum_exposure_seconds=True)
+
+    def test_successful_escape_requires_sustained_safe_separation(self):
+        def escape_frame(
+            second: int, opponent_x: float, *, opponent_hp: float = 100
+        ) -> TelemetryFrame:
+            return TelemetryFrame(
+                second,
+                0.5,
+                (
+                    unit("blue-carry", "blue", x=50, y=50, hp=25),
+                    unit("red-jungle", "red", x=opponent_x, y=50, hp=opponent_hp),
+                ),
+            )
+
+        escaped = (
+            escape_frame(0, 55),
+            escape_frame(2, 90),
+            escape_frame(4, 90),
+        )
+        pressure_returns = (
+            escape_frame(0, 55),
+            escape_frame(2, 90),
+            escape_frame(4, 55),
+        )
+        opponent_eliminated = (
+            escape_frame(0, 55),
+            escape_frame(2, 90, opponent_hp=0),
+            escape_frame(4, 90, opponent_hp=0),
+        )
+
+        self.assertEqual(successful_escape_unit_ids(escaped), ("blue-carry",))
+        self.assertEqual(successful_escape_unit_ids(pressure_returns), ())
+        self.assertEqual(successful_escape_unit_ids(opponent_eliminated), ())
+
+    def test_selected_window_gets_successful_escape_reason_tag(self):
+        frames = tuple(
+            TelemetryFrame(
+                second,
+                0.1 if second == 0 else 0.9,
+                (
+                    unit("blue-carry", "blue", x=50, y=50, hp=25),
+                    unit(
+                        "red-jungle",
+                        "red",
+                        x=55 if second == 0 else 90,
+                        y=50,
+                    ),
+                ),
+                ("damage",),
+            )
+            for second in range(13)
+        )
+
+        candidates = select_pivotal_windows(frames, window_seconds=12)
+
+        self.assertEqual(len(candidates), 1)
+        self.assertIn("successful-escape", candidates[0].reason_tags)
+
+    def test_successful_escape_parameters_are_bounded(self):
+        frames = (frame(0, 0.5), frame(2, 0.5))
+        with self.assertRaisesRegex(ValueError, "safe_radius"):
+            successful_escape_unit_ids(frames, safe_radius=10)
+        with self.assertRaisesRegex(ValueError, "low_health_fraction"):
+            successful_escape_unit_ids(frames, low_health_fraction=1.1)
+        with self.assertRaisesRegex(ValueError, "minimum_safe_seconds"):
+            successful_escape_unit_ids(frames, minimum_safe_seconds=True)
 
     def test_load_frames_enforces_version_and_unknown_fields(self):
         payload = {

@@ -86,6 +86,14 @@ The qualifying unit ID is available through
 `one_versus_many_unit_ids(...)` for future fixture generation. IDs are sorted so
 results do not depend on roster input order.
 
+Selected windows receive a `successful-escape` tag when a live unit at or below
+35% health transitions from within 20 map units of a live opponent to at least
+35 map units from every live opponent, then remains separated across sampled
+frames spanning at least two seconds. The unit must finish the window alive,
+and at least one opponent must remain alive, so defeating the only pursuer is
+not classified as an escape. `successful_escape_unit_ids(...)` exposes the
+qualifying IDs in deterministic order.
+
 ## Command
 
 From the repository root:
@@ -103,8 +111,10 @@ stride, and overlap controls are available through `--help`.
   calibrated probability that the moment is a clutch.
 - The generic input does not yet carry objective ownership history, escape
   state, terrain, vision, ability ranges, or team-fight phase labels. The
-  one-versus-many tag is therefore a proximity-based observation, not a claim
-  that the isolated player initiated, survived, or won the engagement.
+  semantic tags are therefore proximity-based observations. `successful-escape`
+  does not prove disengagement intent or which party caused the separation, and
+  `one-versus-many` does not claim that the isolated player initiated, survived,
+  or won the engagement.
 - Source timestamps, win-probability estimates, event classification, and unit
   resources must be validated by the source adapter. Corrupt inputs are rejected
   where detectable, but a structurally valid frame can still be semantically
