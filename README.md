@@ -93,17 +93,23 @@ Ranges are map units per frame.
 No model, API key, or network service is required by default. Without a
 connector, opponents use the seeded built-in policy.
 
-To test an HTTP position model, set `OPPONENT_MODEL_URL` for the API process:
+To test an HTTP position model, configure its endpoint and stable identity for
+the API process:
 
 ```bash
-OPPONENT_MODEL_URL=http://127.0.0.1:9000/v1/positions make dev-api
+OPPONENT_MODEL_URL=http://127.0.0.1:9000/v1/positions \
+OPPONENT_MODEL_NAME=trajectory-policy \
+OPPONENT_MODEL_VERSION=2026.08.04 \
+make dev-api
 ```
 
 For Docker Compose, copy `.env.example` to `.env`, set the URL to an endpoint
-reachable from the `api` container, and run `docker compose up --build`. Once per
-turn the API posts the session snapshot and accepts desired next-frame opponent
-positions. Invalid data, timeouts, and connection failures use the deterministic
-fallback; a model can never directly mutate simulator state. See
+reachable from the `api` container, set both identity values, and run
+`docker compose up --build`. Once per turn the API posts the session snapshot,
+accepts desired next-frame opponent positions, and records accepted suggestions
+with that identity in server-side session memory. Missing identity fails closed
+at startup; invalid data, timeouts, and connection failures use the deterministic
+fallback. A model can never directly mutate simulator state. See
 [`contracts/openapi.yaml`](contracts/openapi.yaml) for the exact webhook shapes.
 
 ## API

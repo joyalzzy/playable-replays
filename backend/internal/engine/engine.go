@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"slices"
+	"strings"
 
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
 )
@@ -18,6 +19,7 @@ type Engine struct {
 	session       model.Session
 	rng           *rand.Rand
 	opponentModel OpponentPositionModel
+	rollouts      []OpponentRolloutRecord
 }
 
 type turnEffects struct {
@@ -41,6 +43,7 @@ func NewWithOpponentModel(moment model.Moment, sessionID string, opponentModel O
 
 func (e *Engine) Reset(sessionID string) model.Session {
 	e.rng = rand.New(rand.NewSource(e.moment.Seed))
+	e.rollouts = nil
 	e.session = model.Session{
 		ID:               sessionID,
 		MomentID:         e.moment.ID,
@@ -56,6 +59,17 @@ func (e *Engine) Reset(sessionID string) model.Session {
 	e.session.ReferenceAction = e.referenceAction(0)
 	e.applyFog()
 	return e.State()
+}
+
+// RolloutRecords returns a defensive copy of accepted external-model outputs.
+// Records remain server-side and live only as long as this in-memory engine.
+func (e *Engine) RolloutRecords() []OpponentRolloutRecord {
+	records := make([]OpponentRolloutRecord, len(e.rollouts))
+	for index, record := range e.rollouts {
+		records[index] = record
+		records[index].AcceptedPositions = slices.Clone(record.AcceptedPositions)
+	}
+	return records
 }
 
 func (e *Engine) State() model.Session {
@@ -239,8 +253,11 @@ func (e *Engine) modelSuggestions(ctx context.Context, controlled model.Unit) (m
 		return nil, false, false
 	}
 	snapshot := e.opponentSnapshot()
-	proposals, err := e.opponentModel.NextPositions(ctx, snapshot)
+	result, err := e.opponentModel.NextPositions(ctx, snapshot)
 	if err != nil {
+		return nil, false, true
+	}
+	if strings.TrimSpace(result.ModelName) == "" || strings.TrimSpace(result.ModelVersion) == "" {
 		return nil, false, true
 	}
 	eligible := make(map[string]struct{})
@@ -249,8 +266,9 @@ func (e *Engine) modelSuggestions(ctx context.Context, controlled model.Unit) (m
 			eligible[unit.ID] = struct{}{}
 		}
 	}
-	validated := make(map[string]model.Point, len(proposals))
-	for _, proposal := range proposals {
+	validated := make(map[string]model.Point, len(result.Positions))
+	accepted := make([]PositionSuggestion, 0, len(result.Positions))
+	for _, proposal := range result.Positions {
 		if _, ok := eligible[proposal.UnitID]; !ok {
 			return nil, false, true
 		}
@@ -261,7 +279,13 @@ func (e *Engine) modelSuggestions(ctx context.Context, controlled model.Unit) (m
 			return nil, false, true
 		}
 		validated[proposal.UnitID] = proposal.Position
+		accepted = append(accepted, proposal)
 	}
+	e.rollouts = append(e.rollouts, OpponentRolloutRecord{
+		SessionID: snapshot.SessionID, MomentID: snapshot.MomentID, Turn: snapshot.Turn,
+		ModelName: result.ModelName, ModelVersion: result.ModelVersion,
+		AcceptedPositions: accepted,
+	})
 	return validated, true, false
 }
 

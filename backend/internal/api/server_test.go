@@ -20,9 +20,12 @@ type apiOpponentModel struct {
 	called bool
 }
 
-func (stub *apiOpponentModel) NextPositions(_ context.Context, _ engine.OpponentSnapshot) ([]engine.PositionSuggestion, error) {
+func (stub *apiOpponentModel) NextPositions(_ context.Context, _ engine.OpponentSnapshot) (engine.OpponentModelResult, error) {
 	stub.called = true
-	return []engine.PositionSuggestion{{UnitID: "red", Position: model.Point{X: 100, Y: 50}}}, nil
+	return engine.OpponentModelResult{
+		ModelName: "api-test", ModelVersion: "1",
+		Positions: []engine.PositionSuggestion{{UnitID: "red", Position: model.Point{X: 100, Y: 50}}},
+	}, nil
 }
 
 type blockingOpponentModel struct {
@@ -31,13 +34,13 @@ type blockingOpponentModel struct {
 	once    sync.Once
 }
 
-func (stub *blockingOpponentModel) NextPositions(ctx context.Context, _ engine.OpponentSnapshot) ([]engine.PositionSuggestion, error) {
+func (stub *blockingOpponentModel) NextPositions(ctx context.Context, _ engine.OpponentSnapshot) (engine.OpponentModelResult, error) {
 	stub.once.Do(func() { close(stub.started) })
 	select {
 	case <-stub.release:
-		return nil, nil
+		return engine.OpponentModelResult{ModelName: "blocking-test", ModelVersion: "1"}, nil
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return engine.OpponentModelResult{}, ctx.Err()
 	}
 }
 

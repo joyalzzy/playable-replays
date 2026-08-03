@@ -25,11 +25,12 @@ the backend owns the random generator and all state transitions. The same
 fixture and action sequence therefore produce the same state, score, and
 terminal result. Invalid user actions leave the state unchanged.
 
-An external position model may itself be nondeterministic. Exact reproduction
-of a model-connected production run therefore requires recording the accepted
-model responses together with the endpoint/model version, or deploying a
-deterministic model. Connector failures still produce a deterministic result by
-using the seeded built-in policy.
+An external position model may itself be nondeterministic. The engine therefore
+retains each accepted response with its operator-configured model name/version
+in session-scoped server memory. Durable reproduction additionally requires
+exporting those records with the fixture and user action sequence; that storage
+is deferred. Connector failures still produce a deterministic result by using
+the seeded built-in policy.
 
 ## Information boundary
 
@@ -60,7 +61,9 @@ and rejected unless valid.
 ## Opponent connector protocol
 
 When `OPPONENT_MODEL_URL` is unset, no outbound request is made. When it is set,
-each accepted user turn produces one HTTP `POST` containing `sessionId`,
+`OPPONENT_MODEL_NAME` and `OPPONENT_MODEL_VERSION` are also required so accepted
+results can be attributed; missing identity fails configuration at startup.
+Each accepted user turn produces one HTTP `POST` containing `sessionId`,
 `momentId`, `turn`, the map bounds, `controlledUnitId`, and the current units.
 The request is versioned as `schemaVersion: "1.0"` and explicitly marked
 `stateScope: "authoritative_server_state"`. Here `turn` is the one-based index
@@ -72,6 +75,12 @@ behavior. A timeout, transport or HTTP error, oversized/malformed JSON, or a
 response that cannot be safely applied activates the deterministic policy. The
 wire contract is documented as the `opponentModelTurn` webhook in
 [`../contracts/openapi.yaml`](../contracts/openapi.yaml).
+
+After all eligibility and coordinate checks pass, the engine records the exact
+accepted target array, session/moment/turn keys, and configured model identity.
+Rejected responses are never recorded as accepted. These rollout records are
+privileged internal metadata, are cleared on reset, and are not serialized in
+the browser-facing session response.
 
 Frame resolution remains server-owned:
 
@@ -85,7 +94,7 @@ Frame resolution remains server-owned:
 
 - Publisher-specific telemetry adapter and authorization
 - Compact behavioral-cloning trajectory policy
-- Capture/replay storage for accepted external-model suggestions
+- Durable export/storage for in-memory external-model rollout records
 - Identity-aware pro-player style models
 - Ranking evaluation with analyst-labelled pivotal moments
 - Durable session storage, authentication, abuse controls, and rate limiting

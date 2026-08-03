@@ -27,10 +27,12 @@ policy diversity, and analyst preference. Do not call policy agreement
 ## Optional opponent-position model
 
 `OPPONENT_MODEL_URL` enables a server-to-server adapter for experimenting with
-opponent behavior. Once per accepted user turn, the Go API posts a snapshot with
-the session and moment IDs, the next-frame `turn` index, map bounds, controlled
-unit ID, and units. The versioned payload is marked as privileged authoritative
-server state. The model returns only desired next-frame positions:
+opponent behavior. Enabling it also requires stable `OPPONENT_MODEL_NAME` and
+`OPPONENT_MODEL_VERSION` values. Once per accepted user turn, the Go API posts
+a snapshot with the session and moment IDs, the next-frame `turn` index, map
+bounds, controlled unit ID, and units. The versioned payload is marked as
+privileged authoritative server state. The model returns only desired
+next-frame positions:
 
 ```json
 {
@@ -58,9 +60,10 @@ to the OpenAPI `positions` response. Evaluate next-position error alongside:
 - action diversity, calibration, and analyst preference; and
 - performance split by held-out player, patch, matchup, and game phase.
 
-External model responses may be nondeterministic. Record the accepted response,
-model/version identifier, and fixture/action sequence when exact replay is
-required. Do not send proprietary, identity-bearing, or hidden telemetry to a
+External model responses may be nondeterministic. The engine keeps validated
+responses and configured model identity in session-scoped memory; exact replay
+after process exit still requires durable export with the fixture/action
+sequence. Do not send proprietary, identity-bearing, or hidden telemetry to a
 third-party service without authorization and an explicit retention policy.
 The complete request and response schema is the `opponentModelTurn` webhook in
 [`../contracts/openapi.yaml`](../contracts/openapi.yaml).

@@ -27,12 +27,14 @@ func main() {
 	}
 	var opponentModel engine.OpponentPositionModel
 	if endpoint := os.Getenv("OPPONENT_MODEL_URL"); endpoint != "" {
-		opponentModel, err = opponent.NewHTTPModel(endpoint, nil)
+		modelName := os.Getenv("OPPONENT_MODEL_NAME")
+		modelVersion := os.Getenv("OPPONENT_MODEL_VERSION")
+		opponentModel, err = opponent.NewHTTPModel(endpoint, modelName, modelVersion, nil)
 		if err != nil {
 			logger.Error("configure opponent model", "error", err)
 			os.Exit(1)
 		}
-		logger.Info("opponent position model enabled")
+		logger.Info("opponent position model enabled", "model", modelName, "version", modelVersion)
 	}
 
 	server := &http.Server{

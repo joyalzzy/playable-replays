@@ -168,7 +168,9 @@ not be the only reason unrelated files change.
 | `LISTEN_ADDR` | Go API | `127.0.0.1:8080`; HTTP listen address. |
 | `FIXTURE_PATH` | Go API | `../fixtures/moments.json` when run from `backend/`; Compose uses `/app/fixtures/moments.json`. |
 | `VITE_API_TARGET` | Vite dev server | `http://127.0.0.1:8080`; Compose uses `http://api:8080`. |
-| `OPPONENT_MODEL_URL` | Future Go connector | Optional absolute HTTP(S) URL, conventionally `http://127.0.0.1:9000/v1/positions`. Absence means deterministic built-in policy. |
+| `OPPONENT_MODEL_URL` | Go connector | Optional absolute HTTP(S) URL, conventionally `http://127.0.0.1:9000/v1/positions`. Absence means deterministic built-in policy. |
+| `OPPONENT_MODEL_NAME` | Go connector | Required with `OPPONENT_MODEL_URL`; stable operator-owned model name stored with accepted suggestions. |
+| `OPPONENT_MODEL_VERSION` | Go connector | Required with `OPPONENT_MODEL_URL`; stable operator-owned model version stored with accepted suggestions. |
 
 Configuration for a model URL is operator-owned. Never accept it from a browser
 request or use arbitrary user-supplied URLs; that would create an SSRF boundary.
@@ -236,9 +238,10 @@ Keep the four model-related roles separate:
 | `GET /healthz` | Return `200 {"status":"ok"}` without loading user/session data. |
 | `POST /v1/positions` | Accept one authoritative next-frame snapshot and return advisory opponent position targets. |
 
-The backend is configured with the complete `OPPONENT_MODEL_URL`, so deployments
-may route the service differently while retaining `/v1/positions` as the local
-and documented convention.
+The backend is configured with the complete `OPPONENT_MODEL_URL` plus required
+`OPPONENT_MODEL_NAME` and `OPPONENT_MODEL_VERSION` identity values, so
+deployments may route the service differently while retaining `/v1/positions`
+as the local and documented convention.
 
 Request shape:
 
@@ -298,9 +301,10 @@ Model integration rules:
   OpenAPI webhook/component schemas, tests, Compose configuration, `.env.example`,
   README, and this file together.
 - Store the accepted response plus model name/version in server-side rollout
-  metadata or operator configuration; these fields do not belong in the strict
-  position response. Never claim action-sequence determinism for an unrecorded
-  remote call.
+  metadata; these fields do not belong in the strict position response. The
+  current engine keeps session-scoped in-memory records and clears them on
+  reset. Never claim durable action-sequence reproducibility until records are
+  exported with the fixture and user actions.
 
 If an inference framework requires Python, isolate it in `model-daemon/` behind
 this HTTP contract. Keep the application backend and authoritative simulator in

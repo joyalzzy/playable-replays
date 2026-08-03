@@ -52,6 +52,23 @@ type PositionSuggestion struct {
 	Position model.Point `json:"position"`
 }
 
+type OpponentModelResult struct {
+	ModelName    string
+	ModelVersion string
+	Positions    []PositionSuggestion
+}
+
+// OpponentRolloutRecord is privileged, session-scoped metadata retained for
+// reproducibility. It is not part of the browser Session response.
+type OpponentRolloutRecord struct {
+	SessionID         string               `json:"sessionId"`
+	MomentID          string               `json:"momentId"`
+	Turn              int                  `json:"turn"`
+	ModelName         string               `json:"modelName"`
+	ModelVersion      string               `json:"modelVersion"`
+	AcceptedPositions []PositionSuggestion `json:"acceptedPositions"`
+}
+
 type OpponentPositionModel interface {
-	NextPositions(context.Context, OpponentSnapshot) ([]PositionSuggestion, error)
+	NextPositions(context.Context, OpponentSnapshot) (OpponentModelResult, error)
 }

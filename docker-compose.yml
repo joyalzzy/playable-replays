@@ -7,6 +7,8 @@ services:
       LISTEN_ADDR: 0.0.0.0:8080
       FIXTURE_PATH: /app/fixtures/moments.json
       OPPONENT_MODEL_URL: ${OPPONENT_MODEL_URL:-}
+      OPPONENT_MODEL_NAME: ${OPPONENT_MODEL_NAME:-}
+      OPPONENT_MODEL_VERSION: ${OPPONENT_MODEL_VERSION:-}
     ports:
       - "127.0.0.1:8080:8080"
 

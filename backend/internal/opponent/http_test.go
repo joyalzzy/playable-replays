@@ -44,16 +44,18 @@ func TestHTTPModelSendsSnapshotAndDecodesPositions(t *testing.T) {
 	}))
 	defer server.Close()
 
-	connector, err := NewHTTPModel(server.URL, nil)
+	connector, err := NewHTTPModel(server.URL, "trajectory-policy", "2026.08.04", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	positions, err := connector.NextPositions(context.Background(), testSnapshot())
+	result, err := connector.NextPositions(context.Background(), testSnapshot())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(positions) != 1 || positions[0].UnitID != "red" || positions[0].Position != (model.Point{X: 75, Y: 40}) {
-		t.Fatalf("unexpected positions: %+v", positions)
+	if result.ModelName != "trajectory-policy" || result.ModelVersion != "2026.08.04" ||
+		len(result.Positions) != 1 || result.Positions[0].UnitID != "red" ||
+		result.Positions[0].Position != (model.Point{X: 75, Y: 40}) {
+		t.Fatalf("unexpected model result: %+v", result)
 	}
 	snapshot := <-received
 	if snapshot.SchemaVersion != "1.0" || snapshot.StateScope != "authoritative_server_state" ||
@@ -97,7 +99,7 @@ func TestHTTPModelRejectsInvalidResponses(t *testing.T) {
 				_, _ = w.Write([]byte(test.body))
 			}))
 			defer server.Close()
-			connector, err := NewHTTPModel(server.URL, nil)
+			connector, err := NewHTTPModel(server.URL, "test-policy", "1", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -113,20 +115,37 @@ func TestHTTPModelAllowsExplicitEmptyPositions(t *testing.T) {
 		_, _ = w.Write([]byte(`{"positions":[]}`))
 	}))
 	defer server.Close()
-	connector, err := NewHTTPModel(server.URL, nil)
+	connector, err := NewHTTPModel(server.URL, "test-policy", "1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	positions, err := connector.NextPositions(context.Background(), testSnapshot())
-	if err != nil || len(positions) != 0 {
-		t.Fatalf("expected an explicit empty response, got %+v: %v", positions, err)
+	result, err := connector.NextPositions(context.Background(), testSnapshot())
+	if err != nil || len(result.Positions) != 0 {
+		t.Fatalf("expected an explicit empty response, got %+v: %v", result, err)
 	}
 }
 
 func TestNewHTTPModelValidatesURL(t *testing.T) {
 	for _, endpoint := range []string{"", "relative/path", "file:///tmp/model", "://bad"} {
-		if _, err := NewHTTPModel(endpoint, nil); err == nil {
+		if _, err := NewHTTPModel(endpoint, "test-policy", "1", nil); err == nil {
 			t.Fatalf("expected %q to be rejected", endpoint)
+		}
+	}
+}
+
+func TestNewHTTPModelRequiresBoundedIdentity(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+	}{
+		{name: "", version: "1"},
+		{name: "test-policy", version: ""},
+		{name: strings.Repeat("x", maxIdentityBytes+1), version: "1"},
+		{name: "test-policy", version: strings.Repeat("x", maxIdentityBytes+1)},
+	}
+	for _, test := range tests {
+		if _, err := NewHTTPModel("https://model.example/v1/positions", test.name, test.version, nil); err == nil {
+			t.Fatalf("expected identity name=%q version=%q to be rejected", test.name, test.version)
 		}
 	}
 }
@@ -137,7 +156,7 @@ func TestHTTPModelHonorsClientTimeout(t *testing.T) {
 		_, _ = w.Write([]byte(`{"positions":[]}`))
 	}))
 	defer server.Close()
-	connector, err := NewHTTPModel(server.URL, &http.Client{Timeout: time.Millisecond})
+	connector, err := NewHTTPModel(server.URL, "test-policy", "1", &http.Client{Timeout: time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}
