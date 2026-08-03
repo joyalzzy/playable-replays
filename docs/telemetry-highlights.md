@@ -50,7 +50,8 @@ rejected instead of being ignored.
 
 `events` is optional and currently accepts `damage`, `kill`, and `objective`.
 `alive` is optional and defaults to `true`. All other displayed fields are
-required. At least two frames are required.
+required. At least two frames are required. `winProbability` must consistently
+describe the same source-defined reference team throughout a match.
 
 ## Derived signals
 
@@ -93,6 +94,16 @@ frames spanning at least two seconds. The unit must finish the window alive,
 and at least one opponent must remain alive, so defeating the only pursuer is
 not classified as an escape. `successful_escape_unit_ids(...)` exposes the
 qualifying IDs in deterministic order.
+
+Selected windows receive a `team-fight-reversal` tag when the reference team's
+win probability forms an interior peak or trough with at least a 0.25 swing on
+both sides, the turning frame has live opponents within 20 map units, and the
+window contains at least two damage or kill events. The strongest qualifying
+turn is selected, with the earliest timestamp breaking ties. This rejects large
+but monotonic swings and probability oscillations without nearby combat.
+
+`team_fight_reversal_second(...)` exposes the selected turning timestamp for
+future fixture generation.
 
 ## Command
 

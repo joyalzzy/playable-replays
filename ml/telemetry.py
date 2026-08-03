@@ -28,7 +28,10 @@ DEFAULT_ENGAGEMENT_RADIUS = 20.0
 DEFAULT_MINIMUM_EXPOSURE_SECONDS = 2
 DEFAULT_ESCAPE_SAFE_RADIUS = 35.0
 DEFAULT_LOW_HEALTH_FRACTION = 0.35
+DEFAULT_REVERSAL_SWING = 0.25
+DEFAULT_MINIMUM_COMBAT_EVENTS = 2
 COUNTED_EVENT_TYPES = frozenset({"damage", "kill", "objective"})
+COMBAT_EVENT_TYPES = frozenset({"damage", "kill"})
 
 
 @dataclass(frozen=True)
@@ -326,6 +329,70 @@ def successful_escape_unit_ids(
     return tuple(sorted(detected))
 
 
+def team_fight_reversal_second(
+    frames: Sequence[TelemetryFrame],
+    *,
+    minimum_reversal_swing: float = DEFAULT_REVERSAL_SWING,
+    engagement_radius: float = DEFAULT_ENGAGEMENT_RADIUS,
+    minimum_combat_events: int = DEFAULT_MINIMUM_COMBAT_EVENTS,
+) -> int | None:
+    """Return the strongest combat-backed probability turning point, if any.
+
+    The reference team's probability must move at least
+    ``minimum_reversal_swing`` into an interior trough or peak and then move at
+    least that far in the opposite direction by the final frame. The turning
+    frame must contain nearby live opponents, and the window must contain enough
+    damage or kill events to distinguish a team fight from a quiet oscillation.
+    Ties resolve to the earliest turning point for deterministic fixture IDs.
+    """
+    checked = validate_frames(frames)
+    if (
+        isinstance(minimum_reversal_swing, bool)
+        or not math.isfinite(minimum_reversal_swing)
+        or minimum_reversal_swing <= 0
+        or minimum_reversal_swing > 1
+    ):
+        raise ValueError("minimum_reversal_swing must be between 0 and 1")
+    _validate_radius(engagement_radius, "engagement_radius")
+    if (
+        isinstance(minimum_combat_events, bool)
+        or not isinstance(minimum_combat_events, int)
+        or minimum_combat_events <= 0
+    ):
+        raise ValueError("minimum_combat_events must be a positive integer")
+    combat_events = sum(
+        event_type in COMBAT_EVENT_TYPES
+        for frame in checked
+        for event_type in frame.event_types
+    )
+    if combat_events < minimum_combat_events or len(checked) < 3:
+        return None
+
+    probabilities = [frame.win_probability for frame in checked]
+    final_probability = probabilities[-1]
+    reversals: list[tuple[float, int]] = []
+    for index in range(1, len(checked) - 1):
+        turning_probability = probabilities[index]
+        prior = probabilities[:index]
+        recovery = min(
+            max(prior) - turning_probability,
+            final_probability - turning_probability,
+        )
+        collapse = min(
+            turning_probability - min(prior),
+            turning_probability - final_probability,
+        )
+        magnitude = max(recovery, collapse)
+        if (
+            magnitude >= minimum_reversal_swing
+            and _nearest_opponent_distance(checked[index]) <= engagement_radius
+        ):
+            reversals.append((magnitude, checked[index].second))
+    if not reversals:
+        return None
+    return max(reversals, key=lambda reversal: (reversal[0], -reversal[1]))[1]
+
+
 def load_frames(path: Path) -> tuple[TelemetryFrame, ...]:
     """Load the strict normalized telemetry JSON contract from ``path``."""
     try:
@@ -459,6 +526,8 @@ def _add_semantic_tags(
         tags.append("one-versus-many")
     if successful_escape_unit_ids(window):
         tags.append("successful-escape")
+    if team_fight_reversal_second(window) is not None:
+        tags.append("team-fight-reversal")
     return replace(candidate, reason_tags=tuple(tags))
 
 

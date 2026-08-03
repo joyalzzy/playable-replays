@@ -11,6 +11,7 @@ from ml.telemetry import (
     one_versus_many_unit_ids,
     select_pivotal_windows,
     successful_escape_unit_ids,
+    team_fight_reversal_second,
     telemetry_windows,
     validate_frames,
 )
@@ -254,6 +255,61 @@ class TelemetryTests(unittest.TestCase):
             successful_escape_unit_ids(frames, low_health_fraction=1.1)
         with self.assertRaisesRegex(ValueError, "minimum_safe_seconds"):
             successful_escape_unit_ids(frames, minimum_safe_seconds=True)
+
+    def test_team_fight_reversal_requires_turning_point_and_combat(self):
+        reversal = (
+            frame(0, 0.7, events=("damage",)),
+            frame(1, 0.3, events=("kill",)),
+            frame(2, 0.8),
+        )
+        monotonic = (
+            frame(0, 0.2, events=("damage",)),
+            frame(1, 0.5, events=("kill",)),
+            frame(2, 0.8),
+        )
+        no_combat = (
+            frame(0, 0.7),
+            frame(1, 0.3),
+            frame(2, 0.8),
+        )
+        distant = (
+            frame(0, 0.7, blue_x=0, red_x=100, events=("damage",)),
+            frame(1, 0.3, blue_x=0, red_x=100, events=("kill",)),
+            frame(2, 0.8, blue_x=0, red_x=100),
+        )
+
+        self.assertEqual(team_fight_reversal_second(reversal), 1)
+        self.assertIsNone(team_fight_reversal_second(monotonic))
+        self.assertIsNone(team_fight_reversal_second(no_combat))
+        self.assertIsNone(team_fight_reversal_second(distant))
+
+    def test_selected_window_gets_team_fight_reversal_reason_tag(self):
+        frames = tuple(
+            frame(
+                second,
+                0.2 if second == 6 else 0.85 if second == 12 else 0.75,
+                events=("damage", "kill"),
+            )
+            for second in range(13)
+        )
+
+        candidates = select_pivotal_windows(frames, window_seconds=12)
+
+        self.assertEqual(len(candidates), 1)
+        self.assertIn("team-fight-reversal", candidates[0].reason_tags)
+
+    def test_team_fight_reversal_parameters_are_bounded(self):
+        frames = (
+            frame(0, 0.7, events=("damage",)),
+            frame(1, 0.3, events=("kill",)),
+            frame(2, 0.8),
+        )
+        with self.assertRaisesRegex(ValueError, "minimum_reversal_swing"):
+            team_fight_reversal_second(frames, minimum_reversal_swing=0)
+        with self.assertRaisesRegex(ValueError, "engagement_radius"):
+            team_fight_reversal_second(frames, engagement_radius=0)
+        with self.assertRaisesRegex(ValueError, "minimum_combat_events"):
+            team_fight_reversal_second(frames, minimum_combat_events=True)
 
     def test_load_frames_enforces_version_and_unknown_fields(self):
         payload = {
