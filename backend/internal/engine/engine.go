@@ -18,8 +18,8 @@ type Engine struct {
 	moment        model.Moment
 	session       model.Session
 	rng           *rand.Rand
-	opponentModel OpponentPositionModel
-	rollouts      []OpponentRolloutRecord
+	positionModel PositionModel
+	rollouts      []ModelRolloutRecord
 }
 
 type turnEffects struct {
@@ -29,11 +29,11 @@ type turnEffects struct {
 }
 
 func New(moment model.Moment, sessionID string) *Engine {
-	return NewWithOpponentModel(moment, sessionID, nil)
+	return NewWithPositionModel(moment, sessionID, nil)
 }
 
-func NewWithOpponentModel(moment model.Moment, sessionID string, opponentModel OpponentPositionModel) *Engine {
-	e := &Engine{moment: cloneMoment(moment), opponentModel: opponentModel}
+func NewWithPositionModel(moment model.Moment, sessionID string, positionModel PositionModel) *Engine {
+	e := &Engine{moment: cloneMoment(moment), positionModel: positionModel}
 	for i := range e.moment.Units {
 		e.moment.Units[i] = model.ApplyClassProfile(e.moment.Units[i])
 	}
@@ -63,8 +63,8 @@ func (e *Engine) Reset(sessionID string) model.Session {
 
 // RolloutRecords returns a defensive copy of accepted external-model outputs.
 // Records remain server-side and live only as long as this in-memory engine.
-func (e *Engine) RolloutRecords() []OpponentRolloutRecord {
-	records := make([]OpponentRolloutRecord, len(e.rollouts))
+func (e *Engine) RolloutRecords() []ModelRolloutRecord {
+	records := make([]ModelRolloutRecord, len(e.rollouts))
 	for index, record := range e.rollouts {
 		records[index] = record
 		records[index].AcceptedPositions = slices.Clone(record.AcceptedPositions)
@@ -238,7 +238,7 @@ func (e *Engine) resolvePolicy(ctx context.Context, controlled *model.Unit, effe
 	action := "respond"
 	if fallback {
 		action = "fallback"
-		message = "The opponent model response was unusable; the deterministic opponent policy responded."
+		message = "The opponent opponent model response was unusable; the deterministic opponent policy responded."
 	} else if modelUsed {
 		action = "model-respond"
 		message = "The opponent position model responded; authoritative class movement limits were applied."
@@ -249,11 +249,11 @@ func (e *Engine) resolvePolicy(ctx context.Context, controlled *model.Unit, effe
 }
 
 func (e *Engine) modelSuggestions(ctx context.Context, controlled model.Unit) (map[string]model.Point, bool, bool) {
-	if e.opponentModel == nil {
+	if e.positionModel == nil {
 		return nil, false, false
 	}
-	snapshot := e.opponentSnapshot()
-	result, err := e.opponentModel.NextPositions(ctx, snapshot)
+	snapshot := e.modelSnapshot()
+	result, err := e.positionModel.NextPositions(ctx, snapshot)
 	if err != nil {
 		return nil, false, true
 	}
@@ -281,7 +281,7 @@ func (e *Engine) modelSuggestions(ctx context.Context, controlled model.Unit) (m
 		validated[proposal.UnitID] = proposal.Position
 		accepted = append(accepted, proposal)
 	}
-	e.rollouts = append(e.rollouts, OpponentRolloutRecord{
+	e.rollouts = append(e.rollouts, ModelRolloutRecord{
 		SessionID: snapshot.SessionID, MomentID: snapshot.MomentID, Turn: snapshot.Turn,
 		ModelName: result.ModelName, ModelVersion: result.ModelVersion,
 		AcceptedPositions: accepted,
@@ -289,18 +289,18 @@ func (e *Engine) modelSuggestions(ctx context.Context, controlled model.Unit) (m
 	return validated, true, false
 }
 
-func (e *Engine) opponentSnapshot() OpponentSnapshot {
+func (e *Engine) modelSnapshot() ModelSnapshot {
 	count := min(len(e.session.Units), MaxSnapshotUnits)
-	units := make([]OpponentSnapshotUnit, 0, count)
+	units := make([]ModelSnapshotUnit, 0, count)
 	for _, unit := range e.session.Units[:count] {
-		units = append(units, OpponentSnapshotUnit{
+		units = append(units, ModelSnapshotUnit{
 			ID: unit.ID, Team: unit.Team, Role: unit.Role, Class: unit.Class, Position: unit.Position,
 			HP: unit.HP, MaxHP: unit.MaxHP, MoveRange: unit.MoveRange,
 			AttackRange: unit.AttackRange, Cooldown: unit.Cooldown,
 			Visible: unit.Visible, Alive: unit.Alive,
 		})
 	}
-	return OpponentSnapshot{
+	return ModelSnapshot{
 		SchemaVersion: "1.0", StateScope: "authoritative_server_state",
 		SessionID: e.session.ID, MomentID: e.session.MomentID, Turn: e.session.Turn,
 		MapBounds:        MapBounds{MinX: MapMin, MaxX: MapMax, MinY: MapMin, MaxY: MapMax},
@@ -355,18 +355,6 @@ func (e *Engine) updateOutcome(action model.Action, effects turnEffects) {
 		}
 	}
 }
-
-func (e *Engine) applyFog() {
-	controlled := e.unit(e.moment.ControlledUnitID)
-	if controlled == nil {
-		return
-	}
-	for i := range e.session.Units {
-		unit := &e.session.Units[i]
-		unit.Visible = unit.Team == controlled.Team || distance(unit.Position, controlled.Position) <= 34
-	}
-}
-
 func (e *Engine) tickCooldowns() {
 	for i := range e.session.Units {
 		if e.session.Units[i].Cooldown > 0 {
@@ -383,41 +371,6 @@ func (e *Engine) unit(id string) *model.Unit {
 	}
 	return nil
 }
-
-func (e *Engine) nearestEnemy(from model.Unit) *model.Unit {
-	var nearest *model.Unit
-	best := math.MaxFloat64
-	for i := range e.session.Units {
-		candidate := &e.session.Units[i]
-		d := distance(from.Position, candidate.Position)
-		if candidate.Alive && candidate.Team != from.Team && d < best {
-			nearest, best = candidate, d
-		}
-	}
-	return nearest
-}
-
-func (e *Engine) automaticDodgeTarget(unit model.Unit) model.Point {
-	enemy := e.nearestEnemy(unit)
-	if enemy == nil {
-		return moveToward(unit.Position, model.Point{X: 50, Y: 50}, unit.MoveRange)
-	}
-	dx := enemy.Position.X - unit.Position.X
-	dy := enemy.Position.Y - unit.Position.Y
-	d := math.Hypot(dx, dy)
-	if d == 0 {
-		dx, dy, d = 1, 0, 1
-	}
-	first := model.Point{X: unit.Position.X - dy/d*unit.MoveRange, Y: unit.Position.Y + dx/d*unit.MoveRange}
-	second := model.Point{X: unit.Position.X + dy/d*unit.MoveRange, Y: unit.Position.Y - dx/d*unit.MoveRange}
-	first = clampPoint(first)
-	second = clampPoint(second)
-	if distance(unit.Position, second) > distance(unit.Position, first) {
-		return second
-	}
-	return first
-}
-
 func (e *Engine) referenceAction(turn int) model.Action {
 	sequence := []string{"move", "outplay", "dodge", "contest", "retreat"}
 	action := model.Action{Type: sequence[turn%len(sequence)]}
@@ -428,46 +381,4 @@ func (e *Engine) referenceAction(turn int) model.Action {
 		}
 	}
 	return action
-}
-
-func distance(a, b model.Point) float64 {
-	return math.Hypot(a.X-b.X, a.Y-b.Y)
-}
-
-func moveToward(from, to model.Point, limit float64) model.Point {
-	d := distance(from, to)
-	if d == 0 || d <= limit {
-		return to
-	}
-	return model.Point{
-		X: from.X + (to.X-from.X)*limit/d,
-		Y: from.Y + (to.Y-from.Y)*limit/d,
-	}
-}
-
-func cloneMoment(moment model.Moment) model.Moment {
-	moment.Units = cloneUnits(moment.Units)
-	moment.ReasonTags = slices.Clone(moment.ReasonTags)
-	return moment
-}
-
-func cloneUnits(units []model.Unit) []model.Unit {
-	return slices.Clone(units)
-}
-
-func pointFinite(point model.Point) bool {
-	return !math.IsNaN(point.X) && !math.IsInf(point.X, 0) &&
-		!math.IsNaN(point.Y) && !math.IsInf(point.Y, 0)
-}
-
-func pointInBounds(point model.Point) bool {
-	return point.X >= MapMin && point.X <= MapMax && point.Y >= MapMin && point.Y <= MapMax
-}
-
-func clampPoint(point model.Point) model.Point {
-	return model.Point{X: clamp(point.X, MapMin, MapMax), Y: clamp(point.Y, MapMin, MapMax)}
-}
-
-func clamp(value, low, high float64) float64 {
-	return math.Max(low, math.Min(high, value))
 }

@@ -13,13 +13,13 @@ import (
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
 )
 
-func testSnapshot() engine.OpponentSnapshot {
-	return engine.OpponentSnapshot{
+func testSnapshot() engine.ModelSnapshot {
+	return engine.ModelSnapshot{
 		SchemaVersion: "1.0", StateScope: "authoritative_server_state",
 		SessionID: "session-1", MomentID: "moment-1", Turn: 1,
 		MapBounds:        engine.MapBounds{MinX: 0, MaxX: 100, MinY: 0, MaxY: 100},
 		ControlledUnitID: "blue",
-		Units: []engine.OpponentSnapshotUnit{
+		Units: []engine.ModelSnapshotUnit{
 			{ID: "blue", Team: "blue", Role: "carry", Class: model.ClassMarksman, Position: model.Point{X: 30, Y: 50}, HP: 70, MaxHP: 90, MoveRange: 11, AttackRange: 28, Alive: true, Visible: true},
 			{ID: "red", Team: "red", Role: "frontline", Class: model.ClassTank, Position: model.Point{X: 50, Y: 50}, HP: 120, MaxHP: 160, MoveRange: 7, AttackRange: 10, Alive: true, Visible: true},
 		},
@@ -27,13 +27,13 @@ func testSnapshot() engine.OpponentSnapshot {
 }
 
 func TestHTTPModelSendsSnapshotAndDecodesPositions(t *testing.T) {
-	received := make(chan engine.OpponentSnapshot, 1)
+	received := make(chan engine.ModelSnapshot, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		if request.Method != http.MethodPost || request.Header.Get("Content-Type") != "application/json" || request.Header.Get("Accept") != "application/json" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		var snapshot engine.OpponentSnapshot
+		var snapshot engine.ModelSnapshot
 		if err := json.NewDecoder(request.Body).Decode(&snapshot); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return

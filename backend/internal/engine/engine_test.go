@@ -11,15 +11,15 @@ import (
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
 )
 
-type stubOpponentModel struct {
+type stubModel struct {
 	suggestions []PositionSuggestion
 	err         error
-	snapshot    OpponentSnapshot
+	snapshot    ModelSnapshot
 }
 
-func (stub *stubOpponentModel) NextPositions(_ context.Context, snapshot OpponentSnapshot) (OpponentModelResult, error) {
+func (stub *stubModel) NextPositions(_ context.Context, snapshot ModelSnapshot) (ModelResult, error) {
 	stub.snapshot = snapshot
-	return OpponentModelResult{
+	return ModelResult{
 		ModelName: "test-policy", ModelVersion: "2026-08-04", Positions: stub.suggestions,
 	}, stub.err
 }
@@ -122,17 +122,17 @@ func TestClassMovementLimitsTankAndAssassin(t *testing.T) {
 	}
 }
 
-func TestOpponentModelTargetIsClampedByClassMovement(t *testing.T) {
+func TestModelTargetIsClampedByClassMovement(t *testing.T) {
 	moment := testMoment()
 	moment.Units[0].Position = model.Point{X: 10, Y: 50}
 	moment.Units[1] = model.Unit{
 		ID: "red-one", Team: "red", Role: "tank", Class: model.ClassTank,
 		Position: model.Point{X: 50, Y: 50}, HP: 120, MaxHP: 160, Alive: true,
 	}
-	stub := &stubOpponentModel{suggestions: []PositionSuggestion{
+	stub := &stubModel{suggestions: []PositionSuggestion{
 		{UnitID: "red-one", Position: model.Point{X: 100, Y: 50}},
 	}}
-	engine := NewWithOpponentModel(moment, "a", stub)
+	engine := NewWithPositionModel(moment, "a", stub)
 	state, err := engine.Apply(model.Action{Type: "hold"})
 	if err != nil {
 		t.Fatal(err)
@@ -165,14 +165,14 @@ func TestOpponentModelTargetIsClampedByClassMovement(t *testing.T) {
 }
 
 func TestInvalidOrFailedModelUsesDeterministicFallback(t *testing.T) {
-	tests := map[string]*stubOpponentModel{
+	tests := map[string]*stubModel{
 		"unknown unit":    {suggestions: []PositionSuggestion{{UnitID: "blue-carry", Position: model.Point{X: 31, Y: 50}}}},
 		"connector error": {err: errors.New("model unavailable")},
 	}
 	for name, stub := range tests {
 		t.Run(name, func(t *testing.T) {
 			baseline, baselineErr := New(testMoment(), "a").Apply(model.Action{Type: "hold"})
-			engine := NewWithOpponentModel(testMoment(), "a", stub)
+			engine := NewWithPositionModel(testMoment(), "a", stub)
 			modeled, modeledErr := engine.Apply(model.Action{Type: "hold"})
 			if baselineErr != nil || modeledErr != nil {
 				t.Fatalf("unexpected turn errors: %v, %v", baselineErr, modeledErr)
@@ -191,11 +191,11 @@ func TestInvalidOrFailedModelUsesDeterministicFallback(t *testing.T) {
 }
 
 func TestModelWithoutIdentityUsesDeterministicFallback(t *testing.T) {
-	stub := &stubOpponentModel{suggestions: []PositionSuggestion{{
+	stub := &stubModel{suggestions: []PositionSuggestion{{
 		UnitID: "red-one", Position: model.Point{X: 60, Y: 50},
 	}}}
 	stubResult := &modelWithoutIdentity{positions: stub.suggestions}
-	engine := NewWithOpponentModel(testMoment(), "a", stubResult)
+	engine := NewWithPositionModel(testMoment(), "a", stubResult)
 	baseline, baselineErr := New(testMoment(), "a").Apply(model.Action{Type: "hold"})
 	state, err := engine.Apply(model.Action{Type: "hold"})
 	if baselineErr != nil || err != nil {
@@ -210,8 +210,8 @@ type modelWithoutIdentity struct {
 	positions []PositionSuggestion
 }
 
-func (stub *modelWithoutIdentity) NextPositions(_ context.Context, _ OpponentSnapshot) (OpponentModelResult, error) {
-	return OpponentModelResult{Positions: stub.positions}, nil
+func (stub *modelWithoutIdentity) NextPositions(_ context.Context, _ ModelSnapshot) (ModelResult, error) {
+	return ModelResult{Positions: stub.positions}, nil
 }
 
 func TestDodgeLogsEvadedSkillshotAndRewardsActualEvasion(t *testing.T) {

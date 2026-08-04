@@ -25,21 +25,21 @@ func main() {
 		logger.Error("load fixtures", "error", err)
 		os.Exit(1)
 	}
-	var opponentModel engine.OpponentPositionModel
+	var positionModel engine.PositionModel
 	if endpoint := os.Getenv("OPPONENT_MODEL_URL"); endpoint != "" {
 		modelName := os.Getenv("OPPONENT_MODEL_NAME")
 		modelVersion := os.Getenv("OPPONENT_MODEL_VERSION")
-		opponentModel, err = opponent.NewHTTPModel(endpoint, modelName, modelVersion, nil)
+		positionModel, err = opponent.NewHTTPModel(endpoint, modelName, modelVersion, nil)
 		if err != nil {
-			logger.Error("configure opponent model", "error", err)
+			logger.Error("configure position model", "error", err)
 			os.Exit(1)
 		}
-		logger.Info("opponent position model enabled", "model", modelName, "version", modelVersion)
+		logger.Info("position model enabled", "model", modelName, "version", modelVersion)
 	}
 
 	server := &http.Server{
 		Addr:              env("LISTEN_ADDR", "127.0.0.1:8080"),
-		Handler:           api.NewWithOpponentModel(moments, logger, opponentModel).Handler(),
+		Handler:           api.NewWithPositionModel(moments, logger, positionModel).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,

@@ -21,7 +21,7 @@ type Server struct {
 	moments       map[string]model.Moment
 	ordered       []model.Moment
 	sessions      map[string]*sessionInstance
-	opponentModel engine.OpponentPositionModel
+	positionModel engine.PositionModel
 	nextID        atomic.Uint64
 	mu            sync.RWMutex
 	log           *slog.Logger
@@ -33,10 +33,10 @@ type sessionInstance struct {
 }
 
 func New(moments []model.Moment, logger *slog.Logger) *Server {
-	return NewWithOpponentModel(moments, logger, nil)
+	return NewWithPositionModel(moments, logger, nil)
 }
 
-func NewWithOpponentModel(moments []model.Moment, logger *slog.Logger, opponentModel engine.OpponentPositionModel) *Server {
+func NewWithPositionModel(moments []model.Moment, logger *slog.Logger, positionModel engine.PositionModel) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -46,7 +46,7 @@ func NewWithOpponentModel(moments []model.Moment, logger *slog.Logger, opponentM
 	}
 	return &Server{
 		moments: indexed, ordered: moments,
-		sessions: make(map[string]*sessionInstance), opponentModel: opponentModel, log: logger,
+		sessions: make(map[string]*sessionInstance), positionModel: positionModel, log: logger,
 	}
 }
 
@@ -87,7 +87,7 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := "session-" + strconv.FormatUint(s.nextID.Add(1), 36)
-	instance := &sessionInstance{engine: engine.NewWithOpponentModel(moment, id, s.opponentModel)}
+	instance := &sessionInstance{engine: engine.NewWithPositionModel(moment, id, s.positionModel)}
 	state := instance.engine.State()
 	s.mu.Lock()
 	s.sessions[id] = instance

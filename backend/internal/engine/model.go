@@ -19,7 +19,7 @@ type MapBounds struct {
 	MaxY float64 `json:"maxY"`
 }
 
-type OpponentSnapshotUnit struct {
+type ModelSnapshotUnit struct {
 	ID          string          `json:"id"`
 	Team        string          `json:"team"`
 	Role        string          `json:"role"`
@@ -34,17 +34,17 @@ type OpponentSnapshotUnit struct {
 	Alive       bool            `json:"alive"`
 }
 
-// OpponentSnapshot is privileged authoritative server state sent only to the
+// ModelSnapshot is privileged authoritative server state sent only to the
 // operator-configured model endpoint. It is never constructed by the browser.
-type OpponentSnapshot struct {
-	SchemaVersion    string                 `json:"schemaVersion"`
-	StateScope       string                 `json:"stateScope"`
-	SessionID        string                 `json:"sessionId"`
-	MomentID         string                 `json:"momentId"`
-	Turn             int                    `json:"turn"`
-	MapBounds        MapBounds              `json:"mapBounds"`
-	ControlledUnitID string                 `json:"controlledUnitId"`
-	Units            []OpponentSnapshotUnit `json:"units"`
+type ModelSnapshot struct {
+	SchemaVersion    string              `json:"schemaVersion"`
+	StateScope       string              `json:"stateScope"`
+	SessionID        string              `json:"sessionId"`
+	MomentID         string              `json:"momentId"`
+	Turn             int                 `json:"turn"`
+	MapBounds        MapBounds           `json:"mapBounds"`
+	ControlledUnitID string              `json:"controlledUnitId"`
+	Units            []ModelSnapshotUnit `json:"units"`
 }
 
 type PositionSuggestion struct {
@@ -52,15 +52,15 @@ type PositionSuggestion struct {
 	Position model.Point `json:"position"`
 }
 
-type OpponentModelResult struct {
+type ModelResult struct {
 	ModelName    string
 	ModelVersion string
 	Positions    []PositionSuggestion
 }
 
-// OpponentRolloutRecord is privileged, session-scoped metadata retained for
+// ModelRolloutRecord is privileged, session-scoped metadata retained for
 // reproducibility. It is not part of the browser Session response.
-type OpponentRolloutRecord struct {
+type ModelRolloutRecord struct {
 	SessionID         string               `json:"sessionId"`
 	MomentID          string               `json:"momentId"`
 	Turn              int                  `json:"turn"`
@@ -69,6 +69,6 @@ type OpponentRolloutRecord struct {
 	AcceptedPositions []PositionSuggestion `json:"acceptedPositions"`
 }
 
-type OpponentPositionModel interface {
-	NextPositions(context.Context, OpponentSnapshot) (OpponentModelResult, error)
+type PositionModel interface {
+	NextPositions(context.Context, ModelSnapshot) (ModelResult, error)
 }

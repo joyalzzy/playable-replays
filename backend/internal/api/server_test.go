@@ -16,31 +16,31 @@ import (
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
 )
 
-type apiOpponentModel struct {
+type apiModel struct {
 	called bool
 }
 
-func (stub *apiOpponentModel) NextPositions(_ context.Context, _ engine.OpponentSnapshot) (engine.OpponentModelResult, error) {
+func (stub *apiModel) NextPositions(_ context.Context, _ engine.ModelSnapshot) (engine.ModelResult, error) {
 	stub.called = true
-	return engine.OpponentModelResult{
+	return engine.ModelResult{
 		ModelName: "api-test", ModelVersion: "1",
 		Positions: []engine.PositionSuggestion{{UnitID: "red", Position: model.Point{X: 100, Y: 50}}},
 	}, nil
 }
 
-type blockingOpponentModel struct {
+type blockingModel struct {
 	started chan struct{}
 	release chan struct{}
 	once    sync.Once
 }
 
-func (stub *blockingOpponentModel) NextPositions(ctx context.Context, _ engine.OpponentSnapshot) (engine.OpponentModelResult, error) {
+func (stub *blockingModel) NextPositions(ctx context.Context, _ engine.ModelSnapshot) (engine.ModelResult, error) {
 	stub.once.Do(func() { close(stub.started) })
 	select {
 	case <-stub.release:
-		return engine.OpponentModelResult{ModelName: "blocking-test", ModelVersion: "1"}, nil
+		return engine.ModelResult{ModelName: "blocking-test", ModelVersion: "1"}, nil
 	case <-ctx.Done():
-		return engine.OpponentModelResult{}, ctx.Err()
+		return engine.ModelResult{}, ctx.Err()
 	}
 }
 
@@ -124,10 +124,10 @@ func TestRejectsOverRangeMovementWithoutAdvancingTurn(t *testing.T) {
 	}
 }
 
-func TestServerUsesOpponentPositionModel(t *testing.T) {
-	stub := &apiOpponentModel{}
+func TestServerUsesPositionModel(t *testing.T) {
+	stub := &apiModel{}
 	base := testServer()
-	server := NewWithOpponentModel(base.ordered, slog.New(slog.NewTextHandler(io.Discard, nil)), stub)
+	server := NewWithPositionModel(base.ordered, slog.New(slog.NewTextHandler(io.Discard, nil)), stub)
 	handler := server.Handler()
 	created := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
 	var session model.Session
@@ -146,8 +146,8 @@ func TestServerUsesOpponentPositionModel(t *testing.T) {
 	}
 }
 
-func TestSlowOpponentModelDoesNotBlockOtherSessions(t *testing.T) {
-	stub := &blockingOpponentModel{started: make(chan struct{}), release: make(chan struct{})}
+func TestSlowModelDoesNotBlockOtherSessions(t *testing.T) {
+	stub := &blockingModel{started: make(chan struct{}), release: make(chan struct{})}
 	defer func() {
 		select {
 		case <-stub.release:
@@ -156,7 +156,7 @@ func TestSlowOpponentModelDoesNotBlockOtherSessions(t *testing.T) {
 		}
 	}()
 	base := testServer()
-	server := NewWithOpponentModel(base.ordered, slog.New(slog.NewTextHandler(io.Discard, nil)), stub)
+	server := NewWithPositionModel(base.ordered, slog.New(slog.NewTextHandler(io.Discard, nil)), stub)
 	handler := server.Handler()
 
 	first := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
