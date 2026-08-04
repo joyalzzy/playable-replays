@@ -24,35 +24,39 @@ matchups. Report top-k action agreement, calibration, rollout stability,
 policy diversity, and analyst preference. Do not call policy agreement
 "reproducing a pro player's decision."
 
-## Optional opponent-position model
+## Optional non-player position model
 
 `OPPONENT_MODEL_URL` enables a server-to-server adapter for experimenting with
-opponent behavior. Enabling it also requires stable `OPPONENT_MODEL_NAME` and
-`OPPONENT_MODEL_VERSION` values. Once per accepted user turn, the Go API posts
-a snapshot with the session and moment IDs, the next-frame `turn` index, map
-bounds, controlled unit ID, and units. The versioned payload is marked as
-privileged authoritative server state. The model returns only desired
-next-frame positions:
+teammate and opponent behavior. The environment-variable names are retained for
+compatibility with the original opponent-only connector. Enabling it also
+requires stable `OPPONENT_MODEL_NAME` and `OPPONENT_MODEL_VERSION` values. Once
+per accepted user turn, the Go API posts a snapshot with the session and moment
+IDs, the next-frame `turn` index, map bounds, controlled unit ID, and units. The
+versioned payload is marked as privileged authoritative server state. The model
+returns only desired next-frame positions:
 
 ```json
 {
   "positions": [
+    {"unitId": "blue-support", "position": {"x": 28, "y": 60}},
     {"unitId": "red-jungle", "position": {"x": 45, "y": 52}}
   ]
 }
 ```
 
 That response is a proposal, not state. The simulator accepts targets only for
-eligible opponent units, clamps displacement using each class's `moveRange`,
-keeps coordinates inside the map, and resolves every attack and outcome itself.
-Missing targets use built-in behavior. Network, HTTP, decoding, or validation
-failures must fail closed to the seeded deterministic policy rather than stall a
+live non-player units, clamps displacement using each class's `moveRange`, keeps
+coordinates inside the map, and resolves every attack and outcome itself. An
+omitted teammate holds position; an omitted opponent uses built-in behavior.
+Network, HTTP, decoding, or validation failures leave teammates stationary and
+fail closed to the seeded deterministic opponent policy rather than stall a
 turn or partially hand authority to the service.
 
 For a first learned connector, train the same compact trajectory policy to
 predict a normalized next-position delta (or a tactical action plus target) for
-each opponent from observable history. The serving adapter converts that output
-to the OpenAPI `positions` response. Evaluate next-position error alongside:
+each non-player unit from observable history. The serving adapter converts that
+output to the OpenAPI `positions` response. Evaluate next-position error
+separately for teammates and opponents alongside:
 
 - legal-response and class-range clamp rates;
 - fallback/error rate and tail latency;

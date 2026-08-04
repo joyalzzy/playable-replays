@@ -22,6 +22,7 @@ func testSnapshot() engine.OpponentSnapshot {
 		Units: []engine.OpponentSnapshotUnit{
 			{ID: "blue", Team: "blue", Role: "carry", Class: model.ClassMarksman, Position: model.Point{X: 30, Y: 50}, HP: 70, MaxHP: 90, MoveRange: 11, AttackRange: 28, Alive: true, Visible: true},
 			{ID: "red", Team: "red", Role: "frontline", Class: model.ClassTank, Position: model.Point{X: 50, Y: 50}, HP: 120, MaxHP: 160, MoveRange: 7, AttackRange: 10, Alive: true, Visible: true},
+			{ID: "blue-support", Team: "blue", Role: "support", Class: model.ClassSupport, Position: model.Point{X: 20, Y: 60}, HP: 90, MaxHP: 110, MoveRange: 8, AttackRange: 20, Alive: true, Visible: true},
 		},
 	}
 }
@@ -40,7 +41,7 @@ func TestHTTPModelSendsSnapshotAndDecodesPositions(t *testing.T) {
 		}
 		received <- snapshot
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"positions":[{"unitId":"red","position":{"x":75,"y":40}}]}`))
+		_, _ = w.Write([]byte(`{"positions":[{"unitId":"red","position":{"x":75,"y":40}},{"unitId":"blue-support","position":{"x":28,"y":60}}]}`))
 	}))
 	defer server.Close()
 
@@ -53,13 +54,16 @@ func TestHTTPModelSendsSnapshotAndDecodesPositions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.ModelName != "trajectory-policy" || result.ModelVersion != "2026.08.04" ||
-		len(result.Positions) != 1 || result.Positions[0].UnitID != "red" ||
-		result.Positions[0].Position != (model.Point{X: 75, Y: 40}) {
+		len(result.Positions) != 2 || result.Positions[0].UnitID != "red" ||
+		result.Positions[0].Position != (model.Point{X: 75, Y: 40}) ||
+		result.Positions[1].UnitID != "blue-support" ||
+		result.Positions[1].Position != (model.Point{X: 28, Y: 60}) {
 		t.Fatalf("unexpected model result: %+v", result)
 	}
 	snapshot := <-received
 	if snapshot.SchemaVersion != "1.0" || snapshot.StateScope != "authoritative_server_state" ||
-		snapshot.Turn != 1 || len(snapshot.Units) != 2 || snapshot.Units[1].Role != "frontline" {
+		snapshot.Turn != 1 || len(snapshot.Units) != 3 || snapshot.Units[1].Role != "frontline" ||
+		snapshot.Units[2].ID != "blue-support" {
 		t.Fatalf("unexpected snapshot: %+v", snapshot)
 	}
 }

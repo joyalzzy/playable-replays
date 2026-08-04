@@ -14,7 +14,7 @@ flowchart TD
     C --> D["Go authoritative simulator"]
     D --> E["TypeScript tactical board"]
     E -->|Legal action| D
-    D -.->|Optional snapshot| F["Opponent position model"]
+    D -.->|Optional snapshot| F["Non-player position model"]
     F -.->|Advisory targets| D
 ```
 
@@ -50,15 +50,15 @@ identity-bearing telemetry unless that use is explicitly authorized.
 
 The baseline highlight selector is an interpretable weighted score. A future
 trajectory model may choose among legal high-level actions. The optional
-opponent connector has an even narrower output: desired next-frame positions
-for opponent units. The Go simulator rejects unknown, allied, controlled, dead,
-duplicate, or malformed unit suggestions; constrains valid targets to map and
-class movement limits; and remains the only component allowed to resolve
-movement, attacks, damage, cooldowns, visibility, scoring, or victory state.
-Optional natural-language commands should be parsed into the same action schema
-and rejected unless valid.
+position connector has an even narrower output: desired next-frame positions
+for live non-player teammates and opponents. The Go simulator rejects unknown,
+controlled, dead, duplicate, or malformed unit suggestions; constrains valid
+targets to map and class movement limits; and remains the only component
+allowed to resolve movement, attacks, damage, cooldowns, visibility, scoring,
+or victory state. Optional natural-language commands should be parsed into the
+same action schema and rejected unless valid.
 
-## Opponent connector protocol
+## Position connector protocol
 
 When `OPPONENT_MODEL_URL` is unset, no outbound request is made. When it is set,
 `OPPONENT_MODEL_NAME` and `OPPONENT_MODEL_VERSION` are also required so accepted
@@ -70,11 +70,14 @@ The request is versioned as `schemaVersion: "1.0"` and explicitly marked
 of the next frame being resolved. The model returns a required `positions`
 array of unit IDs and complete `x`/`y` points.
 
-The connector response is advisory. Missing opponent targets use built-in
-behavior. A timeout, transport or HTTP error, oversized/malformed JSON, or a
-response that cannot be safely applied activates the deterministic policy. The
-wire contract is documented as the `opponentModelTurn` webhook in
-[`../contracts/openapi.yaml`](../contracts/openapi.yaml).
+The connector response is advisory. A valid target can move any live unit other
+than the user-controlled unit. Missing teammate targets leave those teammates
+stationary, while missing opponent targets use built-in behavior. A timeout,
+transport or HTTP error, oversized/malformed JSON, or a response that cannot be
+safely applied leaves teammates stationary and activates the deterministic
+opponent policy. The legacy environment and OpenAPI names remain in place for
+compatibility. The wire contract is documented as the `opponentModelTurn`
+webhook in [`../contracts/openapi.yaml`](../contracts/openapi.yaml).
 
 After all eligibility and coordinate checks pass, the engine records the exact
 accepted target array, session/moment/turn keys, and configured model identity.
@@ -86,7 +89,7 @@ Frame resolution remains server-owned:
 
 1. Validate the user's action and any target.
 2. Apply the controlled unit's class-specific movement/action rule.
-3. Request advisory opponent targets when the connector is enabled.
+3. Request advisory non-player unit targets when the connector is enabled.
 4. Validate and clamp accepted targets, or run deterministic fallback behavior.
 5. Resolve combat, cooldowns, visibility, scoring, and terminal state.
 

@@ -1,11 +1,12 @@
 openapi: 3.1.0
 info:
   title: Playable Replays API
-  version: 0.2.0
+  version: 0.3.0
   description: |
-    Deterministic tactical replay prototype API. An optional opponent-model
-    connector may suggest next-frame positions, but the simulator remains
-    authoritative over movement limits, physics, damage, and outcomes.
+    Deterministic tactical replay prototype API. An optional position-model
+    connector may suggest next-frame positions for live non-player units, but
+    the simulator remains authoritative over movement limits, physics, damage,
+    and outcomes.
 servers:
   - url: http://127.0.0.1:8080
 security: []
@@ -126,15 +127,18 @@ webhooks:
   opponentModelTurn:
     post:
       operationId: suggestOpponentPositions
-      summary: Suggest opponent positions for the next frame
+      summary: Suggest non-player unit positions for the next frame
       description: |
         When `OPPONENT_MODEL_URL` is configured, the API sends this request
         once per resolved user turn. `turn` is the one-based index of the
-        next frame being resolved. The response is advisory: unknown units,
-        controlled or allied units, non-finite coordinates, and out-of-bounds
-        or over-range movement are rejected or clamped by the simulator. A
+        next frame being resolved. The response may contain targets for any
+        live unit other than `controlledUnitId`, including teammates and
+        opponents. Unknown, dead, controlled, duplicate, non-finite, or
+        out-of-bounds suggestions are rejected; valid displacement is clamped
+        to the unit's class movement range. Omitted teammates hold position,
+        while omitted opponents use the deterministic built-in policy. A
         timeout, transport failure, malformed response, or invalid suggestion
-        activates the deterministic built-in opponent policy.
+        activates that fallback for opponents and leaves teammates stationary.
       requestBody:
         required: true
         content:
@@ -232,7 +236,9 @@ components:
               actor: {type: string, enum: [user, policy]}
               action:
                 type: string
-                description: User entries use a legal action type; policy entries describe the opponent response.
+                description: |
+                  User entries use a legal action type; policy entries describe
+                  non-player positioning, fallback, or opponent combat.
               message: {type: string}
             required: [turn, actor, action, message]
       required: [id, momentId, controlledUnitId, turn, maxTurns, status, score, winProbability, referenceAction, legalActions, units, log]
@@ -271,12 +277,15 @@ components:
     OpponentModelRequest:
       type: object
       additionalProperties: false
-      description: Server-side snapshot sent to the optional opponent model.
+      description: |
+        Server-side snapshot sent to the optional position model. The schema
+        name is retained for compatibility; the snapshot includes the player,
+        teammates, and opponents.
       properties:
         schemaVersion:
           type: string
           const: "1.0"
-          description: Version of the opponent connector wire contract.
+          description: Version of the position connector wire contract.
         stateScope:
           type: string
           const: authoritative_server_state
@@ -325,7 +334,9 @@ components:
     OpponentModelResponse:
       type: object
       additionalProperties: false
-      description: Advisory next-frame targets; omitted opponents use the fallback policy.
+      description: |
+        Advisory targets for live non-player units. Omitted teammates hold
+        position; omitted opponents use the deterministic fallback policy.
       properties:
         positions:
           type: array

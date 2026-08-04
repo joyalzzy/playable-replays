@@ -35,7 +35,9 @@ type OpponentSnapshotUnit struct {
 }
 
 // OpponentSnapshot is privileged authoritative server state sent only to the
-// operator-configured model endpoint. It is never constructed by the browser.
+// operator-configured position model endpoint. The legacy name is retained for
+// connector compatibility; responses may target any live non-player unit. The
+// snapshot is never constructed by the browser.
 type OpponentSnapshot struct {
 	SchemaVersion    string                 `json:"schemaVersion"`
 	StateScope       string                 `json:"stateScope"`
@@ -59,7 +61,9 @@ type OpponentModelResult struct {
 }
 
 // OpponentRolloutRecord is privileged, session-scoped metadata retained for
-// reproducibility. It is not part of the browser Session response.
+// reproducibility. AcceptedPositions may include teammates and opponents; the
+// legacy type name is retained for connector compatibility. It is not part of
+// the browser Session response.
 type OpponentRolloutRecord struct {
 	SessionID         string               `json:"sessionId"`
 	MomentID          string               `json:"momentId"`

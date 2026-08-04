@@ -17,7 +17,7 @@ estimates.
 - Six unit classes with distinct health, movement, and attack profiles
 - Click-to-inspect unit details and movement/attack range indicators
 - `dodge` and `outplay` decisions alongside the original tactical actions
-- Optional HTTP connector for model-suggested opponent positions
+- Optional HTTP connector for model-suggested teammate and opponent positions
 - Synthetic, versioned telemetry fixtures
 - Offline Python highlight scorer using interpretable signals
 - OpenAPI contract and JSON schemas
@@ -65,10 +65,11 @@ The web app is then available at <http://localhost:5173>.
 
 The browser requests a legal high-level action. The Go simulator validates and
 resolves that action using a scenario seed. An optional model may suggest where
-opponents should try to move in the next frame, but its output is only a target:
-the simulator validates unit ownership and coordinates, applies class movement
-limits and map bounds, and remains solely responsible for physics, damage,
-cooldowns, hidden state, and victory conditions.
+non-player teammates and opponents should try to move in the next frame, but
+its output is only a target: the simulator rejects control of the user's unit,
+validates coordinates, applies class movement limits and map bounds, and
+remains solely responsible for physics, damage, cooldowns, hidden state, and
+victory conditions.
 
 ## Unit classes
 
@@ -88,10 +89,12 @@ Tanks are the toughest and slowest class, while marksmen trade health for range.
 
 Ranges are map units per frame.
 
-## Optional opponent-model connector
+## Optional position-model connector
 
 No model, API key, or network service is required by default. Without a
-connector, opponents use the seeded built-in policy.
+connector, teammates hold their fixture positions and opponents use the seeded
+built-in policy. The `OPPONENT_MODEL_*` variable names are retained for
+compatibility with the original connector.
 
 To test an HTTP position model, configure its endpoint and stable identity for
 the API process:
@@ -106,10 +109,13 @@ make dev-api
 For Docker Compose, copy `.env.example` to `.env`, set the URL to an endpoint
 reachable from the `api` container, set both identity values, and run
 `docker compose up --build`. Once per turn the API posts the session snapshot,
-accepts desired next-frame opponent positions, and records accepted suggestions
-with that identity in server-side session memory. Missing identity fails closed
-at startup; invalid data, timeouts, and connection failures use the deterministic
-fallback. A model can never directly mutate simulator state. See
+accepts desired next-frame positions for live teammates and opponents other
+than the controlled unit, and records accepted suggestions with that identity
+in server-side session memory. Missing teammate targets leave those teammates
+stationary; missing opponent targets use built-in behavior. Missing identity
+fails closed at startup, while invalid data, timeouts, and connection failures
+leave teammates stationary and use the deterministic opponent fallback. A
+model can never directly mutate simulator state. See
 [`contracts/openapi.yaml`](contracts/openapi.yaml) for the exact webhook shapes.
 
 ## API

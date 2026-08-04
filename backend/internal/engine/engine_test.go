@@ -164,9 +164,60 @@ func TestOpponentModelTargetIsClampedByClassMovement(t *testing.T) {
 	}
 }
 
+func TestPositionModelMovesTeammateAndOpponentWithinClassLimits(t *testing.T) {
+	moment := testMoment()
+	moment.Units[0].Position = model.Point{X: 10, Y: 50}
+	moment.Units = append(moment.Units, model.Unit{
+		ID: "blue-support", Team: "blue", Role: "support", Class: model.ClassSupport,
+		Position: model.Point{X: 20, Y: 20}, HP: 90, MaxHP: 110, Alive: true,
+	})
+	stub := &stubOpponentModel{suggestions: []PositionSuggestion{
+		{UnitID: "blue-support", Position: model.Point{X: 100, Y: 20}},
+		{UnitID: "red-one", Position: model.Point{X: 100, Y: 50}},
+	}}
+	engine := NewWithOpponentModel(moment, "a", stub)
+	state, err := engine.Apply(model.Action{Type: "hold"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sessionUnit(t, state, "blue-support").Position; got != (model.Point{X: 28, Y: 20}) {
+		t.Fatalf("support target was not clamped to 8 units: %+v", got)
+	}
+	if got := sessionUnit(t, state, "red-one").Position; got != (model.Point{X: 58, Y: 50}) {
+		t.Fatalf("fighter target was not clamped to 10 units: %+v", got)
+	}
+	if len(stub.snapshot.Units) != 3 || stub.snapshot.Units[2].ID != "blue-support" {
+		t.Fatalf("teammate state was not supplied to the model: %+v", stub.snapshot.Units)
+	}
+	records := engine.RolloutRecords()
+	if len(records) != 1 || len(records[0].AcceptedPositions) != 2 ||
+		records[0].AcceptedPositions[0].UnitID != "blue-support" {
+		t.Fatalf("teammate target was not retained in the rollout: %+v", records)
+	}
+}
+
+func TestPositionModelOmittedTeammateHoldsPosition(t *testing.T) {
+	moment := testMoment()
+	moment.Units = append(moment.Units, model.Unit{
+		ID: "blue-support", Team: "blue", Role: "support", Class: model.ClassSupport,
+		Position: model.Point{X: 20, Y: 20}, HP: 90, MaxHP: 110, Alive: true,
+	})
+	stub := &stubOpponentModel{suggestions: []PositionSuggestion{{
+		UnitID: "red-one", Position: model.Point{X: 60, Y: 50},
+	}}}
+	state, err := NewWithOpponentModel(moment, "a", stub).Apply(model.Action{Type: "hold"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sessionUnit(t, state, "blue-support").Position; got != (model.Point{X: 20, Y: 20}) {
+		t.Fatalf("omitted teammate should hold position, got %+v", got)
+	}
+}
+
 func TestInvalidOrFailedModelUsesDeterministicFallback(t *testing.T) {
 	tests := map[string]*stubOpponentModel{
-		"unknown unit":    {suggestions: []PositionSuggestion{{UnitID: "blue-carry", Position: model.Point{X: 31, Y: 50}}}},
+		"controlled unit": {suggestions: []PositionSuggestion{{UnitID: "blue-carry", Position: model.Point{X: 31, Y: 50}}}},
+		"unknown unit":    {suggestions: []PositionSuggestion{{UnitID: "missing", Position: model.Point{X: 31, Y: 50}}}},
 		"connector error": {err: errors.New("model unavailable")},
 	}
 	for name, stub := range tests {
@@ -187,6 +238,25 @@ func TestInvalidOrFailedModelUsesDeterministicFallback(t *testing.T) {
 				t.Fatal("rejected model response was recorded as accepted")
 			}
 		})
+	}
+}
+
+func TestDeadTeammateSuggestionUsesDeterministicFallback(t *testing.T) {
+	moment := testMoment()
+	moment.Units = append(moment.Units, model.Unit{
+		ID: "blue-support", Team: "blue", Role: "support", Class: model.ClassSupport,
+		Position: model.Point{X: 20, Y: 20}, MaxHP: 110, Alive: false,
+	})
+	baseline, baselineErr := New(moment, "a").Apply(model.Action{Type: "hold"})
+	engine := NewWithOpponentModel(moment, "a", &stubOpponentModel{suggestions: []PositionSuggestion{{
+		UnitID: "blue-support", Position: model.Point{X: 28, Y: 20},
+	}}})
+	modeled, modeledErr := engine.Apply(model.Action{Type: "hold"})
+	if baselineErr != nil || modeledErr != nil {
+		t.Fatalf("unexpected turn errors: %v, %v", baselineErr, modeledErr)
+	}
+	if !reflect.DeepEqual(baseline.Units, modeled.Units) || len(engine.RolloutRecords()) != 0 {
+		t.Fatal("dead teammate suggestion did not fail closed")
 	}
 }
 

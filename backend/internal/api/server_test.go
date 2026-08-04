@@ -24,7 +24,10 @@ func (stub *apiOpponentModel) NextPositions(_ context.Context, _ engine.Opponent
 	stub.called = true
 	return engine.OpponentModelResult{
 		ModelName: "api-test", ModelVersion: "1",
-		Positions: []engine.PositionSuggestion{{UnitID: "red", Position: model.Point{X: 100, Y: 50}}},
+		Positions: []engine.PositionSuggestion{
+			{UnitID: "red", Position: model.Point{X: 100, Y: 50}},
+			{UnitID: "blue-support", Position: model.Point{X: 100, Y: 70}},
+		},
 	}, nil
 }
 
@@ -51,6 +54,7 @@ func testServer() *Server {
 		Units: []model.Unit{
 			{ID: "blue", Team: "blue", Role: "carry", Class: model.ClassMarksman, Position: model.Point{X: 30, Y: 50}, HP: 80, MaxHP: 90, Alive: true},
 			{ID: "red", Team: "red", Role: "tank", Class: model.ClassTank, Position: model.Point{X: 45, Y: 50}, HP: 120, MaxHP: 160, Alive: true},
+			{ID: "blue-support", Team: "blue", Role: "support", Class: model.ClassSupport, Position: model.Point{X: 20, Y: 70}, HP: 90, MaxHP: 110, Alive: true},
 		},
 	}
 	return New([]model.Moment{moment}, slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -124,7 +128,7 @@ func TestRejectsOverRangeMovementWithoutAdvancingTurn(t *testing.T) {
 	}
 }
 
-func TestServerUsesOpponentPositionModel(t *testing.T) {
+func TestServerUsesPositionModelForTeammatesAndOpponents(t *testing.T) {
 	stub := &apiOpponentModel{}
 	base := testServer()
 	server := NewWithOpponentModel(base.ordered, slog.New(slog.NewTextHandler(io.Discard, nil)), stub)
@@ -141,8 +145,9 @@ func TestServerUsesOpponentPositionModel(t *testing.T) {
 	if err := json.Unmarshal(turn.Body.Bytes(), &session); err != nil {
 		t.Fatal(err)
 	}
-	if !stub.called || session.Units[1].Position != (model.Point{X: 52, Y: 50}) {
-		t.Fatalf("opponent connector was not applied with tank limit: %+v", session)
+	if !stub.called || session.Units[1].Position != (model.Point{X: 52, Y: 50}) ||
+		session.Units[2].Position != (model.Point{X: 28, Y: 70}) {
+		t.Fatalf("position connector was not applied with class limits: %+v", session)
 	}
 }
 

@@ -201,14 +201,17 @@ func (e *Engine) resolvePolicy(ctx context.Context, controlled *model.Unit, effe
 	suggestions, modelUsed, fallback := e.modelSuggestions(ctx, *controlled)
 	for i := range e.session.Units {
 		unit := &e.session.Units[i]
-		if !unit.Alive || unit.Team == controlled.Team {
+		if !unit.Alive || unit.ID == controlled.ID {
 			continue
 		}
 
 		if desired, ok := suggestions[unit.ID]; ok {
 			unit.Position = moveToward(unit.Position, desired, unit.MoveRange)
-		} else if distance(unit.Position, controlled.Position) > unit.AttackRange {
+		} else if unit.Team != controlled.Team && distance(unit.Position, controlled.Position) > unit.AttackRange {
 			unit.Position = moveToward(unit.Position, controlled.Position, unit.MoveRange)
+		}
+		if unit.Team == controlled.Team {
+			continue
 		}
 
 		if distance(unit.Position, controlled.Position) <= unit.AttackRange && unit.Cooldown == 0 {
@@ -238,10 +241,10 @@ func (e *Engine) resolvePolicy(ctx context.Context, controlled *model.Unit, effe
 	action := "respond"
 	if fallback {
 		action = "fallback"
-		message = "The opponent model response was unusable; the deterministic opponent policy responded."
+		message = "The position model response was unusable; teammates held position and the deterministic opponent policy responded."
 	} else if modelUsed {
 		action = "model-respond"
-		message = "The opponent position model responded; authoritative class movement limits were applied."
+		message = "The position model responded for non-player units; authoritative class movement limits were applied."
 	}
 	e.session.Log = append(e.session.Log, model.LogEntry{
 		Turn: e.session.Turn, Actor: "policy", Action: action, Message: message,
@@ -262,7 +265,7 @@ func (e *Engine) modelSuggestions(ctx context.Context, controlled model.Unit) (m
 	}
 	eligible := make(map[string]struct{})
 	for _, unit := range e.session.Units {
-		if unit.Alive && unit.Team != controlled.Team {
+		if unit.Alive && unit.ID != controlled.ID {
 			eligible[unit.ID] = struct{}{}
 		}
 	}

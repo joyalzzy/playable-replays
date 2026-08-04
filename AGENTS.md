@@ -12,8 +12,9 @@ Playable Replays is a shareable MOBA tactical-board prototype. It turns
 authorized or synthetic telemetry into short, replayable decision scenarios.
 
 - The Go simulator is authoritative. Browsers submit high-level actions; an
-  optional opponent model submits advisory position targets. Only the simulator
-  resolves movement, damage, cooldowns, visibility, scoring, and terminal state.
+  optional position model submits advisory targets for live non-player units.
+  Only the simulator resolves movement, damage, cooldowns, visibility, scoring,
+  and terminal state.
 - In the required no-model mode, the same fixture seed and legal action sequence
   must produce the same trajectory and outcome, apart from the generated session
   ID. Do not introduce wall-clock time, global randomness, or unordered-map
@@ -36,7 +37,7 @@ authorized or synthetic telemetry into short, replayable decision scenarios.
 | --- | --- | --- |
 | `backend/cmd/server/` | Implemented | Process startup, environment configuration, structured logging, graceful shutdown. |
 | `backend/internal/api/` | Implemented | HTTP routing, JSON transport, status codes, CORS/security headers, and in-memory session coordination. |
-| `backend/internal/engine/` | Implemented | Deterministic authoritative simulator and opponent policy. Keep game rules here, not in handlers or React. |
+| `backend/internal/engine/` | Implemented | Deterministic authoritative simulator, non-player position integration, and opponent fallback policy. Keep game rules here, not in handlers or React. |
 | `backend/internal/model/` | Implemented | Shared Go domain and wire structs with JSON tags. |
 | `backend/internal/fixtures/` | Implemented | Versioned synthetic fixture loading and runtime validation. |
 | `frontend/src/api.ts` | Implemented | The browser's only HTTP client boundary. |
@@ -82,8 +83,9 @@ ingestion and automatic fixture generation are future work.
 4. React sends one legal high-level action per turn.
 5. The Go engine validates and resolves the turn and returns a full session
    snapshot for this synthetic prototype.
-6. A future model daemon may suggest opponent targets, but the engine validates
-   and clamps them before applying normal simulation rules.
+6. A future model daemon may suggest teammate and opponent targets, but the
+   engine rejects control of the user's unit and validates and clamps every
+   accepted target before applying normal simulation rules.
 
 The browser must never call the model daemon directly. The model endpoint is an
 operator-configured server-to-server dependency, and its failure must activate
@@ -216,8 +218,9 @@ should also use the structured error shape rather than Go's default text body.
 Simulator constants live in `backend/internal/engine/engine.go`; do not duplicate
 or override them in React or the model daemon. Cooldowns are turns/frames, never
 seconds. The resolution order is validation, turn increment, user action,
-opponent response, cooldown tick, fog update, outcome update, then reference
-action selection. Reordering it is a behavior change and needs focused tests.
+non-player position/opponent response, cooldown tick, fog update, outcome
+update, then reference action selection. Reordering it is a behavior change and
+needs focused tests.
 
 ## Model daemon contract
 
@@ -229,14 +232,14 @@ Keep the four model-related roles separate:
 
 - `ml/highlight.py` is the current offline heuristic highlight scorer.
 - A future trajectory/action policy is trained and evaluated offline in `ml/`.
-- `model-daemon/` serves optional next-frame opponent-position inference.
+- `model-daemon/` serves optional next-frame non-player position inference.
 - A future language layer may parse commands or explain simulator output, but it
   may only emit validated action JSON and is never part of game resolution.
 
 | Method and path | Contract |
 | --- | --- |
 | `GET /healthz` | Return `200 {"status":"ok"}` without loading user/session data. |
-| `POST /v1/positions` | Accept one authoritative next-frame snapshot and return advisory opponent position targets. |
+| `POST /v1/positions` | Accept one authoritative next-frame snapshot and return advisory targets for live non-player teammates and opponents. |
 
 The backend is configured with the complete `OPPONENT_MODEL_URL` plus required
 `OPPONENT_MODEL_NAME` and `OPPONENT_MODEL_VERSION` identity values, so
@@ -278,6 +281,7 @@ Response shape:
 ```json
 {
   "positions": [
+    {"unitId": "blue-support", "position": {"x": 26, "y": 63}},
     {"unitId": "red-jungle", "position": {"x": 55, "y": 51}}
   ]
 }
@@ -287,9 +291,13 @@ Model integration rules:
 
 - Treat the request as privileged server state; never forward it to the browser
   or an untrusted/user-selected endpoint.
-- Suggestions may target opponents only. Reject duplicate/unknown units,
-  allied or controlled units, missing fields, unknown fields, non-finite
-  coordinates, and coordinates outside map bounds.
+- Suggestions may target any live unit except `controlledUnitId`, including
+  teammates and opponents. Reject duplicate, unknown, dead, or controlled units,
+  missing fields, unknown fields, non-finite coordinates, and coordinates
+  outside map bounds.
+- Omitted teammates hold position. Omitted opponents use the seeded built-in
+  policy. An invalid response applies no model targets, leaves teammates
+  stationary, and activates that deterministic opponent fallback.
 - Cap request/response bodies at 64 KiB and snapshots/suggestions at 64 units.
 - Use a short bounded timeout (the connector target is 1.5 seconds), HTTP(S)
   only, and deterministic fallback for timeouts, non-2xx responses, malformed
@@ -300,9 +308,10 @@ Model integration rules:
 - Version request/response schema changes. Update the connector, daemon,
   OpenAPI webhook/component schemas, tests, Compose configuration, `.env.example`,
   README, and this file together.
-- Store the accepted response plus model name/version in server-side rollout
-  metadata; these fields do not belong in the strict position response. The
-  current engine keeps session-scoped in-memory records and clears them on
+- Store the accepted response, including teammate and opponent targets, plus
+  model name/version in server-side rollout metadata; these fields do not
+  belong in the strict position response. The current engine keeps
+  session-scoped in-memory records and clears them on
   reset. Never claim durable action-sequence reproducibility until records are
   exported with the fixture and user actions.
 

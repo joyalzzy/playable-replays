@@ -31,10 +31,10 @@ func main() {
 		modelVersion := os.Getenv("OPPONENT_MODEL_VERSION")
 		opponentModel, err = opponent.NewHTTPModel(endpoint, modelName, modelVersion, nil)
 		if err != nil {
-			logger.Error("configure opponent model", "error", err)
+			logger.Error("configure position model", "error", err)
 			os.Exit(1)
 		}
-		logger.Info("opponent position model enabled", "model", modelName, "version", modelVersion)
+		logger.Info("non-player position model enabled", "model", modelName, "version", modelVersion)
 	}
 
 	server := &http.Server{
