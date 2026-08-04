@@ -22,7 +22,7 @@ estimates.
 
 ## Quick start
 
-Requirements: Go 1.23+, Node.js 22+, and Python 3.11+.
+Requirements: Go 1.26.5+, Node.js 22+, and Python 3.11+.
 
 ```bash
 make test
@@ -82,4 +82,3 @@ shapes.
 All included data is synthetic and contains no player identity or proprietary
 telemetry. Production ingestion must require authorization, data minimization,
 retention controls, and game-publisher review.
-
