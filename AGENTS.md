@@ -93,7 +93,7 @@ a deterministic built-in fallback rather than fail the user's turn.
 
 ### Go backend
 
-- Go `1.23`; module path:
+- Go `1.26.5`; module path:
   `github.com/joyalzzy/playable-replays/backend`.
 - The current module uses only the standard library. Prefer the standard
   library and add a module only when it materially reduces risk or complexity.
