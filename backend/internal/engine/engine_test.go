@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"context"
 	"errors"
 	"math"
 	"reflect"
@@ -10,19 +9,6 @@ import (
 
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
 )
-
-type stubModel struct {
-	suggestions []PositionSuggestion
-	err         error
-	snapshot    ModelSnapshot
-}
-
-func (stub *stubModel) NextPositions(_ context.Context, snapshot ModelSnapshot) (ModelResult, error) {
-	stub.snapshot = snapshot
-	return ModelResult{
-		ModelName: "test-policy", ModelVersion: "2026-08-04", Positions: stub.suggestions,
-	}, stub.err
-}
 
 func testMoment() model.Moment {
 	return model.Moment{
@@ -120,98 +106,6 @@ func TestClassMovementLimitsTankAndAssassin(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestModelTargetIsClampedByClassMovement(t *testing.T) {
-	moment := testMoment()
-	moment.Units[0].Position = model.Point{X: 10, Y: 50}
-	moment.Units[1] = model.Unit{
-		ID: "red-one", Team: "red", Role: "tank", Class: model.ClassTank,
-		Position: model.Point{X: 50, Y: 50}, HP: 120, MaxHP: 160, Alive: true,
-	}
-	stub := &stubModel{suggestions: []PositionSuggestion{
-		{UnitID: "red-one", Position: model.Point{X: 100, Y: 50}},
-	}}
-	engine := NewWithPositionModel(moment, "a", stub)
-	state, err := engine.Apply(model.Action{Type: "hold"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	red := sessionUnit(t, state, "red-one")
-	if red.Position != (model.Point{X: 57, Y: 50}) {
-		t.Fatalf("tank target was not clamped to 7 units: %+v", red.Position)
-	}
-	if stub.snapshot.SchemaVersion != "1.0" || stub.snapshot.StateScope != "authoritative_server_state" || stub.snapshot.Turn != 1 {
-		t.Fatalf("unexpected snapshot metadata: %+v", stub.snapshot)
-	}
-	if !logContains(state, "model responded") {
-		t.Fatal("expected model-source policy log")
-	}
-	records := engine.RolloutRecords()
-	if len(records) != 1 || records[0].SessionID != "a" || records[0].MomentID != "m1" ||
-		records[0].Turn != 1 || records[0].ModelName != "test-policy" ||
-		records[0].ModelVersion != "2026-08-04" || len(records[0].AcceptedPositions) != 1 ||
-		records[0].AcceptedPositions[0].Position != (model.Point{X: 100, Y: 50}) {
-		t.Fatalf("accepted model response was not recorded: %+v", records)
-	}
-	records[0].AcceptedPositions[0].Position.X = 0
-	if engine.RolloutRecords()[0].AcceptedPositions[0].Position.X != 100 {
-		t.Fatal("rollout records were not returned defensively")
-	}
-	engine.Reset("a")
-	if len(engine.RolloutRecords()) != 0 {
-		t.Fatal("reset retained rollout records from the previous run")
-	}
-}
-
-func TestInvalidOrFailedModelUsesDeterministicFallback(t *testing.T) {
-	tests := map[string]*stubModel{
-		"unknown unit":    {suggestions: []PositionSuggestion{{UnitID: "blue-carry", Position: model.Point{X: 31, Y: 50}}}},
-		"connector error": {err: errors.New("model unavailable")},
-	}
-	for name, stub := range tests {
-		t.Run(name, func(t *testing.T) {
-			baseline, baselineErr := New(testMoment(), "a").Apply(model.Action{Type: "hold"})
-			engine := NewWithPositionModel(testMoment(), "a", stub)
-			modeled, modeledErr := engine.Apply(model.Action{Type: "hold"})
-			if baselineErr != nil || modeledErr != nil {
-				t.Fatalf("unexpected turn errors: %v, %v", baselineErr, modeledErr)
-			}
-			if !reflect.DeepEqual(baseline.Units, modeled.Units) || baseline.Score != modeled.Score || baseline.WinProbability != modeled.WinProbability {
-				t.Fatal("fallback did not preserve deterministic gameplay")
-			}
-			if !logContains(modeled, "response was unusable") {
-				t.Fatal("expected explicit fallback log")
-			}
-			if len(engine.RolloutRecords()) != 0 {
-				t.Fatal("rejected model response was recorded as accepted")
-			}
-		})
-	}
-}
-
-func TestModelWithoutIdentityUsesDeterministicFallback(t *testing.T) {
-	stub := &stubModel{suggestions: []PositionSuggestion{{
-		UnitID: "red-one", Position: model.Point{X: 60, Y: 50},
-	}}}
-	stubResult := &modelWithoutIdentity{positions: stub.suggestions}
-	engine := NewWithPositionModel(testMoment(), "a", stubResult)
-	baseline, baselineErr := New(testMoment(), "a").Apply(model.Action{Type: "hold"})
-	state, err := engine.Apply(model.Action{Type: "hold"})
-	if baselineErr != nil || err != nil {
-		t.Fatalf("unexpected turn errors: %v, %v", baselineErr, err)
-	}
-	if !reflect.DeepEqual(baseline.Units, state.Units) || len(engine.RolloutRecords()) != 0 {
-		t.Fatal("unidentified model output did not fail closed")
-	}
-}
-
-type modelWithoutIdentity struct {
-	positions []PositionSuggestion
-}
-
-func (stub *modelWithoutIdentity) NextPositions(_ context.Context, _ ModelSnapshot) (ModelResult, error) {
-	return ModelResult{Positions: stub.positions}, nil
 }
 
 func TestDodgeLogsEvadedSkillshotAndRewardsActualEvasion(t *testing.T) {

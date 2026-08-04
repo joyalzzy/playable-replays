@@ -1,11 +1,12 @@
 openapi: 3.1.0
 info:
   title: Playable Replays API
-  version: 0.2.0
+  version: 0.3.0
   description: |
-    Deterministic tactical replay prototype API. An optional opponent-model
-    connector may suggest next-frame positions, but the simulator remains
-    authoritative over movement limits, physics, damage, and outcomes.
+    Deterministic tactical replay prototype API. An optional position-model
+    connector may suggest next-frame positions for live non-player units, but
+    the simulator remains authoritative over movement limits, physics, damage,
+    and outcomes.
 servers:
   - url: http://127.0.0.1:8080
 security: []
@@ -123,29 +124,33 @@ paths:
               schema: {$ref: "#/components/schemas/Session"}
         "404": {$ref: "#/components/responses/Error"}
 webhooks:
-  opponentModelTurn:
+  positionModelTurn:
     post:
-      operationId: suggestOpponentPositions
-      summary: Suggest opponent positions for the next frame
+      operationId: suggestNonPlayerPositions
+      summary: Suggest teammate and opponent positions for the next frame
       description: |
-        When `OPPONENT_MODEL_URL` is configured, the API sends this request
-        once per resolved user turn. `turn` is the one-based index of the
-        next frame being resolved. The response is advisory: unknown units,
-        controlled or allied units, non-finite coordinates, and out-of-bounds
-        or over-range movement are rejected or clamped by the simulator. A
-        timeout, transport failure, malformed response, or invalid suggestion
-        activates the deterministic built-in opponent policy.
+        When `POSITION_MODEL_URL` (or its deprecated `OPPONENT_MODEL_URL`
+        alias) is configured, the API sends this request once per resolved
+        user turn. `turn` is the one-based index of the next frame being
+        resolved. The response is advisory and may target any live unit except
+        `controlledUnitId`, including the player's AI-controlled teammates.
+        Unknown, controlled, dead, duplicate, non-finite, or out-of-bounds
+        suggestions reject the complete response. Valid targets are clamped
+        to server-owned class movement limits. Omitted allies remain in place;
+        omitted opponents use deterministic chase behavior. A timeout,
+        transport failure, malformed response, or invalid suggestion activates
+        the same deterministic fallback without partially applying the response.
       requestBody:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/OpponentModelRequest"}
+            schema: {$ref: "#/components/schemas/PositionModelRequest"}
       responses:
         "200":
           description: Advisory positions returned; simulator validation still applies
           content:
             application/json:
-              schema: {$ref: "#/components/schemas/OpponentModelResponse"}
+              schema: {$ref: "#/components/schemas/PositionModelResponse"}
         default:
           description: Any non-200 response activates the deterministic fallback policy
 components:
@@ -232,7 +237,7 @@ components:
               actor: {type: string, enum: [user, policy]}
               action:
                 type: string
-                description: User entries use a legal action type; policy entries describe the opponent response.
+                description: User entries use a legal action type; policy entries describe non-player movement and opponent combat.
               message: {type: string}
             required: [turn, actor, action, message]
       required: [id, momentId, controlledUnitId, turn, maxTurns, status, score, winProbability, referenceAction, legalActions, units, log]
@@ -268,15 +273,15 @@ components:
         minY: {type: number}
         maxY: {type: number}
       required: [minX, maxX, minY, maxY]
-    OpponentModelRequest:
+    PositionModelRequest:
       type: object
       additionalProperties: false
-      description: Server-side snapshot sent to the optional opponent model.
+      description: Privileged server-side snapshot sent to the optional position model.
       properties:
         schemaVersion:
           type: string
-          const: "1.0"
-          description: Version of the opponent connector wire contract.
+          const: "1.1"
+          description: Version of the non-player position connector contract.
         stateScope:
           type: string
           const: authoritative_server_state
@@ -293,9 +298,9 @@ components:
           type: array
           minItems: 2
           maxItems: 64
-          items: {$ref: "#/components/schemas/OpponentSnapshotUnit"}
+          items: {$ref: "#/components/schemas/PositionModelSnapshotUnit"}
       required: [schemaVersion, stateScope, sessionId, momentId, turn, mapBounds, controlledUnitId, units]
-    OpponentSnapshotUnit:
+    PositionModelSnapshotUnit:
       type: object
       additionalProperties: false
       description: Bounded authoritative unit state sent to the trusted model connector.
@@ -315,22 +320,24 @@ components:
         visible: {type: boolean}
         alive: {type: boolean}
       required: [id, team, role, class, position, hp, maxHp, moveRange, attackRange, cooldownTurns, visible, alive]
-    OpponentPosition:
+    PositionSuggestion:
       type: object
       additionalProperties: false
       properties:
         unitId: {type: string, minLength: 1}
         position: {$ref: "#/components/schemas/Point"}
       required: [unitId, position]
-    OpponentModelResponse:
+    PositionModelResponse:
       type: object
       additionalProperties: false
-      description: Advisory next-frame targets; omitted opponents use the fallback policy.
+      description: |
+        Advisory next-frame targets for live non-controlled units. Omitted
+        teammates hold position and omitted opponents use deterministic chase.
       properties:
         positions:
           type: array
           maxItems: 64
-          items: {$ref: "#/components/schemas/OpponentPosition"}
+          items: {$ref: "#/components/schemas/PositionSuggestion"}
       required: [positions]
   responses:
     Error:

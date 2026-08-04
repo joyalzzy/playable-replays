@@ -2,9 +2,13 @@ package engine
 
 import (
 	"math"
-	"slices"
 
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
+)
+
+const (
+	MapMin = 0.0
+	MapMax = 100.0
 )
 
 func distance(a, b model.Point) float64 {
@@ -22,19 +26,13 @@ func moveToward(from, to model.Point, limit float64) model.Point {
 	}
 }
 
-func cloneMoment(moment model.Moment) model.Moment {
-	moment.Units = cloneUnits(moment.Units)
-	moment.ReasonTags = slices.Clone(moment.ReasonTags)
-	return moment
-}
-
-func cloneUnits(units []model.Unit) []model.Unit {
-	return slices.Clone(units)
-}
-
 func pointFinite(point model.Point) bool {
 	return !math.IsNaN(point.X) && !math.IsInf(point.X, 0) &&
 		!math.IsNaN(point.Y) && !math.IsInf(point.Y, 0)
+}
+
+func pointInBounds(point model.Point) bool {
+	return point.X >= MapMin && point.X <= MapMax && point.Y >= MapMin && point.Y <= MapMax
 }
 
 func clampPoint(point model.Point) model.Point {

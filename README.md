@@ -17,7 +17,7 @@ estimates.
 - Six unit classes with distinct health, movement, and attack profiles
 - Click-to-inspect unit details and movement/attack range indicators
 - `dodge` and `outplay` decisions alongside the original tactical actions
-- Optional HTTP connector for model-suggested opponent positions
+- Optional HTTP connector for model-suggested teammate and opponent positions
 - Synthetic, versioned telemetry fixtures
 - Offline Python highlight scorer using interpretable signals
 - OpenAPI contract and JSON schemas
@@ -65,10 +65,11 @@ The web app is then available at <http://localhost:5173>.
 
 The browser requests a legal high-level action. The Go simulator validates and
 resolves that action using a scenario seed. An optional model may suggest where
-opponents should try to move in the next frame, but its output is only a target:
-the simulator validates unit ownership and coordinates, applies class movement
-limits and map bounds, and remains solely responsible for physics, damage,
-cooldowns, hidden state, and victory conditions.
+live non-player units—including the player's teammates and opponents—should try
+to move in the next frame, but its output is only a target. The simulator keeps
+the user-controlled unit outside model control, validates every proposal
+atomically, applies class movement limits and map bounds, and remains solely
+responsible for physics, damage, cooldowns, hidden state, and victory conditions.
 
 ## Unit classes
 
@@ -88,28 +89,36 @@ Tanks are the toughest and slowest class, while marksmen trade health for range.
 
 Ranges are map units per frame.
 
-## Optional opponent-model connector
+## Optional position-model connector
 
 No model, API key, or network service is required by default. Without a
-connector, opponents use the seeded built-in policy.
+connector, opponents use the seeded built-in policy and teammates hold position.
 
 To test an HTTP position model, configure its endpoint and stable identity for
 the API process:
 
 ```bash
-OPPONENT_MODEL_URL=http://127.0.0.1:9000/v1/positions \
-OPPONENT_MODEL_NAME=trajectory-policy \
-OPPONENT_MODEL_VERSION=2026.08.04 \
+POSITION_MODEL_URL=http://127.0.0.1:9000/v1/positions \
+POSITION_MODEL_NAME=trajectory-policy \
+POSITION_MODEL_VERSION=2026.08.05 \
 make dev-api
 ```
 
 For Docker Compose, copy `.env.example` to `.env`, set the URL to an endpoint
 reachable from the `api` container, set both identity values, and run
-`docker compose up --build`. Once per turn the API posts the session snapshot,
-accepts desired next-frame opponent positions, and records accepted suggestions
-with that identity in server-side session memory. Missing identity fails closed
-at startup; invalid data, timeouts, and connection failures use the deterministic
-fallback. A model can never directly mutate simulator state. See
+`docker compose up --build`. Once per turn the API posts the version `1.1`
+session snapshot, accepts desired next-frame positions for live units other than
+the player-controlled unit, and records accepted suggestions with that identity
+in server-side session memory. Missing identity fails closed at startup; invalid
+data, timeouts, and connection failures reject the full response and use the
+deterministic fallback. Omitted teammates stay put, while omitted opponents use
+the seeded chase policy. A model can never directly mutate simulator state.
+
+Existing deployments may use the deprecated `OPPONENT_MODEL_URL`,
+`OPPONENT_MODEL_NAME`, and `OPPONENT_MODEL_VERSION` aliases as one complete
+group. These aliases preserve only the environment-variable names: the endpoint
+must implement the same version `1.1` position-model protocol. Do not mix the
+deprecated and preferred variable names. See
 [`contracts/openapi.yaml`](contracts/openapi.yaml) for the exact webhook shapes.
 
 ## API

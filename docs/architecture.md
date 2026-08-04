@@ -14,7 +14,7 @@ flowchart TD
     C --> D["Go authoritative simulator"]
     D --> E["TypeScript tactical board"]
     E -->|Legal action| D
-    D -.->|Optional snapshot| F["Opponent position model"]
+    D -.->|Optional snapshot| F["Non-player position model"]
     F -.->|Advisory targets| D
 ```
 
@@ -40,7 +40,7 @@ serialize a filtered view that omits hidden coordinates altogether. The
 prototype keeps coordinates in the synthetic response to make tests and
 debugging inspectable, so it must not be described as anti-cheat hardened.
 
-The optional connector is also server-side and receives the unit snapshot. Its
+The optional position connector is also server-side and receives the unit snapshot. Its
 URL is an operator configuration value, never a per-session user input. A
 production deployment should require HTTPS, restrict outbound destinations,
 authenticate the model service, minimize fields, and avoid sending hidden or
@@ -50,30 +50,37 @@ identity-bearing telemetry unless that use is explicitly authorized.
 
 The baseline highlight selector is an interpretable weighted score. A future
 trajectory model may choose among legal high-level actions. The optional
-opponent connector has an even narrower output: desired next-frame positions
-for opponent units. The Go simulator rejects unknown, allied, controlled, dead,
-duplicate, or malformed unit suggestions; constrains valid targets to map and
-class movement limits; and remains the only component allowed to resolve
-movement, attacks, damage, cooldowns, visibility, scoring, or victory state.
+position connector has an even narrower output: desired next-frame positions
+for live units other than the player-controlled unit. This includes allied
+teammates and opponents. The Go simulator rejects the complete response for an
+unknown, controlled, dead, duplicate, or malformed unit suggestion; constrains
+valid targets to map and class movement limits; and remains the only component
+allowed to resolve movement, attacks, damage, cooldowns, visibility, scoring,
+or victory state.
 Optional natural-language commands should be parsed into the same action schema
 and rejected unless valid.
 
-## Opponent connector protocol
+## Position-model connector protocol
 
-When `OPPONENT_MODEL_URL` is unset, no outbound request is made. When it is set,
-`OPPONENT_MODEL_NAME` and `OPPONENT_MODEL_VERSION` are also required so accepted
-results can be attributed; missing identity fails configuration at startup.
+When `POSITION_MODEL_URL` is unset, no outbound request is made. When it is set,
+`POSITION_MODEL_NAME` and `POSITION_MODEL_VERSION` are also required so accepted
+results can be attributed; missing identity fails configuration at startup. The
+deprecated `OPPONENT_MODEL_*` aliases are accepted only as one complete
+environment-name group and cannot be mixed with the preferred names. They do
+not select the retired opponent-only protocol; the endpoint must implement
+schema `1.1`.
 Each accepted user turn produces one HTTP `POST` containing `sessionId`,
 `momentId`, `turn`, the map bounds, `controlledUnitId`, and the current units.
-The request is versioned as `schemaVersion: "1.0"` and explicitly marked
+The request is versioned as `schemaVersion: "1.1"` and explicitly marked
 `stateScope: "authoritative_server_state"`. Here `turn` is the one-based index
 of the next frame being resolved. The model returns a required `positions`
 array of unit IDs and complete `x`/`y` points.
 
-The connector response is advisory. Missing opponent targets use built-in
-behavior. A timeout, transport or HTTP error, oversized/malformed JSON, or a
-response that cannot be safely applied activates the deterministic policy. The
-wire contract is documented as the `opponentModelTurn` webhook in
+The connector response is advisory. Missing teammate targets hold position;
+missing opponent targets use built-in chase behavior. A timeout, transport
+error, non-200 status, oversized/malformed JSON, or any response that cannot be
+safely applied rejects the full response and activates the deterministic policy. The
+wire contract is documented as the `positionModelTurn` webhook in
 [`../contracts/openapi.yaml`](../contracts/openapi.yaml).
 
 After all eligibility and coordinate checks pass, the engine records the exact
@@ -86,8 +93,9 @@ Frame resolution remains server-owned:
 
 1. Validate the user's action and any target.
 2. Apply the controlled unit's class-specific movement/action rule.
-3. Request advisory opponent targets when the connector is enabled.
-4. Validate and clamp accepted targets, or run deterministic fallback behavior.
+3. Request advisory non-player targets when the connector is enabled.
+4. Validate the response atomically and clamp accepted targets, or run
+   deterministic fallback behavior.
 5. Resolve combat, cooldowns, visibility, scoring, and terminal state.
 
 ## Production components deferred

@@ -1,4 +1,4 @@
-package opponent
+package positionmodel
 
 import (
 	"context"
@@ -15,12 +15,13 @@ import (
 
 func testSnapshot() engine.ModelSnapshot {
 	return engine.ModelSnapshot{
-		SchemaVersion: "1.0", StateScope: "authoritative_server_state",
+		SchemaVersion: engine.PositionModelSchemaVersion, StateScope: "authoritative_server_state",
 		SessionID: "session-1", MomentID: "moment-1", Turn: 1,
 		MapBounds:        engine.MapBounds{MinX: 0, MaxX: 100, MinY: 0, MaxY: 100},
 		ControlledUnitID: "blue",
 		Units: []engine.ModelSnapshotUnit{
 			{ID: "blue", Team: "blue", Role: "carry", Class: model.ClassMarksman, Position: model.Point{X: 30, Y: 50}, HP: 70, MaxHP: 90, MoveRange: 11, AttackRange: 28, Alive: true, Visible: true},
+			{ID: "blue-support", Team: "blue", Role: "support", Class: model.ClassSupport, Position: model.Point{X: 35, Y: 50}, HP: 100, MaxHP: 110, MoveRange: 8, AttackRange: 20, Alive: true, Visible: true},
 			{ID: "red", Team: "red", Role: "frontline", Class: model.ClassTank, Position: model.Point{X: 50, Y: 50}, HP: 120, MaxHP: 160, MoveRange: 7, AttackRange: 10, Alive: true, Visible: true},
 		},
 	}
@@ -40,7 +41,7 @@ func TestHTTPModelSendsSnapshotAndDecodesPositions(t *testing.T) {
 		}
 		received <- snapshot
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"positions":[{"unitId":"red","position":{"x":75,"y":40}}]}`))
+		_, _ = w.Write([]byte(`{"positions":[{"unitId":"blue-support","position":{"x":42,"y":51}},{"unitId":"red","position":{"x":75,"y":40}}]}`))
 	}))
 	defer server.Close()
 
@@ -53,14 +54,37 @@ func TestHTTPModelSendsSnapshotAndDecodesPositions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.ModelName != "trajectory-policy" || result.ModelVersion != "2026.08.04" ||
-		len(result.Positions) != 1 || result.Positions[0].UnitID != "red" ||
-		result.Positions[0].Position != (model.Point{X: 75, Y: 40}) {
+		len(result.Positions) != 2 || result.Positions[0].UnitID != "blue-support" ||
+		result.Positions[0].Position != (model.Point{X: 42, Y: 51}) ||
+		result.Positions[1].UnitID != "red" || result.Positions[1].Position != (model.Point{X: 75, Y: 40}) {
 		t.Fatalf("unexpected model result: %+v", result)
 	}
 	snapshot := <-received
-	if snapshot.SchemaVersion != "1.0" || snapshot.StateScope != "authoritative_server_state" ||
-		snapshot.Turn != 1 || len(snapshot.Units) != 2 || snapshot.Units[1].Role != "frontline" {
+	if snapshot.SchemaVersion != "1.1" || snapshot.StateScope != "authoritative_server_state" ||
+		snapshot.Turn != 1 || len(snapshot.Units) != 3 || snapshot.Units[1].Role != "support" {
 		t.Fatalf("unexpected snapshot: %+v", snapshot)
+	}
+}
+
+func TestHTTPModelRejectsOversizedRequestBeforeSending(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		_, _ = w.Write([]byte(`{"positions":[]}`))
+	}))
+	defer server.Close()
+
+	connector, err := NewHTTPModel(server.URL, "test-policy", "1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot := testSnapshot()
+	snapshot.SessionID = strings.Repeat("x", maxRequestBytes)
+	if _, err := connector.NextPositions(context.Background(), snapshot); err == nil {
+		t.Fatal("expected oversized privileged snapshot to be rejected")
+	}
+	if requests != 0 {
+		t.Fatalf("oversized request reached the model endpoint %d times", requests)
 	}
 }
 
@@ -77,6 +101,7 @@ func TestHTTPModelRejectsInvalidResponses(t *testing.T) {
 		status int
 		body   string
 	}{
+		"created":            {status: http.StatusCreated, body: `{"positions":[]}`},
 		"non success":        {status: http.StatusBadGateway, body: `{"error":"down"}`},
 		"malformed":          {status: http.StatusOK, body: `{"positions":[`},
 		"top level null":     {status: http.StatusOK, body: `null`},

@@ -14,7 +14,7 @@ import (
 	"github.com/joyalzzy/playable-replays/backend/internal/api"
 	"github.com/joyalzzy/playable-replays/backend/internal/engine"
 	"github.com/joyalzzy/playable-replays/backend/internal/fixtures"
-	"github.com/joyalzzy/playable-replays/backend/internal/opponent"
+	"github.com/joyalzzy/playable-replays/backend/internal/positionmodel"
 )
 
 func main() {
@@ -26,15 +26,25 @@ func main() {
 		os.Exit(1)
 	}
 	var positionModel engine.PositionModel
-	if endpoint := os.Getenv("OPPONENT_MODEL_URL"); endpoint != "" {
-		modelName := os.Getenv("OPPONENT_MODEL_NAME")
-		modelVersion := os.Getenv("OPPONENT_MODEL_VERSION")
-		positionModel, err = opponent.NewHTTPModel(endpoint, modelName, modelVersion, nil)
+	modelConfig, err := loadPositionModelConfig()
+	if err != nil {
+		logger.Error("configure position model", "error", err)
+		os.Exit(1)
+	}
+	if modelConfig != nil {
+		positionModel, err = positionmodel.NewHTTPModel(
+			modelConfig.endpoint, modelConfig.name, modelConfig.version, nil,
+		)
 		if err != nil {
 			logger.Error("configure position model", "error", err)
 			os.Exit(1)
 		}
-		logger.Info("position model enabled", "model", modelName, "version", modelVersion)
+		logger.Info(
+			"position model enabled",
+			"model", modelConfig.name,
+			"version", modelConfig.version,
+			"deprecated_env_alias", modelConfig.deprecatedAlias,
+		)
 	}
 
 	server := &http.Server{

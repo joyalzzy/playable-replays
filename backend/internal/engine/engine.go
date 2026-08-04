@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"math/rand"
 	"slices"
-	"strings"
 
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
 )
@@ -61,17 +59,6 @@ func (e *Engine) Reset(sessionID string) model.Session {
 	return e.State()
 }
 
-// RolloutRecords returns a defensive copy of accepted external-model outputs.
-// Records remain server-side and live only as long as this in-memory engine.
-func (e *Engine) RolloutRecords() []ModelRolloutRecord {
-	records := make([]ModelRolloutRecord, len(e.rollouts))
-	for index, record := range e.rollouts {
-		records[index] = record
-		records[index].AcceptedPositions = slices.Clone(record.AcceptedPositions)
-	}
-	return records
-}
-
 func (e *Engine) State() model.Session {
 	state := e.session
 	state.Units = cloneUnits(e.session.Units)
@@ -111,201 +98,6 @@ func (e *Engine) ApplyContext(ctx context.Context, action model.Action) (model.S
 	e.updateOutcome(action, effects)
 	e.session.ReferenceAction = e.referenceAction(e.session.Turn)
 	return e.State(), nil
-}
-
-func (e *Engine) validateAction(action model.Action, controlled model.Unit) error {
-	if !slices.Contains(e.session.LegalActions, action.Type) {
-		return fmt.Errorf("%w: unknown action %q", ErrIllegalAction, action.Type)
-	}
-	if action.Type == "move" && action.Target == nil {
-		return fmt.Errorf("%w: move requires a target", ErrIllegalAction)
-	}
-	if action.Target != nil {
-		if action.Type != "move" && action.Type != "dodge" {
-			return fmt.Errorf("%w: %s does not accept a target", ErrIllegalAction, action.Type)
-		}
-		if !pointFinite(*action.Target) {
-			return fmt.Errorf("%w: target must contain finite coordinates", ErrIllegalAction)
-		}
-		if !pointInBounds(*action.Target) {
-			return fmt.Errorf("%w: target is outside the map", ErrIllegalAction)
-		}
-		if distance(controlled.Position, *action.Target) > controlled.MoveRange+1e-9 {
-			return fmt.Errorf(
-				"%w: target exceeds %s movement limit of %.1f units per frame",
-				ErrIllegalAction, controlled.Class, controlled.MoveRange,
-			)
-		}
-	}
-	return nil
-}
-
-func (e *Engine) resolveUser(unit *model.Unit, action model.Action) turnEffects {
-	effects := turnEffects{}
-	message := fmt.Sprintf("You committed to %s.", action.Type)
-	switch action.Type {
-	case "move":
-		d := distance(unit.Position, *action.Target)
-		unit.Position = *action.Target
-		message = fmt.Sprintf("You moved %.1f units within the %s limit of %.1f.", d, unit.Class, unit.MoveRange)
-	case "hold":
-		unit.HP = min(unit.MaxHP, unit.HP+5)
-		message = "You held position and recovered 5 health."
-	case "contest":
-		target := e.nearestEnemy(*unit)
-		if target != nil && distance(unit.Position, target.Position) <= unit.AttackRange && unit.Cooldown == 0 {
-			damage := 16 + e.rng.Intn(9)
-			target.HP = max(0, target.HP-damage)
-			target.Alive = target.HP > 0
-			unit.Cooldown = 2
-			message = fmt.Sprintf("You contested and dealt %d damage to %s.", damage, target.ID)
-		} else {
-			message = "You contested, but no enemy was available in attack range."
-		}
-	case "retreat":
-		before := unit.Position
-		unit.Position = moveToward(unit.Position, model.Point{X: 8, Y: 50}, unit.MoveRange)
-		unit.HP = min(unit.MaxHP, unit.HP+3)
-		message = fmt.Sprintf("You retreated %.1f units and recovered 3 health.", distance(before, unit.Position))
-	case "dodge":
-		before := unit.Position
-		if action.Target != nil {
-			unit.Position = *action.Target
-		} else {
-			unit.Position = e.automaticDodgeTarget(*unit)
-		}
-		effects.dodgeActive = true
-		message = fmt.Sprintf("You repositioned %.1f units to dodge incoming skillshots.", distance(before, unit.Position))
-	case "outplay":
-		target := e.nearestEnemy(*unit)
-		if target != nil && distance(unit.Position, target.Position) <= unit.AttackRange && unit.Cooldown == 0 {
-			damage := 16 + int(math.Round(unit.MoveRange))
-			target.HP = max(0, target.HP-damage)
-			target.Alive = target.HP > 0
-			unit.Cooldown = 2
-			effects.outplaySucceeded = true
-			message = fmt.Sprintf("You outplayed %s and dealt %d damage.", target.ID, damage)
-		} else if unit.Cooldown > 0 {
-			message = "The outplay was unavailable because your ability was on cooldown."
-		} else {
-			message = "The outplay was unavailable because no enemy was in attack range."
-		}
-	}
-	e.session.Log = append(e.session.Log, model.LogEntry{
-		Turn: e.session.Turn, Actor: "user", Action: action.Type, Message: message,
-	})
-	return effects
-}
-
-func (e *Engine) resolvePolicy(ctx context.Context, controlled *model.Unit, effects *turnEffects) {
-	suggestions, modelUsed, fallback := e.modelSuggestions(ctx, *controlled)
-	for i := range e.session.Units {
-		unit := &e.session.Units[i]
-		if !unit.Alive || unit.Team == controlled.Team {
-			continue
-		}
-
-		if desired, ok := suggestions[unit.ID]; ok {
-			unit.Position = moveToward(unit.Position, desired, unit.MoveRange)
-		} else if distance(unit.Position, controlled.Position) > unit.AttackRange {
-			unit.Position = moveToward(unit.Position, controlled.Position, unit.MoveRange)
-		}
-
-		if distance(unit.Position, controlled.Position) <= unit.AttackRange && unit.Cooldown == 0 {
-			unit.Cooldown = 2
-			if effects.dodgeActive {
-				effects.dodgeEvaded = true
-				e.session.Log = append(e.session.Log, model.LogEntry{
-					Turn: e.session.Turn, Actor: "policy", Action: "skillshot-dodged",
-					Message: fmt.Sprintf("You dodged %s's skillshot.", unit.ID),
-				})
-				continue
-			}
-			damage := 8 + e.rng.Intn(8)
-			if effects.outplaySucceeded {
-				damage = (damage + 1) / 2
-			}
-			controlled.HP = max(0, controlled.HP-damage)
-			controlled.Alive = controlled.HP > 0
-			e.session.Log = append(e.session.Log, model.LogEntry{
-				Turn: e.session.Turn, Actor: "policy", Action: "skillshot",
-				Message: fmt.Sprintf("%s hit you with a skillshot for %d damage.", unit.ID, damage),
-			})
-		}
-	}
-
-	message := "The deterministic opponent policy responded."
-	action := "respond"
-	if fallback {
-		action = "fallback"
-		message = "The opponent opponent model response was unusable; the deterministic opponent policy responded."
-	} else if modelUsed {
-		action = "model-respond"
-		message = "The opponent position model responded; authoritative class movement limits were applied."
-	}
-	e.session.Log = append(e.session.Log, model.LogEntry{
-		Turn: e.session.Turn, Actor: "policy", Action: action, Message: message,
-	})
-}
-
-func (e *Engine) modelSuggestions(ctx context.Context, controlled model.Unit) (map[string]model.Point, bool, bool) {
-	if e.positionModel == nil {
-		return nil, false, false
-	}
-	snapshot := e.modelSnapshot()
-	result, err := e.positionModel.NextPositions(ctx, snapshot)
-	if err != nil {
-		return nil, false, true
-	}
-	if strings.TrimSpace(result.ModelName) == "" || strings.TrimSpace(result.ModelVersion) == "" {
-		return nil, false, true
-	}
-	eligible := make(map[string]struct{})
-	for _, unit := range e.session.Units {
-		if unit.Alive && unit.Team != controlled.Team {
-			eligible[unit.ID] = struct{}{}
-		}
-	}
-	validated := make(map[string]model.Point, len(result.Positions))
-	accepted := make([]PositionSuggestion, 0, len(result.Positions))
-	for _, proposal := range result.Positions {
-		if _, ok := eligible[proposal.UnitID]; !ok {
-			return nil, false, true
-		}
-		if _, duplicate := validated[proposal.UnitID]; duplicate {
-			return nil, false, true
-		}
-		if !pointFinite(proposal.Position) || !pointInBounds(proposal.Position) {
-			return nil, false, true
-		}
-		validated[proposal.UnitID] = proposal.Position
-		accepted = append(accepted, proposal)
-	}
-	e.rollouts = append(e.rollouts, ModelRolloutRecord{
-		SessionID: snapshot.SessionID, MomentID: snapshot.MomentID, Turn: snapshot.Turn,
-		ModelName: result.ModelName, ModelVersion: result.ModelVersion,
-		AcceptedPositions: accepted,
-	})
-	return validated, true, false
-}
-
-func (e *Engine) modelSnapshot() ModelSnapshot {
-	count := min(len(e.session.Units), MaxSnapshotUnits)
-	units := make([]ModelSnapshotUnit, 0, count)
-	for _, unit := range e.session.Units[:count] {
-		units = append(units, ModelSnapshotUnit{
-			ID: unit.ID, Team: unit.Team, Role: unit.Role, Class: unit.Class, Position: unit.Position,
-			HP: unit.HP, MaxHP: unit.MaxHP, MoveRange: unit.MoveRange,
-			AttackRange: unit.AttackRange, Cooldown: unit.Cooldown,
-			Visible: unit.Visible, Alive: unit.Alive,
-		})
-	}
-	return ModelSnapshot{
-		SchemaVersion: "1.0", StateScope: "authoritative_server_state",
-		SessionID: e.session.ID, MomentID: e.session.MomentID, Turn: e.session.Turn,
-		MapBounds:        MapBounds{MinX: MapMin, MaxX: MapMax, MinY: MapMin, MaxY: MapMax},
-		ControlledUnitID: e.session.ControlledUnitID, Units: units,
-	}
 }
 
 func (e *Engine) updateOutcome(action model.Action, effects turnEffects) {
@@ -370,15 +162,4 @@ func (e *Engine) unit(id string) *model.Unit {
 		}
 	}
 	return nil
-}
-func (e *Engine) referenceAction(turn int) model.Action {
-	sequence := []string{"move", "outplay", "dodge", "contest", "retreat"}
-	action := model.Action{Type: sequence[turn%len(sequence)]}
-	if action.Type == "move" {
-		if controlled := e.unit(e.moment.ControlledUnitID); controlled != nil {
-			target := moveToward(controlled.Position, model.Point{X: 62, Y: 48}, controlled.MoveRange)
-			action.Target = &target
-		}
-	}
-	return action
 }
