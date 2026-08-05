@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "frames": [
+    {"second":0,"winProbability":0.1,"events":["damage","damage"],"units":[{"id":"blue-carry","team":"blue","position":{"x":10,"y":50},"hp":1,"maxHp":100,"gold":1,"alive":true},{"id":"red-carry","team":"red","position":{"x":90,"y":50},"hp":100,"maxHp":100,"gold":10000,"alive":true}]},
+    {"second":2,"winProbability":0.2,"events":["damage","damage"],"units":[{"id":"blue-carry","team":"blue","position":{"x":10,"y":50},"hp":1,"maxHp":100,"gold":1,"alive":true},{"id":"red-carry","team":"red","position":{"x":90,"y":50},"hp":100,"maxHp":100,"gold":10000,"alive":true}]},
+    {"second":4,"winProbability":0.3,"events":["damage","damage"],"units":[{"id":"blue-carry","team":"blue","position":{"x":10,"y":50},"hp":1,"maxHp":100,"gold":1,"alive":true},{"id":"red-carry","team":"red","position":{"x":90,"y":50},"hp":100,"maxHp":100,"gold":10000,"alive":true}]},
+    {"second":6,"winProbability":0.4,"events":["damage","damage"],"units":[{"id":"blue-carry","team":"blue","position":{"x":10,"y":50},"hp":1,"maxHp":100,"gold":1,"alive":true},{"id":"red-carry","team":"red","position":{"x":90,"y":50},"hp":100,"maxHp":100,"gold":10000,"alive":true}]},
+    {"second":8,"winProbability":0.6,"events":["damage","damage"],"units":[{"id":"blue-carry","team":"blue","position":{"x":10,"y":50},"hp":1,"maxHp":100,"gold":1,"alive":true},{"id":"red-carry","team":"red","position":{"x":90,"y":50},"hp":100,"maxHp":100,"gold":10000,"alive":true}]},
+    {"second":10,"winProbability":0.8,"events":["damage","damage"],"units":[{"id":"blue-carry","team":"blue","position":{"x":10,"y":50},"hp":1,"maxHp":100,"gold":1,"alive":true},{"id":"red-carry","team":"red","position":{"x":90,"y":50},"hp":100,"maxHp":100,"gold":10000,"alive":true}]},
+    {"second":12,"winProbability":0.9,"events":["damage","damage"],"units":[{"id":"blue-carry","team":"blue","position":{"x":10,"y":50},"hp":1,"maxHp":100,"gold":1,"alive":true},{"id":"red-carry","team":"red","position":{"x":90,"y":50},"hp":100,"maxHp":100,"gold":10000,"alive":true}]}
+  ]
+}

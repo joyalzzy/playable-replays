@@ -2,13 +2,26 @@
 
 The runnable prototype needs no model, GPU, or API key.
 
+The current `advantage` field is a rules-based summary of simulator state, not
+a learned or calibrated probability. It must not be relabelled as win
+probability without a representative labelled dataset and calibration study.
+
 ## Highlight selection
 
-Start with the included weighted baseline and an analyst-labelled validation
-set. Measure precision at the number of moments a viewer would realistically
-see per match, recall of known pivotal events, and calibration of the displayed
-confidence. Add a small gradient-boosted model only after the baseline and label
-quality are understood.
+`ml.telemetry` now provides the deterministic preprocessing baseline: strict
+normalized-frame validation, fully covered sliding windows, derivation of the
+four canonical signals, and overlap suppression. Source-specific authorized
+replay adapters and automatic scenario-fixture generation remain future work.
+The contract and exact calculations are documented in
+[`telemetry-highlights.md`](telemetry-highlights.md).
+
+Evaluate the weighted baseline on whole matches, not independently curated
+clips. Measure precision at the number of moments a viewer would realistically
+see per match, recall of known pivotal events, duplicates after overlap
+suppression, and calibration of any displayed confidence. Tune thresholds and
+event-rate saturation only on a training split, then report held-out results by
+match and patch. Add a small gradient-boosted model only after the baseline,
+label quality, and leakage risks are understood.
 
 ## Counterfactual policy
 
@@ -29,4 +42,3 @@ If free-text commands or coaching are added, fine-tune a permissively licensed
 2B–4B instruction model with QLoRA. It should only emit validated command JSON
 or explanations grounded in simulator output. Keep it outside the authoritative
 simulation path.
-

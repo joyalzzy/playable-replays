@@ -6,15 +6,64 @@ type Point struct {
 }
 
 type Unit struct {
-	ID       string `json:"id"`
-	Team     string `json:"team"`
-	Role     string `json:"role"`
-	Position Point  `json:"position"`
-	HP       int    `json:"hp"`
-	MaxHP    int    `json:"maxHp"`
-	Cooldown int    `json:"cooldownTurns"`
-	Visible  bool   `json:"visible"`
-	Alive    bool   `json:"alive"`
+	ID             string  `json:"id"`
+	Team           string  `json:"team"`
+	Role           string  `json:"role"`
+	Policy         string  `json:"policy"`
+	Position       Point   `json:"position"`
+	HP             int     `json:"hp"`
+	MaxHP          int     `json:"maxHp"`
+	AttackRange    float64 `json:"attackRange"`
+	AttackDamage   int     `json:"attackDamage"`
+	MoveSpeed      float64 `json:"moveSpeed"`
+	Armor          int     `json:"armor"`
+	VisionRange    float64 `json:"visionRange"`
+	AttackCooldown int     `json:"attackCooldown"`
+	Cooldown       int     `json:"cooldownTurns"`
+	Shield         int     `json:"shield"`
+	Guarded        bool    `json:"guarded"`
+	Visible        bool    `json:"visible"`
+	Alive          bool    `json:"alive"`
+}
+
+type TerrainFeature struct {
+	ID             string  `json:"id"`
+	Label          string  `json:"label"`
+	Kind           string  `json:"kind"`
+	Position       Point   `json:"position"`
+	Radius         float64 `json:"radius"`
+	MoveMultiplier float64 `json:"moveMultiplier"`
+	BlocksVision   bool    `json:"blocksVision"`
+}
+
+type ObjectiveRules struct {
+	ID           string  `json:"id"`
+	Label        string  `json:"label"`
+	Position     Point   `json:"position"`
+	Radius       float64 `json:"radius"`
+	CaptureTurns int     `json:"captureTurns"`
+}
+
+type VictoryRules struct {
+	Kind              string  `json:"kind"`
+	TargetUnitID      string  `json:"targetUnitId,omitempty"`
+	Description       string  `json:"description"`
+	DefeatDescription string  `json:"defeatDescription"`
+	AllowEscape       bool    `json:"allowEscape"`
+	SafeZone          Point   `json:"safeZone"`
+	SafeRadius        float64 `json:"safeRadius"`
+	EscapeTurns       int     `json:"escapeTurns"`
+}
+
+type ScenarioRules struct {
+	InitialAdvantage       float64             `json:"initialAdvantage"`
+	Objective              *ObjectiveRules     `json:"objective,omitempty"`
+	Victory                VictoryRules        `json:"victory"`
+	Terrain                []TerrainFeature    `json:"terrain"`
+	ReferencePlan          []Action            `json:"referencePlan"`
+	ReferenceReasons       []string            `json:"referenceReasons"`
+	ReferenceContinuations map[string][]Action `json:"referenceContinuations"`
+	ActionDefaults         map[string]Action   `json:"actionDefaults"`
 }
 
 type Signals struct {
@@ -24,19 +73,78 @@ type Signals struct {
 	ResourceAsymmetry   float64 `json:"resourceAsymmetry"`
 }
 
+type TelemetrySemanticEvidence struct {
+	OneVersusManyUnitIDs    []string `json:"oneVersusManyUnitIds"`
+	SuccessfulEscapeUnitIDs []string `json:"successfulEscapeUnitIds"`
+	TeamFightReversalSecond *int     `json:"teamFightReversalSecond"`
+}
+
+// TelemetryDetection preserves the detector facts used to seed an authored
+// scenario. It is fixture provenance, not a calibrated outcome probability.
+type TelemetryDetection struct {
+	SchemaVersion    string                    `json:"schemaVersion"`
+	StartSecond      int                       `json:"startSecond"`
+	EndSecond        int                       `json:"endSecond"`
+	Score            float64                   `json:"score"`
+	ReasonTags       []string                  `json:"reasonTags"`
+	Signals          Signals                   `json:"signals"`
+	SemanticEvidence TelemetrySemanticEvidence `json:"semanticEvidence"`
+}
+
+type ScenarioAlternative struct {
+	Action   Action `json:"action"`
+	When     string `json:"when"`
+	Tradeoff string `json:"tradeoff"`
+}
+
+type ScenarioAcceptanceTest struct {
+	Name                    string   `json:"name"`
+	Actions                 []Action `json:"actions"`
+	ExpectedStatus          string   `json:"expectedStatus"`
+	ExpectedTerminalTurn    int      `json:"expectedTerminalTurn"`
+	ExpectedOutcomeContains string   `json:"expectedOutcomeContains"`
+}
+
+type ScenarioAuthoring struct {
+	Category              string                   `json:"category"`
+	SkillLevel            string                   `json:"skillLevel"`
+	AnalystRationale      string                   `json:"analystRationale"`
+	IntendedTradeoffs     []string                 `json:"intendedTradeoffs"`
+	PlausibleAlternatives []ScenarioAlternative    `json:"plausibleAlternatives"`
+	AcceptanceTests       []ScenarioAcceptanceTest `json:"acceptanceTests"`
+}
+
+// ScenarioMechanic explains a scenario-specific map element before the player
+// is allowed to make a decision. ElementID links the explanation to the
+// objective or terrain feature that implements the mechanic.
+type ScenarioMechanic struct {
+	ElementID      string `json:"elementId"`
+	Name           string `json:"name"`
+	Description    string `json:"description"`
+	RoleInScenario string `json:"roleInScenario"`
+}
+
+type MechanicBriefing struct {
+	Mechanics []ScenarioMechanic `json:"mechanics"`
+}
+
 type Moment struct {
-	ID               string   `json:"id"`
-	Slug             string   `json:"slug"`
-	Title            string   `json:"title"`
-	Description      string   `json:"description"`
-	Map              string   `json:"map"`
-	StartTimeSeconds int      `json:"startTimeSeconds"`
-	Seed             int64    `json:"seed"`
-	MaxTurns         int      `json:"maxTurns"`
-	ControlledUnitID string   `json:"controlledUnitId"`
-	ReasonTags       []string `json:"reasonTags"`
-	Signals          Signals  `json:"signals"`
-	Units            []Unit   `json:"units"`
+	ID               string              `json:"id"`
+	Slug             string              `json:"slug"`
+	Title            string              `json:"title"`
+	Description      string              `json:"description"`
+	Map              string              `json:"map"`
+	StartTimeSeconds int                 `json:"startTimeSeconds"`
+	Seed             int64               `json:"seed"`
+	MaxTurns         int                 `json:"maxTurns"`
+	ControlledUnitID string              `json:"controlledUnitId"`
+	ReasonTags       []string            `json:"reasonTags"`
+	Signals          Signals             `json:"signals"`
+	SourceDetection  *TelemetryDetection `json:"sourceDetection,omitempty"`
+	MechanicBriefing *MechanicBriefing   `json:"mechanicBriefing,omitempty"`
+	Units            []Unit              `json:"units"`
+	Rules            ScenarioRules       `json:"rules"`
+	Authoring        ScenarioAuthoring   `json:"authoring"`
 }
 
 type Action struct {
@@ -49,24 +157,89 @@ type TurnRequest struct {
 }
 
 type LogEntry struct {
-	Turn    int    `json:"turn"`
-	Actor   string `json:"actor"`
-	Action  string `json:"action"`
-	Message string `json:"message"`
+	Turn     int    `json:"turn"`
+	Actor    string `json:"actor"`
+	Kind     string `json:"kind"`
+	Action   string `json:"action"`
+	ActorID  string `json:"actorId,omitempty"`
+	TargetID string `json:"targetId,omitempty"`
+	Value    int    `json:"value,omitempty"`
+	Message  string `json:"message"`
+}
+
+type ObjectiveState struct {
+	ID               string  `json:"id"`
+	Label            string  `json:"label"`
+	Position         Point   `json:"position"`
+	Radius           float64 `json:"radius"`
+	BlueProgress     int     `json:"blueProgress"`
+	RedProgress      int     `json:"redProgress"`
+	RequiredProgress int     `json:"requiredProgress"`
+	Status           string  `json:"status"`
+}
+
+type ReferenceOutcome struct {
+	FirstAction   Action   `json:"firstAction"`
+	Status        string   `json:"status"`
+	Turns         int      `json:"turns"`
+	Advantage     float64  `json:"advantage"`
+	OutcomeReason string   `json:"outcomeReason"`
+	KeyEvents     []string `json:"keyEvents"`
+}
+
+type BestCaseAlternative struct {
+	Action        Action  `json:"action"`
+	Status        string  `json:"status"`
+	Turns         int     `json:"turns"`
+	Advantage     float64 `json:"advantage"`
+	OutcomeReason string  `json:"outcomeReason"`
+}
+
+type BestCaseStep struct {
+	Turn            int                   `json:"turn"`
+	Action          Action                `json:"action"`
+	Reason          string                `json:"reason"`
+	AdvantageBefore float64               `json:"advantageBefore"`
+	AdvantageAfter  float64               `json:"advantageAfter"`
+	KeyEvents       []string              `json:"keyEvents"`
+	Alternatives    []BestCaseAlternative `json:"alternatives"`
+}
+
+type BestCaseLine struct {
+	Status        string         `json:"status"`
+	Turns         int            `json:"turns"`
+	Advantage     float64        `json:"advantage"`
+	OutcomeReason string         `json:"outcomeReason"`
+	Method        string         `json:"method"`
+	Steps         []BestCaseStep `json:"steps"`
 }
 
 type Session struct {
-	ID              string     `json:"id"`
-	MomentID        string     `json:"momentId"`
-	Turn            int        `json:"turn"`
-	MaxTurns        int        `json:"maxTurns"`
-	Status          string     `json:"status"`
-	Score           int        `json:"score"`
-	WinProbability  float64    `json:"winProbability"`
-	ReferenceAction Action     `json:"referenceAction"`
-	LegalActions    []string   `json:"legalActions"`
-	Units           []Unit     `json:"units"`
-	Log             []LogEntry `json:"log"`
+	ID                  string             `json:"id"`
+	MomentID            string             `json:"momentId"`
+	ControlledUnitID    string             `json:"controlledUnitId"`
+	ScenarioGoal        string             `json:"scenarioGoal"`
+	MechanicBriefing    *MechanicBriefing  `json:"mechanicBriefing,omitempty"`
+	Turn                int                `json:"turn"`
+	MaxTurns            int                `json:"maxTurns"`
+	Status              string             `json:"status"`
+	OutcomeReason       string             `json:"outcomeReason,omitempty"`
+	Advantage           float64            `json:"advantage"`
+	EscapeProgress      int                `json:"escapeProgress"`
+	EscapeTurnsRequired int                `json:"escapeTurnsRequired"`
+	VisibleEnemyCount   int                `json:"visibleEnemyCount"`
+	UnknownEnemyCount   int                `json:"unknownEnemyCount"`
+	VisionLimited       bool               `json:"visionLimited"`
+	Objective           *ObjectiveState    `json:"objective,omitempty"`
+	Terrain             []TerrainFeature   `json:"terrain"`
+	LastReferenceAction *Action            `json:"lastReferenceAction,omitempty"`
+	ReferenceReason     string             `json:"referenceReason,omitempty"`
+	ReferenceOutcomes   []ReferenceOutcome `json:"referenceOutcomes,omitempty"`
+	BestCase            *BestCaseLine      `json:"bestCase,omitempty"`
+	LegalActions        []string           `json:"legalActions"`
+	Units               []Unit             `json:"units"`
+	Log                 []LogEntry         `json:"log"`
+	Debrief             []string           `json:"debrief,omitempty"`
 }
 
 type CreateSessionRequest struct {
@@ -79,8 +252,119 @@ type MomentSummary struct {
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
 	Map         string   `json:"map"`
+	Category    string   `json:"category"`
+	SkillLevel  string   `json:"skillLevel"`
 	ReasonTags  []string `json:"reasonTags"`
 	Score       float64  `json:"highlightScore"`
+}
+
+// LiveTelemetryUnit is the game-agnostic, identity-minimized unit shape used
+// at the live ingestion boundary. It intentionally contains only fields used
+// by the deterministic highlight detector.
+type LiveTelemetryUnit struct {
+	ID       string  `json:"id"`
+	Team     string  `json:"team"`
+	Position Point   `json:"position"`
+	HP       float64 `json:"hp"`
+	MaxHP    float64 `json:"maxHp"`
+	Gold     float64 `json:"gold"`
+	Alive    bool    `json:"alive"`
+}
+
+type LiveTelemetryFrame struct {
+	Second         int                 `json:"second"`
+	WinProbability float64             `json:"winProbability"`
+	Events         []string            `json:"events"`
+	Units          []LiveTelemetryUnit `json:"units"`
+}
+
+type LiveTelemetryDocument struct {
+	Version string               `json:"version"`
+	Frames  []LiveTelemetryFrame `json:"frames"`
+}
+
+type TelemetryFrameBatch struct {
+	SchemaVersion string               `json:"schemaVersion"`
+	Sequence      int                  `json:"sequence"`
+	Frames        []LiveTelemetryFrame `json:"frames"`
+}
+
+type CreateTelemetryMatchRequest struct {
+	Source  string `json:"source"`
+	Consent bool   `json:"consent"`
+}
+
+type TelemetryCandidate struct {
+	ID          string             `json:"id"`
+	Status      string             `json:"status"`
+	Category    string             `json:"category"`
+	DraftStatus string             `json:"draftStatus"`
+	Detection   TelemetryDetection `json:"detection"`
+}
+
+type TelemetryMatch struct {
+	ID                string               `json:"id"`
+	Source            string               `json:"source"`
+	Status            string               `json:"status"`
+	FrameCount        int                  `json:"frameCount"`
+	LastSecond        int                  `json:"lastSecond"`
+	ExpectedSequence  int                  `json:"expectedSequence"`
+	SavedLocally      bool                 `json:"savedLocally"`
+	TimelineAvailable bool                 `json:"timelineAvailable"`
+	Candidates        []TelemetryCandidate `json:"candidates"`
+}
+
+// LocalStorageStatus describes only the safe summary/draft store. Raw frames
+// and collector credentials are never included in this inventory.
+type LocalStorageStatus struct {
+	Mode              string `json:"mode"`
+	RetentionDays     int    `json:"retentionDays"`
+	MatchSummaryCount int    `json:"matchSummaryCount"`
+	DraftCount        int    `json:"draftCount"`
+}
+
+type UpdateRetentionRequest struct {
+	RetentionDays int `json:"retentionDays"`
+}
+
+type DeleteLocalDataResponse struct {
+	DeletedMatches int `json:"deletedMatches"`
+	DeletedDrafts  int `json:"deletedDrafts"`
+}
+
+// TelemetryTimeline is a bounded, identity-free view of unit movement and
+// normalized events. Source unit/team identifiers and resource fields never
+// cross this read boundary.
+type TelemetryTimeline struct {
+	MatchID          string                   `json:"matchId"`
+	SourceFrameCount int                      `json:"sourceFrameCount"`
+	SampleEvery      int                      `json:"sampleEvery"`
+	Truncated        bool                     `json:"truncated"`
+	Frames           []TelemetryTimelineFrame `json:"frames"`
+	Events           []TelemetryTimelineEvent `json:"events"`
+}
+
+type TelemetryTimelineFrame struct {
+	Second int                     `json:"second"`
+	Units  []TelemetryTimelineUnit `json:"units"`
+}
+
+type TelemetryTimelineUnit struct {
+	TrackID  string `json:"trackId"`
+	Side     string `json:"side"`
+	Position Point  `json:"position"`
+	Alive    bool   `json:"alive"`
+}
+
+type TelemetryTimelineEvent struct {
+	Second int    `json:"second"`
+	Type   string `json:"type"`
+	Count  int    `json:"count"`
+}
+
+type CreateTelemetryMatchResponse struct {
+	Match          TelemetryMatch `json:"match"`
+	CollectorToken string         `json:"collectorToken"`
 }
 
 type ErrorResponse struct {

@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "frames": [
+    {"second":0,"winProbability":0.1,"events":["vision-loss","vision-loss","vision-loss"],"units":[{"id":"blue-carry","team":"blue","position":{"x":40,"y":50},"hp":100,"maxHp":100,"gold":1000,"alive":true},{"id":"red-jungle","team":"red","position":{"x":60,"y":50},"hp":100,"maxHp":100,"gold":1000,"alive":true}]},
+    {"second":2,"winProbability":0.2,"events":["vision-loss","vision-loss","vision-loss"],"units":[{"id":"blue-carry","team":"blue","position":{"x":40,"y":50},"hp":98,"maxHp":100,"gold":1010,"alive":true},{"id":"red-jungle","team":"red","position":{"x":60,"y":50},"hp":100,"maxHp":100,"gold":1010,"alive":true}]},
+    {"second":4,"winProbability":0.3,"events":["vision-loss","vision-loss","vision-loss"],"units":[{"id":"blue-carry","team":"blue","position":{"x":40,"y":50},"hp":96,"maxHp":100,"gold":1020,"alive":true},{"id":"red-jungle","team":"red","position":{"x":60,"y":50},"hp":100,"maxHp":100,"gold":1020,"alive":true}]},
+    {"second":6,"winProbability":0.4,"events":["vision-loss","vision-loss","vision-loss"],"units":[{"id":"blue-carry","team":"blue","position":{"x":40,"y":50},"hp":94,"maxHp":100,"gold":1030,"alive":true},{"id":"red-jungle","team":"red","position":{"x":60,"y":50},"hp":100,"maxHp":100,"gold":1030,"alive":true}]},
+    {"second":8,"winProbability":0.6,"events":["vision-loss","vision-loss","vision-loss"],"units":[{"id":"blue-carry","team":"blue","position":{"x":40,"y":50},"hp":92,"maxHp":100,"gold":1040,"alive":true},{"id":"red-jungle","team":"red","position":{"x":60,"y":50},"hp":100,"maxHp":100,"gold":1040,"alive":true}]},
+    {"second":10,"winProbability":0.8,"events":["vision-loss","vision-loss","vision-loss"],"units":[{"id":"blue-carry","team":"blue","position":{"x":40,"y":50},"hp":90,"maxHp":100,"gold":1050,"alive":true},{"id":"red-jungle","team":"red","position":{"x":60,"y":50},"hp":100,"maxHp":100,"gold":1050,"alive":true}]},
+    {"second":12,"winProbability":0.9,"events":["vision-loss","vision-loss","vision-loss"],"units":[{"id":"blue-carry","team":"blue","position":{"x":40,"y":50},"hp":88,"maxHp":100,"gold":1060,"alive":true},{"id":"red-jungle","team":"red","position":{"x":60,"y":50},"hp":100,"maxHp":100,"gold":1060,"alive":true}]}
+  ]
+}

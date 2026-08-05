@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "tsc -b && vite build",
+    "dev": "vite --configLoader runner --host 0.0.0.0",
+    "build": "tsc -b && vite build --configLoader runner",
     "check": "tsc -b --pretty false",
-    "test": "vitest",
+    "test": "vitest --configLoader runner",
     "lint": "eslint ."
   },
   "dependencies": {
