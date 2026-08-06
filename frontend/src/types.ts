@@ -1,18 +1,35 @@
 export type Point = { x: number; y: number };
 
+export type UnitClass =
+  | "tank"
+  | "fighter"
+  | "marksman"
+  | "mage"
+  | "support"
+  | "assassin";
+
 export type Unit = {
   id: string;
   team: "blue" | "red";
   role: string;
+  class: UnitClass;
   position: Point;
   hp: number;
   maxHp: number;
+  moveRange: number;
+  attackRange: number;
   cooldownTurns: number;
   visible: boolean;
   alive: boolean;
 };
 
-export type ActionType = "move" | "hold" | "contest" | "retreat";
+export type ActionType =
+  | "move"
+  | "hold"
+  | "contest"
+  | "retreat"
+  | "dodge"
+  | "outplay";
 
 export type Action = {
   type: ActionType;
@@ -29,6 +46,7 @@ export type LogEntry = {
 export type Session = {
   id: string;
   momentId: string;
+  controlledUnitId: string;
   turn: number;
   maxTurns: number;
   status: "active" | "won" | "lost";
@@ -51,4 +69,3 @@ export type MomentSummary = {
 };
 
 export type ApiError = { error: { code: string; message: string } };
-

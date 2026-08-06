@@ -2,23 +2,45 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/joyalzzy/playable-replays/backend/internal/engine"
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
+	"github.com/joyalzzy/playable-replays/backend/internal/positionmodel"
 )
+
+type blockingModel struct {
+	started chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func (stub *blockingModel) NextPositions(ctx context.Context, _ engine.ModelSnapshot) (engine.ModelResult, error) {
+	stub.once.Do(func() { close(stub.started) })
+	select {
+	case <-stub.release:
+		return engine.ModelResult{ModelName: "blocking-test", ModelVersion: "1"}, nil
+	case <-ctx.Done():
+		return engine.ModelResult{}, ctx.Err()
+	}
+}
 
 func testServer() *Server {
 	moment := model.Moment{
 		ID: "m1", Slug: "test", Title: "Test moment", Seed: 1, MaxTurns: 2,
 		ControlledUnitID: "blue", ReasonTags: []string{"clutch"},
 		Units: []model.Unit{
-			{ID: "blue", Team: "blue", Position: model.Point{X: 30, Y: 50}, HP: 100, MaxHP: 100, Alive: true},
-			{ID: "red", Team: "red", Position: model.Point{X: 45, Y: 50}, HP: 100, MaxHP: 100, Alive: true},
+			{ID: "blue", Team: "blue", Role: "carry", Class: model.ClassMarksman, Position: model.Point{X: 30, Y: 50}, HP: 80, MaxHP: 90, Alive: true},
+			{ID: "red", Team: "red", Role: "tank", Class: model.ClassTank, Position: model.Point{X: 45, Y: 50}, HP: 120, MaxHP: 160, Alive: true},
+			{ID: "blue-support", Team: "blue", Role: "support", Class: model.ClassSupport, Position: model.Point{X: 25, Y: 50}, HP: 100, MaxHP: 110, Alive: true},
 		},
 	}
 	return New([]model.Moment{moment}, slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -26,6 +48,10 @@ func testServer() *Server {
 
 func request(t *testing.T, handler http.Handler, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
+	return performRequest(handler, method, path, body)
+}
+
+func performRequest(handler http.Handler, method, path, body string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
@@ -49,6 +75,12 @@ func TestJourney(t *testing.T) {
 	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
 		t.Fatal(err)
 	}
+	if session.ControlledUnitID != "blue" || session.Units[0].MoveRange != 11 || session.Units[1].MaxHP != 160 {
+		t.Fatalf("class/session contract was not serialized: %+v", session)
+	}
+	if len(session.LegalActions) != 6 {
+		t.Fatalf("expected expanded legal action set, got %v", session.LegalActions)
+	}
 	turn := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns", `{"action":{"type":"contest"}}`)
 	if turn.Code != http.StatusOK {
 		t.Fatalf("turn: %d %s", turn.Code, turn.Body.String())
@@ -56,6 +88,129 @@ func TestJourney(t *testing.T) {
 	reset := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/reset", "")
 	if reset.Code != http.StatusOK {
 		t.Fatalf("reset: %d", reset.Code)
+	}
+}
+
+func TestRejectsOverRangeMovementWithoutAdvancingTurn(t *testing.T) {
+	handler := testServer().Handler()
+	created := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	var session model.Session
+	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	result := request(
+		t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns",
+		`{"action":{"type":"move","target":{"x":100,"y":50}}}`,
+	)
+	if result.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d: %s", result.Code, result.Body.String())
+	}
+	current := request(t, handler, http.MethodGet, "/api/v1/sessions/"+session.ID, "")
+	if err := json.Unmarshal(current.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	if session.Turn != 0 || session.Units[0].Position != (model.Point{X: 30, Y: 50}) {
+		t.Fatalf("illegal movement mutated session: %+v", session)
+	}
+}
+
+func TestServerUsesPositionModel(t *testing.T) {
+	modelRequests := 0
+	modelServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		modelRequests++
+		var snapshot engine.ModelSnapshot
+		if err := json.NewDecoder(r.Body).Decode(&snapshot); err != nil ||
+			snapshot.SchemaVersion != engine.PositionModelSchemaVersion || len(snapshot.Units) != 3 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		_, _ = w.Write([]byte(`{"positions":[{"unitId":"red","position":{"x":100,"y":50}},{"unitId":"blue-support","position":{"x":100,"y":50}}]}`))
+	}))
+	defer modelServer.Close()
+	connector, err := positionmodel.NewHTTPModel(modelServer.URL, "api-test", "1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := testServer()
+	server := NewWithPositionModel(base.ordered, slog.New(slog.NewTextHandler(io.Discard, nil)), connector)
+	handler := server.Handler()
+	created := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	var session model.Session
+	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	turn := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns", `{"action":{"type":"hold"}}`)
+	if turn.Code != http.StatusOK {
+		t.Fatalf("turn: %d %s", turn.Code, turn.Body.String())
+	}
+	if err := json.Unmarshal(turn.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	if modelRequests != 1 || session.Units[1].Position != (model.Point{X: 52, Y: 50}) ||
+		session.Units[2].Position != (model.Point{X: 33, Y: 50}) || session.Units[0].HP != 85 {
+		t.Fatalf("position connector was not applied to opponent and teammate with class limits: %+v", session)
+	}
+}
+
+func TestSlowModelDoesNotBlockOtherSessions(t *testing.T) {
+	stub := &blockingModel{started: make(chan struct{}), release: make(chan struct{})}
+	defer func() {
+		select {
+		case <-stub.release:
+		default:
+			close(stub.release)
+		}
+	}()
+	base := testServer()
+	server := NewWithPositionModel(base.ordered, slog.New(slog.NewTextHandler(io.Discard, nil)), stub)
+	handler := server.Handler()
+
+	first := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	second := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	var firstSession, secondSession model.Session
+	if err := json.Unmarshal(first.Body.Bytes(), &firstSession); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(second.Body.Bytes(), &secondSession); err != nil {
+		t.Fatal(err)
+	}
+
+	turnDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		turnDone <- performRequest(
+			handler,
+			http.MethodPost,
+			"/api/v1/sessions/"+firstSession.ID+"/turns",
+			`{"action":{"type":"hold"}}`,
+		)
+	}()
+	select {
+	case <-stub.started:
+	case <-time.After(time.Second):
+		t.Fatal("position model call did not start")
+	}
+
+	readDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		readDone <- performRequest(handler, http.MethodGet, "/api/v1/sessions/"+secondSession.ID, "")
+	}()
+	select {
+	case result := <-readDone:
+		if result.Code != http.StatusOK {
+			t.Fatalf("read other session: %d %s", result.Code, result.Body.String())
+		}
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("slow model call blocked an unrelated session")
+	}
+
+	close(stub.release)
+	select {
+	case result := <-turnDone:
+		if result.Code != http.StatusOK {
+			t.Fatalf("turn after model release: %d %s", result.Code, result.Body.String())
+		}
+	case <-time.After(time.Second):
+		t.Fatal("turn did not finish after model release")
 	}
 }
 

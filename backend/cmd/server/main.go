@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/joyalzzy/playable-replays/backend/internal/api"
+	"github.com/joyalzzy/playable-replays/backend/internal/engine"
 	"github.com/joyalzzy/playable-replays/backend/internal/fixtures"
+	"github.com/joyalzzy/playable-replays/backend/internal/positionmodel"
 )
 
 func main() {
@@ -23,10 +25,31 @@ func main() {
 		logger.Error("load fixtures", "error", err)
 		os.Exit(1)
 	}
+	var positionModel engine.PositionModel
+	modelConfig, err := loadPositionModelConfig()
+	if err != nil {
+		logger.Error("configure position model", "error", err)
+		os.Exit(1)
+	}
+	if modelConfig != nil {
+		positionModel, err = positionmodel.NewHTTPModel(
+			modelConfig.endpoint, modelConfig.name, modelConfig.version, nil,
+		)
+		if err != nil {
+			logger.Error("configure position model", "error", err)
+			os.Exit(1)
+		}
+		logger.Info(
+			"position model enabled",
+			"model", modelConfig.name,
+			"version", modelConfig.version,
+			"deprecated_env_alias", modelConfig.deprecatedAlias,
+		)
+	}
 
 	server := &http.Server{
 		Addr:              env("LISTEN_ADDR", "127.0.0.1:8080"),
-		Handler:           api.New(moments, logger).Handler(),
+		Handler:           api.NewWithPositionModel(moments, logger, positionModel).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
