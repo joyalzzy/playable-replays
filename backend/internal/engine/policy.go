@@ -11,6 +11,7 @@ func (e *Engine) resolvePolicy(ctx context.Context, controlled *model.Unit, effe
 	suggestions, modelUsed, fallback := e.modelSuggestions(ctx)
 	e.resolveAIPositions(controlled, suggestions)
 	e.resolveOpponentCombat(controlled, effects)
+	// e.resolveTeamPositions(controlled, effects)
 
 	message := "The deterministic opponent policy responded; allied units held position."
 	action := "respond"
@@ -37,6 +38,9 @@ func (e *Engine) resolveAIPositions(controlled *model.Unit, suggestions map[stri
 			continue
 		}
 		if unit.Team != controlled.Team && distance(unit.Position, controlled.Position) > unit.AttackRange {
+			unit.Position = moveToward(unit.Position, controlled.Position, unit.MoveRange)
+		}
+		if unit.Team == controlled.Team { //&& distance(unit.Position, controlled.Position) > unit.MoveRange {
 			unit.Position = moveToward(unit.Position, controlled.Position, unit.MoveRange)
 		}
 	}
