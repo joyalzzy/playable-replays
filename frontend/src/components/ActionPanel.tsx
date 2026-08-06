@@ -4,7 +4,9 @@ const labels: Record<ActionType, { title: string; detail: string }> = {
   move: { title: "Move", detail: "Reposition using movement speed and terrain" },
   hold: { title: "Hold", detail: "Brace for damage and recover cooldowns" },
   contest: { title: "Contest", detail: "Close on the nearest visible threat and attack in range" },
-  retreat: { title: "Retreat", detail: "Disengage toward the authored safe zone" }
+  retreat: { title: "Retreat", detail: "Disengage toward the authored safe zone" },
+  dodge: { title: "Dodge", detail: "Evade an incoming skillshot with a defensive sidestep" },
+  outplay: { title: "Outplay", detail: "Attempt a high-risk mechanical counterplay" }
 };
 
 type Props = {

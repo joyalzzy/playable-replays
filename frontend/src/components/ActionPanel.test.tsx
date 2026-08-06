@@ -49,4 +49,19 @@ describe("ActionPanel", () => {
     expect(screen.getByText("X 42 · Y 68")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Commit move to X 42, Y 68" })).toBeEnabled();
   });
+
+  it("offers dodge and outplay with descriptive labels", () => {
+    render(
+      <ActionPanel
+        legalActions={["dodge", "outplay"]}
+        selected="dodge"
+        disabled={false}
+        onSelect={vi.fn()}
+        onCommit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /dodge.*incoming skillshot/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /outplay.*high-risk mechanical/i })).toBeInTheDocument();
+  });
 });

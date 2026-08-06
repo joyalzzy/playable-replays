@@ -1,13 +1,15 @@
 openapi: 3.1.0
 info:
   title: Playable Replays API
-  version: 0.6.0
-  description: Deterministic tactical replay API with authored scenarios, guarded telemetry detection, and summary-only local retention controls. Unknown routes and unsupported methods use the structured Error schema.
+  version: 0.7.0
+  description: Deterministic tactical replay API with class-aware simulation, an optional non-authoritative position model, authored scenarios, guarded telemetry detection, and summary-only local retention controls. Unknown routes and unsupported methods use the structured Error schema.
 servers:
   - url: http://127.0.0.1:8080
+security: []
 paths:
   /healthz:
     get:
+      summary: Check API health
       operationId: health
       responses:
         "200":
@@ -21,6 +23,7 @@ paths:
                 required: [status]
   /api/v1/moments:
     get:
+      summary: List playable replay moments
       operationId: listMoments
       responses:
         "200":
@@ -36,6 +39,7 @@ paths:
                 required: [moments]
   /api/v1/sessions:
     post:
+      summary: Create a replay session
       operationId: createSession
       requestBody:
         required: true
@@ -62,6 +66,7 @@ paths:
         required: true
         schema: {type: string}
     get:
+      summary: Get current replay session state
       operationId: getSession
       responses:
         "200":
@@ -77,6 +82,7 @@ paths:
         required: true
         schema: {type: string}
     post:
+      summary: Resolve one replay turn
       operationId: takeTurn
       requestBody:
         required: true
@@ -105,6 +111,7 @@ paths:
         required: true
         schema: {type: string}
     post:
+      summary: Reset a replay session
       operationId: resetSession
       responses:
         "200":
@@ -116,6 +123,7 @@ paths:
         "429": {$ref: "#/components/responses/Error"}
   /api/v1/telemetry/matches:
     get:
+      summary: List local telemetry matches
       operationId: listTelemetryMatches
       responses:
         "200":
@@ -131,6 +139,7 @@ paths:
                     items: {$ref: "#/components/schemas/TelemetryMatch"}
                 required: [matches]
     post:
+      summary: Start a consented telemetry match
       operationId: createTelemetryMatch
       requestBody:
         required: true
@@ -145,6 +154,7 @@ paths:
               schema: {$ref: "#/components/schemas/CreateTelemetryMatchResponse"}
         "400": {$ref: "#/components/responses/Error"}
     delete:
+      summary: Delete all local telemetry data
       operationId: deleteAllTelemetryMatches
       responses:
         "200":
@@ -156,6 +166,7 @@ paths:
     parameters:
       - {$ref: "#/components/parameters/TelemetryMatchId"}
     get:
+      summary: Get a telemetry match
       operationId: getTelemetryMatch
       responses:
         "200":
@@ -165,6 +176,7 @@ paths:
               schema: {$ref: "#/components/schemas/TelemetryMatch"}
         "404": {$ref: "#/components/responses/Error"}
     delete:
+      summary: Delete a telemetry match
       operationId: deleteTelemetryMatch
       responses:
         "200":
@@ -177,6 +189,7 @@ paths:
     parameters:
       - {$ref: "#/components/parameters/TelemetryMatchId"}
     post:
+      summary: Ingest an ordered telemetry frame batch
       operationId: ingestTelemetryFrames
       security: [{CollectorToken: []}]
       requestBody:
@@ -198,6 +211,7 @@ paths:
     parameters:
       - {$ref: "#/components/parameters/TelemetryMatchId"}
     get:
+      summary: Get a bounded anonymous telemetry timeline
       operationId: getTelemetryTimeline
       responses:
         "200":
@@ -211,6 +225,7 @@ paths:
     parameters:
       - {$ref: "#/components/parameters/TelemetryMatchId"}
     post:
+      summary: Finalize telemetry capture
       operationId: finishTelemetryMatch
       security: [{CollectorToken: []}]
       responses:
@@ -226,6 +241,7 @@ paths:
     parameters:
       - {$ref: "#/components/parameters/TelemetryMatchId"}
     get:
+      summary: Stream telemetry match updates
       operationId: streamTelemetryMatch
       responses:
         "200":
@@ -243,6 +259,7 @@ paths:
         required: true
         schema: {type: string}
     post:
+      summary: Create an analyst scenario draft
       operationId: createTelemetryDraft
       responses:
         "201":
@@ -253,6 +270,7 @@ paths:
         "404": {$ref: "#/components/responses/Error"}
         "409": {$ref: "#/components/responses/Error"}
     get:
+      summary: Get an analyst scenario draft
       operationId: getTelemetryDraft
       responses:
         "200":
@@ -262,6 +280,7 @@ paths:
               schema: {$ref: "#/components/schemas/TelemetryDraftResult"}
         "404": {$ref: "#/components/responses/Error"}
     put:
+      summary: Update an analyst scenario draft
       operationId: updateTelemetryDraft
       requestBody:
         required: true
@@ -287,6 +306,7 @@ paths:
       - {$ref: "#/components/parameters/TelemetryMatchId"}
       - {$ref: "#/components/parameters/TelemetryCandidateId"}
     post:
+      summary: Validate an analyst scenario draft
       operationId: validateTelemetryDraft
       responses:
         "200":
@@ -300,6 +320,7 @@ paths:
       - {$ref: "#/components/parameters/TelemetryMatchId"}
       - {$ref: "#/components/parameters/TelemetryCandidateId"}
     post:
+      summary: Preview a validated scenario draft
       operationId: previewTelemetryDraft
       responses:
         "201":
@@ -314,6 +335,7 @@ paths:
       - {$ref: "#/components/parameters/TelemetryMatchId"}
       - {$ref: "#/components/parameters/TelemetryCandidateId"}
     post:
+      summary: Export a scenario draft review pack
       operationId: exportTelemetryDraftReviewPack
       responses:
         "200":
@@ -325,6 +347,7 @@ paths:
         "422": {$ref: "#/components/responses/Error"}
   /api/v1/local-storage:
     get:
+      summary: Get local retention status
       operationId: getLocalStorageStatus
       responses:
         "200":
@@ -334,6 +357,7 @@ paths:
               schema: {$ref: "#/components/schemas/LocalStorageStatus"}
   /api/v1/local-storage/retention:
     put:
+      summary: Update local retention policy
       operationId: updateLocalStorageRetention
       requestBody:
         required: true
@@ -352,6 +376,32 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/LocalStorageStatus"}
         "400": {$ref: "#/components/responses/Error"}
+webhooks:
+  positionModelTurn:
+    post:
+      operationId: suggestNonPlayerPositions
+      summary: Suggest teammate and opponent positions for the next frame
+      description: |
+        When `POSITION_MODEL_URL` (or its deprecated `OPPONENT_MODEL_URL`
+        alias) is configured, the API sends this privileged request once per
+        resolved user turn. The response may target any live unit except
+        `controlledUnitId`. Invalid suggestions reject the complete response;
+        accepted targets are clamped to server-owned class movement limits.
+        Omitted allies hold position and omitted opponents use their
+        deterministic scenario policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PositionModelRequest"}
+      responses:
+        "200":
+          description: Advisory positions returned; simulator validation still applies
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PositionModelResponse"}
+        default:
+          description: Any non-200 response activates deterministic fallback
 components:
   securitySchemes:
     CollectorToken:
@@ -382,7 +432,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        type: {type: string, enum: [move, hold, contest, retreat]}
+        type: {type: string, enum: [move, hold, contest, retreat, dodge, outplay]}
         target: {$ref: "#/components/schemas/Point"}
       required: [type]
     Unit:
@@ -392,10 +442,18 @@ components:
         id: {type: string}
         team: {type: string, enum: [blue, red]}
         role: {type: string}
+        class:
+          type: string
+          enum: [tank, fighter, marksman, mage, support, assassin]
         policy: {type: string}
         position: {$ref: "#/components/schemas/Point"}
         hp: {type: integer, minimum: 0}
         maxHp: {type: integer, minimum: 1}
+        moveRange:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Maximum map units this class can move in one frame.
         attackRange: {type: number, exclusiveMinimum: 0}
         attackDamage: {type: integer, minimum: 1}
         moveSpeed: {type: number, exclusiveMinimum: 0}
@@ -407,7 +465,7 @@ components:
         guarded: {type: boolean}
         visible: {type: boolean}
         alive: {type: boolean}
-      required: [id, team, role, policy, position, hp, maxHp, attackRange, attackDamage, moveSpeed, armor, visionRange, attackCooldown, cooldownTurns, shield, guarded, visible, alive]
+      required: [id, team, role, class, policy, position, hp, maxHp, moveRange, attackRange, attackDamage, moveSpeed, armor, visionRange, attackCooldown, cooldownTurns, shield, guarded, visible, alive]
     TerrainFeature:
       type: object
       additionalProperties: false
@@ -438,7 +496,7 @@ components:
       additionalProperties: false
       properties:
         turn: {type: integer}
-        actor: {type: string, enum: [user, ally, enemy, system]}
+        actor: {type: string, enum: [user, ally, enemy, policy, system]}
         kind: {type: string}
         action: {type: string}
         actorId: {type: string}
@@ -551,7 +609,7 @@ components:
         bestCase: {$ref: "#/components/schemas/BestCaseLine"}
         legalActions:
           type: array
-          items: {type: string, enum: [move, hold, contest, retreat]}
+          items: {type: string, enum: [move, hold, contest, retreat, dodge, outplay]}
         units:
           type: array
           items: {$ref: "#/components/schemas/Unit"}
@@ -826,6 +884,81 @@ components:
             message: {type: string}
           required: [code, message]
       required: [error]
+    MapBounds:
+      type: object
+      additionalProperties: false
+      properties:
+        minX: {type: number}
+        maxX: {type: number}
+        minY: {type: number}
+        maxY: {type: number}
+      required: [minX, maxX, minY, maxY]
+    PositionModelRequest:
+      type: object
+      additionalProperties: false
+      description: Privileged server-side snapshot sent to the optional position model.
+      properties:
+        schemaVersion:
+          type: string
+          const: "1.1"
+          description: Version of the non-player position connector contract.
+        stateScope:
+          type: string
+          const: authoritative_server_state
+          description: Marks this as privileged server state, not the browser view.
+        sessionId: {type: string, minLength: 1}
+        momentId: {type: string, minLength: 1}
+        turn:
+          type: integer
+          minimum: 1
+          description: One-based index of the current frame being resolved.
+        mapBounds: {$ref: "#/components/schemas/MapBounds"}
+        controlledUnitId: {type: string, minLength: 1}
+        units:
+          type: array
+          minItems: 2
+          maxItems: 64
+          items: {$ref: "#/components/schemas/PositionModelSnapshotUnit"}
+      required: [schemaVersion, stateScope, sessionId, momentId, turn, mapBounds, controlledUnitId, units]
+    PositionModelSnapshotUnit:
+      type: object
+      additionalProperties: false
+      description: Bounded authoritative unit state sent to the trusted model connector.
+      properties:
+        id: {type: string, minLength: 1}
+        team: {type: string, enum: [blue, red]}
+        role: {type: string, minLength: 1}
+        class:
+          type: string
+          enum: [tank, fighter, marksman, mage, support, assassin]
+        position: {$ref: "#/components/schemas/Point"}
+        hp: {type: integer, minimum: 0}
+        maxHp: {type: integer, minimum: 1}
+        moveRange: {type: number, minimum: 0, maximum: 100}
+        attackRange: {type: number, minimum: 0, maximum: 100}
+        cooldownTurns: {type: integer, minimum: 0}
+        visible: {type: boolean}
+        alive: {type: boolean}
+      required: [id, team, role, class, position, hp, maxHp, moveRange, attackRange, cooldownTurns, visible, alive]
+    PositionSuggestion:
+      type: object
+      additionalProperties: false
+      properties:
+        unitId: {type: string, minLength: 1}
+        position: {$ref: "#/components/schemas/Point"}
+      required: [unitId, position]
+    PositionModelResponse:
+      type: object
+      additionalProperties: false
+      description: |
+        Advisory next-frame targets for live non-controlled units. Omitted
+        teammates hold position and omitted opponents use deterministic chase.
+      properties:
+        positions:
+          type: array
+          maxItems: 64
+          items: {$ref: "#/components/schemas/PositionSuggestion"}
+      required: [positions]
   responses:
     Error:
       description: Structured error

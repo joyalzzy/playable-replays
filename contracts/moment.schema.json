@@ -42,7 +42,7 @@
           },
           "sourceDetection": {"$ref": "#/$defs/sourceDetection"},
           "mechanicBriefing": {"$ref": "#/$defs/mechanicBriefing"},
-          "units": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/unit"}},
+          "units": {"type": "array", "minItems": 2, "maxItems": 64, "items": {"$ref": "#/$defs/unit"}},
           "rules": {
             "type": "object",
             "additionalProperties": false,
@@ -98,23 +98,27 @@
               "referenceContinuations": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["move", "hold", "contest", "retreat"],
+                "required": ["move", "hold", "contest", "retreat", "dodge", "outplay"],
                 "properties": {
                   "move": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
                   "hold": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
                   "contest": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
-                  "retreat": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}}
+                  "retreat": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+                  "dodge": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+                  "outplay": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}}
                 }
               },
               "actionDefaults": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["move", "hold", "contest", "retreat"],
+                "required": ["move", "hold", "contest", "retreat", "dodge", "outplay"],
                 "properties": {
                   "move": {"$ref": "#/$defs/action"},
                   "hold": {"$ref": "#/$defs/action"},
                   "contest": {"$ref": "#/$defs/action"},
-                  "retreat": {"$ref": "#/$defs/action"}
+                  "retreat": {"$ref": "#/$defs/action"},
+                  "dodge": {"$ref": "#/$defs/action"},
+                  "outplay": {"$ref": "#/$defs/action"}
                 }
               }
             }
@@ -194,7 +198,7 @@
       "additionalProperties": false,
       "required": ["type"],
       "properties": {
-        "type": {"type": "string", "enum": ["move", "hold", "contest", "retreat"]},
+        "type": {"type": "string", "enum": ["move", "hold", "contest", "retreat", "dodge", "outplay"]},
         "target": {"$ref": "#/$defs/point"}
       }
     },
@@ -249,15 +253,17 @@
     "unit": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "team", "role", "policy", "position", "hp", "maxHp", "attackRange", "attackDamage", "moveSpeed", "armor", "visionRange", "attackCooldown", "cooldownTurns", "visible", "alive"],
+      "required": ["id", "team", "role", "class", "policy", "position", "hp", "maxHp", "moveRange", "attackRange", "attackDamage", "moveSpeed", "armor", "visionRange", "attackCooldown", "cooldownTurns", "visible", "alive"],
       "properties": {
         "id": {"type": "string", "minLength": 1},
         "team": {"type": "string", "enum": ["blue", "red"]},
         "role": {"type": "string", "minLength": 1},
+        "class": {"type": "string", "enum": ["tank", "fighter", "marksman", "mage", "support", "assassin"]},
         "policy": {"type": "string", "enum": ["controlled", "support", "protector", "aggressive", "skirmisher"]},
         "position": {"$ref": "#/$defs/point"},
         "hp": {"type": "integer", "minimum": 0},
         "maxHp": {"type": "integer", "minimum": 1},
+        "moveRange": {"type": "number", "enum": [7, 8, 9, 10, 11, 13]},
         "attackRange": {"type": "number", "exclusiveMinimum": 0},
         "attackDamage": {"type": "integer", "minimum": 1},
         "moveSpeed": {"type": "number", "exclusiveMinimum": 0},

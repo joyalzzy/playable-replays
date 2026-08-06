@@ -11,8 +11,8 @@ feedback rather than from false precision.
 
 Fixture version 2.1 defines:
 
-- Per-unit health, armor, attack range, attack damage, movement speed, vision,
-  cooldown, and policy.
+- Per-unit class, health, armor, attack range, attack damage, per-frame movement
+  range, vision, cooldown, and policy.
 - Terrain position, radius, movement multiplier, and vision blocking.
 - Optional objective position, radius, and required control turns.
 - A primary victory rule, optional target unit, safe zone, and escape duration.
@@ -33,18 +33,20 @@ Each legal command resolves in the following stable order:
 1. Expire the previous turn's guard and shield; tick cooldowns.
 2. Resolve the user's high-level command.
 3. Recalculate team vision and log newly revealed contacts.
-4. Resolve allied support, protection, or aggression policies.
-5. Recalculate vision.
-6. Resolve enemy support, protection, aggression, or skirmishing policies.
-7. Recalculate vision without exposing hidden coordinates.
-8. Update objective control and escape progress.
-9. Recalculate scenario advantage from current state.
-10. Evaluate explicit terminal conditions and build the debrief.
+4. Request and atomically validate optional model position suggestions.
+5. Resolve allied model movement and support, protection, or aggression policy.
+6. Recalculate vision.
+7. Resolve enemy model movement, support, protection, aggression, or skirmishing policy.
+8. Record model/fallback policy status and recalculate vision without exposing hidden coordinates.
+9. Update objective control and escape progress.
+10. Recalculate scenario advantage from current state.
+11. Evaluate explicit terminal conditions, reveal the authored reference action,
+    and build the debrief when the scenario ends.
 
 ## Commands
 
-- **Move:** travels toward the selected point using the unit's authored movement
-  speed and the terrain multiplier at its starting position.
+- **Move:** travels toward the selected point, clamped to the unit's class
+  movement range and the terrain multiplier at its starting position.
 - **Hold:** adds a small shield and reduces incoming damage for the turn. It does
   not invent health regeneration.
 - **Contest:** closes on the nearest visible enemy and attacks only when the
@@ -52,6 +54,10 @@ Each legal command resolves in the following stable order:
   advances toward the objective.
 - **Retreat:** moves toward the authored safe zone at disengage speed and applies
   the turn's defensive guard.
+- **Dodge:** performs a class-limited sidestep and evades the next eligible
+  incoming skillshot that turn; the log records an evade only when one occurs.
+- **Outplay:** attacks the nearest visible in-range target when the ability is
+  ready, then applies guard. Otherwise it logs why the attempt was unavailable.
 
 ## Combat
 
@@ -90,13 +96,14 @@ winning side. It is a state summary, not a calibrated probability.
 ## Reference rollouts
 
 The first reference action is hidden until the user commits. When the scenario
-ends, the simulator replays Move, Hold, Contest, and Retreat from the same seed,
-then follows the opening-specific authored continuation. The response includes each result, ending
-advantage, outcome reason, duration, and key causal events.
+ends, the simulator replays Move, Hold, Contest, Retreat, Dodge, and Outplay
+from the same seed, then follows the opening-specific authored continuation.
+The response includes each result, ending advantage, outcome reason, duration,
+and key causal events.
 
 ## Calculated best allied line
 
-After a scenario ends, the engine exhaustively searches all four modeled commands
+After a scenario ends, the engine exhaustively searches all six modeled commands
 at every remaining turn from the initial state. `Move` uses the scenario's
 authored default destination, so the search is exhaustive over modeled commands
 but not over every possible map coordinate.

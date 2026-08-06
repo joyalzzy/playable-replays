@@ -1,13 +1,23 @@
 export type Point = { x: number; y: number };
 
+export type UnitClass =
+  | "tank"
+  | "fighter"
+  | "marksman"
+  | "mage"
+  | "support"
+  | "assassin";
+
 export type Unit = {
   id: string;
   team: "blue" | "red";
   role: string;
+  class: UnitClass;
   policy: string;
   position: Point;
   hp: number;
   maxHp: number;
+  moveRange: number;
   attackRange: number;
   attackDamage: number;
   moveSpeed: number;
@@ -53,7 +63,7 @@ export type MechanicBriefing = {
   mechanics: ScenarioMechanic[];
 };
 
-export type ActionType = "move" | "hold" | "contest" | "retreat";
+export type ActionType = "move" | "hold" | "contest" | "retreat" | "dodge" | "outplay";
 
 export type Action = {
   type: ActionType;
@@ -62,7 +72,7 @@ export type Action = {
 
 export type LogEntry = {
   turn: number;
-  actor: "user" | "ally" | "enemy" | "system";
+  actor: "user" | "ally" | "enemy" | "policy" | "system";
   kind: string;
   action: string;
   actorId?: string;

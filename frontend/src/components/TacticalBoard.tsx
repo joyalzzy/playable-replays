@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type MouseEvent } from "react";
+import { useEffect, useState, type CSSProperties, type MouseEvent } from "react";
 import { fullMapViewport, type MapViewport } from "../mapViewport";
 import { roleMarks } from "../replaySymbols";
 import type { ObjectiveState, Point, TerrainFeature, Unit } from "../types";
@@ -22,6 +22,61 @@ type Props = {
   onTarget: (point: Point) => void;
 };
 
+const clamp = (value: number, minimum: number, maximum: number) =>
+  Math.min(maximum, Math.max(minimum, value));
+
+export function clampTargetToMoveRange(
+  point: Point,
+  origin: Point,
+  moveRange: number
+): Point {
+  const bounded = {
+    x: clamp(point.x, 0, 100),
+    y: clamp(point.y, 0, 100)
+  };
+  const range = Math.max(0, moveRange);
+  const deltaX = bounded.x - origin.x;
+  const deltaY = bounded.y - origin.y;
+  const distance = Math.hypot(deltaX, deltaY);
+
+  if (distance === 0 || distance <= range) return bounded;
+
+  const scale = range / distance;
+  return {
+    x: clamp(origin.x + deltaX * scale, 0, 100),
+    y: clamp(origin.y + deltaY * scale, 0, 100)
+  };
+}
+
+function RangeIndicator({
+  unit,
+  kind,
+  projectedPosition,
+  viewportWidth,
+  viewportHeight
+}: {
+  unit: Unit;
+  kind: "attack" | "move";
+  projectedPosition: Point;
+  viewportWidth: number;
+  viewportHeight: number;
+}) {
+  const range = kind === "attack" ? unit.attackRange : unit.moveRange;
+  return (
+    <span
+      className={`range-indicator range-indicator--${kind}`}
+      style={{
+        left: `${projectedPosition.x}%`,
+        top: `${projectedPosition.y}%`,
+        width: `${(Math.max(0, range) * 2 / viewportWidth) * 100}%`,
+        height: `${(Math.max(0, range) * 2 / viewportHeight) * 100}%`
+      }}
+      role="img"
+      aria-label={`${kind === "attack" ? "Attack" : "Movement"} range for ${unit.class}: ${range} map units`}
+    />
+  );
+}
+
 export function TacticalBoard({
   units,
   terrain,
@@ -34,10 +89,17 @@ export function TacticalBoard({
   onTarget
 }: Props) {
   const [hoverPoint, setHoverPoint] = useState<Point>();
-  const controlledUnit = units.find((unit) => unit.id === controlledUnitId);
+  const [selectedUnitId, setSelectedUnitId] = useState(controlledUnitId);
+  const visibleUnits = units.filter((unit) => unit.visible && unit.alive);
+  const controlledUnit = visibleUnits.find((unit) => unit.id === controlledUnitId);
+  const selectedUnit = visibleUnits.find((unit) => unit.id === selectedUnitId) ?? controlledUnit;
   const activeViewport = viewport ?? fullMapViewport;
   const viewportWidth = activeViewport.xMax - activeViewport.xMin;
   const viewportHeight = activeViewport.yMax - activeViewport.yMin;
+
+  useEffect(() => {
+    setSelectedUnitId(controlledUnitId);
+  }, [controlledUnitId]);
 
   function projectPoint(point: Point) {
     return {
@@ -59,19 +121,21 @@ export function TacticalBoard({
   }
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
-    if (!targeting) return;
-    onTarget(pointFromEvent(event));
+    if (!targeting || !controlledUnit) return;
+    onTarget(clampTargetToMoveRange(pointFromEvent(event), controlledUnit.position, controlledUnit.moveRange));
   }
 
   return (
-    <button
-      className={`board ${targeting ? "board--targeting" : ""}`}
-      onClick={handleClick}
-      onMouseMove={(event) => setHoverPoint(pointFromEvent(event))}
-      onMouseLeave={() => setHoverPoint(undefined)}
-      type="button"
-      aria-label={targeting ? "Choose movement target" : "Tactical map"}
-    >
+    <section className="tactical-board" aria-label="Tactical board">
+      <div className={`board ${targeting ? "board--targeting" : ""}`}>
+        <button
+          className="board__surface"
+          onClick={handleClick}
+          onMouseMove={(event) => setHoverPoint(pointFromEvent(event))}
+          onMouseLeave={() => setHoverPoint(undefined)}
+          type="button"
+          aria-label={targeting ? "Choose movement target" : "Tactical map"}
+        />
       <svg
         className="lane-network"
         viewBox={`${activeViewport.xMin * 1.6} ${activeViewport.yMin} ${viewportWidth * 1.6} ${viewportHeight}`}
@@ -177,20 +241,45 @@ export function TacticalBoard({
           {hoverPoint ? `X ${hoverPoint.x} · Y ${hoverPoint.y}` : "Hover to inspect"}
         </strong>
       </span>
-      {units
-        .filter((unit) => unit.visible && unit.alive)
-        .map((unit) => (
-          <span
+      {selectedUnit && (
+        <RangeIndicator
+          unit={selectedUnit}
+          kind="attack"
+          projectedPosition={projectPoint(selectedUnit.position)}
+          viewportWidth={viewportWidth}
+          viewportHeight={viewportHeight}
+        />
+      )}
+      {targeting && controlledUnit && (
+        <RangeIndicator
+          unit={controlledUnit}
+          kind="move"
+          projectedPosition={projectPoint(controlledUnit.position)}
+          viewportWidth={viewportWidth}
+          viewportHeight={viewportHeight}
+        />
+      )}
+      {visibleUnits.map((unit) => {
+        const selected = unit.id === selectedUnit?.id;
+        return (
+          <button
             key={unit.id}
             className={[
               "unit",
               `unit--${unit.team}`,
               `unit--role-${roleClass(unit.role)}`,
+              `unit--class-${unit.class}`,
               unit.id === controlledUnitId ? "unit--controlled" : "",
-              unit.guarded ? "unit--guarded" : ""
-            ].join(" ")}
+              unit.guarded ? "unit--guarded" : "",
+              selected ? "unit--selected" : ""
+            ].filter(Boolean).join(" ")}
             style={{ left: `${projectPoint(unit.position).x}%`, top: `${projectPoint(unit.position).y}%` }}
-            title={`${unit.role}: ${unit.hp}/${unit.maxHp} HP · ${unit.shield} shield · ${unit.attackRange} range`}
+            title={`${unit.class} ${unit.role}: ${unit.hp}/${unit.maxHp} HP · ${unit.moveRange} movement · ${unit.attackRange} attack range`}
+            type="button"
+            aria-label={`${unit.team} ${unit.class} unit, ${unit.hp} of ${unit.maxHp} health${unit.id === controlledUnitId ? ", controlled" : ""}`}
+            aria-pressed={selected}
+            onClick={() => setSelectedUnitId(unit.id)}
+            onFocus={() => setSelectedUnitId(unit.id)}
           >
             <span className="unit__portrait" aria-hidden="true">
               <span className="unit__role">{roleMarks[unit.role] ?? unit.role.slice(0, 2).toUpperCase()}</span>
@@ -200,8 +289,10 @@ export function TacticalBoard({
             <span className="unit__health">
               <span style={{ width: `${Math.max(0, (unit.hp / unit.maxHp) * 100)}%` }} />
             </span>
-          </span>
-        ))}
+            <span className="unit__class-badge" aria-hidden="true">{unit.class}</span>
+          </button>
+        );
+      })}
       {target && (
         <span
           className="target"
@@ -211,7 +302,42 @@ export function TacticalBoard({
           <span className="target__coordinates">X {target.x} · Y {target.y}</span>
         </span>
       )}
-      {targeting && <span className="board__hint">Choose a destination within the tactical map</span>}
-    </button>
+      {targeting && controlledUnit && (
+        <span className="board__hint">
+          Choose a point within {controlledUnit.moveRange} map units
+        </span>
+      )}
+      </div>
+
+      {selectedUnit && (
+        <section
+          className={`unit-inspector unit-inspector--${selectedUnit.class}`}
+          aria-label="Selected unit details"
+          aria-live="polite"
+        >
+          <div>
+            <span className="unit-inspector__label">Selected unit</span>
+            <strong>{selectedUnit.class}</strong>
+            <span className={`team-label team-label--${selectedUnit.team}`}>
+              {selectedUnit.team} team · {selectedUnit.role}
+            </span>
+          </div>
+          <dl>
+            <div>
+              <dt>Health</dt>
+              <dd>{selectedUnit.hp} / {selectedUnit.maxHp} HP</dd>
+            </div>
+            <div>
+              <dt>Move per frame</dt>
+              <dd>{selectedUnit.moveRange} map units</dd>
+            </div>
+            <div>
+              <dt>Attack range</dt>
+              <dd>{selectedUnit.attackRange} map units</dd>
+            </div>
+          </dl>
+        </section>
+      )}
+    </section>
   );
 }

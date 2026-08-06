@@ -8,6 +8,12 @@ services:
       FIXTURE_PATH: /app/fixtures/moments.json
       LOCAL_DATA_DIR: /app/data
       LOCAL_DATA_RETENTION_DAYS: 7
+      POSITION_MODEL_URL: ${POSITION_MODEL_URL:-}
+      POSITION_MODEL_NAME: ${POSITION_MODEL_NAME:-}
+      POSITION_MODEL_VERSION: ${POSITION_MODEL_VERSION:-}
+      OPPONENT_MODEL_URL: ${OPPONENT_MODEL_URL:-}
+      OPPONENT_MODEL_NAME: ${OPPONENT_MODEL_NAME:-}
+      OPPONENT_MODEL_VERSION: ${OPPONENT_MODEL_VERSION:-}
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
@@ -26,4 +32,3 @@ services:
 
 volumes:
   playable_replays_data:
-

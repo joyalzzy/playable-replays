@@ -21,6 +21,10 @@ estimates.
 - Local normalized-telemetry collector, bounded live ingestion API, incremental detector, and identity-free visual timeline
 - Restart-safe summary/draft storage with retention and deletion controls; raw telemetry and collector tokens remain memory-only
 - Final-candidate to version 2.1 draft conversion with an enforced analyst publication gate
+- Six unit classes with distinct health, movement, and attack profiles
+- Click-to-inspect unit details and movement/attack range indicators
+- `dodge` and `outplay` decisions alongside the original tactical actions
+- Optional HTTP connector for model-suggested teammate and opponent positions
 - OpenAPI contract and JSON schemas
 - Unit, API, frontend, and preprocessing tests
 - Docker Compose and GitHub Actions
@@ -65,8 +69,62 @@ The web app is then available at <http://localhost:5173>.
 ## Core design rule
 
 The browser requests a legal high-level action. The Go simulator validates and
-resolves that action using a scenario seed. An LLM is never trusted to invent
-physics, hidden state, damage, or victory conditions.
+resolves that action using a scenario seed. An optional model may suggest where
+live non-player units—including the player's teammates and opponents—should try
+to move in the next frame, but its output is only a target. The simulator keeps
+the user-controlled unit outside model control, validates every proposal
+atomically, applies class movement limits and map bounds, and remains solely
+responsible for physics, damage, cooldowns, hidden state, and victory conditions.
+
+## Unit classes
+
+Every fixture unit has an explicit class. The class controls maximum health,
+per-frame movement, and attack radius; the API exposes `moveRange` and
+`attackRange` so the board can explain those limits rather than hiding them.
+Tanks are the toughest and slowest class, while marksmen trade health for range.
+
+| Class | Maximum health | Move range | Attack range |
+| --- | ---: | ---: | ---: |
+| Tank | 160 | 7 | 10 |
+| Fighter | 125 | 10 | 14 |
+| Marksman | 90 | 11 | 28 |
+| Mage | 95 | 9 | 24 |
+| Support | 110 | 8 | 20 |
+| Assassin | 100 | 13 | 12 |
+
+Ranges are map units per frame.
+
+## Optional position-model connector
+
+No model, API key, or network service is required by default. Without a
+connector, teammates and opponents use their seeded built-in policies.
+
+To test an HTTP position model, configure its endpoint and stable identity for
+the API process:
+
+```bash
+POSITION_MODEL_URL=http://127.0.0.1:9000/v1/positions \
+POSITION_MODEL_NAME=trajectory-policy \
+POSITION_MODEL_VERSION=2026.08.05 \
+make dev-api
+```
+
+For Docker Compose, copy `.env.example` to `.env`, set the URL to an endpoint
+reachable from the `api` container, set both identity values, and run
+`docker compose up --build`. Once per turn the API posts the version `1.1`
+session snapshot, accepts desired next-frame positions for live units other than
+the player-controlled unit, and records accepted suggestions with that identity
+in server-side session memory. Missing identity fails closed at startup; invalid
+data, timeouts, and connection failures reject the full response and use the
+deterministic fallback. Omitted teammates stay put, while omitted opponents use
+the seeded chase policy. A model can never directly mutate simulator state.
+
+Existing deployments may use the deprecated `OPPONENT_MODEL_URL`,
+`OPPONENT_MODEL_NAME`, and `OPPONENT_MODEL_VERSION` aliases as one complete
+group. These aliases preserve only the environment-variable names: the endpoint
+must implement the same version `1.1` position-model protocol. Do not mix the
+deprecated and preferred variable names. See
+[`contracts/openapi.yaml`](contracts/openapi.yaml) for the exact webhook shapes.
 
 ## Simulator rules
 
@@ -137,7 +195,10 @@ telemetry. The local API writes only finalized identity-free summaries and
 analyst drafts to `.local-data/`, with a seven-day default retention policy.
 Raw frames, source unit IDs, movement traces, and collector tokens are never
 persisted. Production ingestion still requires explicit authorization, data
-minimization, and game-publisher review before a source adapter is built.
+minimization, and game-publisher review before a source adapter is built. The
+optional connector receives a server-side unit snapshot, so only an
+operator-controlled URL should be configured; production model calls also
+require encrypted transport, egress restrictions, and retention controls.
 
 Normalized authorized or synthetic telemetry can be ranked offline with:
 

@@ -12,8 +12,9 @@ Playable Replays is a shareable MOBA tactical-board prototype. It turns
 authorized or synthetic telemetry into short, replayable decision scenarios.
 
 - The Go simulator is authoritative. Browsers submit high-level actions; an
-  optional opponent model submits advisory position targets. Only the simulator
-  resolves movement, damage, cooldowns, visibility, scoring, and terminal state.
+  optional position model submits advisory targets for live non-player units,
+  including teammates and opponents. Only the simulator resolves movement,
+  damage, cooldowns, visibility, scoring, and terminal state.
 - In the required no-model mode, the same fixture seed and legal action sequence
   must produce the same trajectory and outcome, apart from the generated session
   ID. Do not introduce wall-clock time, global randomness, or unordered-map
@@ -37,7 +38,8 @@ authorized or synthetic telemetry into short, replayable decision scenarios.
 | `backend/cmd/server/` | Implemented | Process startup, environment configuration, structured logging, graceful shutdown. |
 | `backend/cmd/telemetry-collector/` | Implemented | Local replay of strict normalized telemetry into the consented ingestion API. |
 | `backend/internal/api/` | Implemented | HTTP routing, JSON transport, structured status codes, CORS/security headers, per-session coordination, and mutation rate limits. |
-| `backend/internal/engine/` | Implemented | Deterministic authoritative simulator and opponent policy. Keep game rules here, not in handlers or React. |
+| `backend/internal/engine/` | Implemented | Deterministic authoritative simulator, non-player movement, and opponent combat policy. Keep game rules here, not in handlers or React. |
+| `backend/internal/positionmodel/` | Implemented | Bounded HTTP client for the optional server-to-server position model. It decodes wire data but never mutates simulator state. |
 | `backend/internal/model/` | Implemented | Shared Go domain and wire structs with JSON tags. |
 | `backend/internal/telemetry/` | Implemented | Bounded ephemeral ingestion, canonical detection, identity-free live snapshots, guarded drafts, and summary-only local retention/deletion. |
 | `backend/internal/fixtures/` | Implemented | Versioned synthetic fixture loading and runtime validation. |
@@ -48,7 +50,7 @@ authorized or synthetic telemetry into short, replayable decision scenarios.
 | `contracts/moment.schema.json` | Implemented | Draft 2020-12 schema for fixture files. |
 | `fixtures/moments.json` | Implemented | Version `2.1` synthetic authored scenario pack. |
 | `ml/` | Implemented baseline | Offline normalized-telemetry validation/windowing, highlight scoring, synthetic detector evaluation, future model-training code, and Python tests. It is never imported by the live Go server. |
-| `model-daemon/` | Reserved; not on `main` yet | Future optional online inference service. It must expose the versioned model contract below and remain non-authoritative. Do not create a second simulator here. |
+| `model-daemon/` | Reserved; not implemented | Future optional online inference service. It must expose the versioned model contract below and remain non-authoritative. Do not create a second simulator here. |
 | `docs/` | Implemented | Architecture, limitations, model plan, and decisions that outgrow this file. |
 | `.github/workflows/ci.yml` | Implemented | Go, frontend, and offline-ML validation on pushes to `main`, on PRs, and by manual dispatch. |
 
@@ -87,8 +89,9 @@ future work.
 4. React sends one legal high-level action per turn.
 5. The Go engine validates and resolves the turn and returns a full session
    snapshot for this synthetic prototype.
-6. A future model daemon may suggest opponent targets, but the engine validates
-   and clamps them before applying normal simulation rules.
+6. An optional operator-configured model service may suggest targets for live
+   units other than the user-controlled unit, but the engine validates and
+   clamps them before applying normal simulation rules.
 
 The browser must never call the model daemon directly. The model endpoint is an
 operator-configured server-to-server dependency, and its failure must activate
@@ -179,9 +182,12 @@ not be the only reason unrelated files change.
 | `LISTEN_ADDR` | Go API | `127.0.0.1:8080`; HTTP listen address. |
 | `FIXTURE_PATH` | Go API | `../fixtures/moments.json` when run from `backend/`; Compose uses `/app/fixtures/moments.json`. |
 | `VITE_API_TARGET` | Vite dev server | `http://127.0.0.1:8080`; Compose uses `http://api:8080`. |
-| `OPPONENT_MODEL_URL` | Future Go connector | Optional absolute HTTP(S) URL, conventionally `http://127.0.0.1:9000/v1/positions`. Absence means deterministic built-in policy. |
 | `LOCAL_DATA_DIR` | Go API | `../.local-data`; local finalized-summary and analyst-draft store. Raw frames and collector tokens are excluded. |
 | `LOCAL_DATA_RETENTION_DAYS` | Go API | `7`; first-run local retention default. The saved setting and API accept `1..365`. |
+| `POSITION_MODEL_URL` | Go connector | Preferred optional absolute HTTP(S) URL, conventionally `http://127.0.0.1:9000/v1/positions`. Absence means deterministic built-in policy. |
+| `POSITION_MODEL_NAME` | Go connector | Required with `POSITION_MODEL_URL`; stable operator-owned model name stored with accepted suggestions. |
+| `POSITION_MODEL_VERSION` | Go connector | Required with `POSITION_MODEL_URL`; stable operator-owned model version stored with accepted suggestions. |
+| `OPPONENT_MODEL_URL`, `OPPONENT_MODEL_NAME`, `OPPONENT_MODEL_VERSION` | Go connector | Deprecated all-or-nothing environment-name aliases. Their endpoint must implement position-model schema `1.1`; never mix them with `POSITION_MODEL_*`. |
 
 Configuration for a model URL is operator-owned. Never accept it from a browser
 request or use arbitrary user-supplied URLs; that would create an SSRF boundary.
@@ -202,7 +208,7 @@ All coordinates use a normalized inclusive `0..100` map. JSON field names are
 | `GET /api/v1/moments` | `200 {"moments":[MomentSummary...]}` | List playable moment metadata and bounded highlight scores. | None in contract. |
 | `POST /api/v1/sessions` | `201 Session` | `{"momentId":"<id>"}` creates an in-memory session. | `400 invalid_request`, `404 moment_not_found`. |
 | `GET /api/v1/sessions/{id}` | `200 Session` | Read current session state. | `404 session_not_found`. |
-| `POST /api/v1/sessions/{id}/turns` | `200 Session` | `{"action":{"type":"...","target":{"x":0,"y":0}}}` resolves one turn under a per-session lock. Runtime requires `target` for `move`; the client omits it otherwise. | `400`, `404`, `422`, `429`; the handler also has an undocumented `500 simulation_error` path. |
+| `POST /api/v1/sessions/{id}/turns` | `200 Session` | `{"action":{"type":"...","target":{"x":0,"y":0}}}` resolves one turn under a per-session lock. Runtime requires `target` for `move`, permits it for `dodge`, and clamps in-map waypoints to the controlled class's frame limit. | `400`, `404`, `422`, `429`; the handler also has an undocumented `500 simulation_error` path. |
 | `POST /api/v1/sessions/{id}/reset` | `200 Session` | Reset to the fixture seed while preserving the session ID under the same per-session mutation limit. | `404`, `429`. |
 | `POST /api/v1/telemetry/matches` | `201 CreateTelemetryMatchResponse` | Start a consented synthetic or authorized local capture and issue an ephemeral collector token. | `400 invalid_telemetry`. |
 | `POST /api/v1/telemetry/matches/{id}/frames` | `202 TelemetryMatch` | Bearer-authenticated ordered normalized frame batch; incrementally detects fully covered windows. | `400`, `401`, `404`, `409`. |
@@ -217,7 +223,8 @@ All coordinates use a normalized inclusive `0..100` map. JSON field names are
 | `GET /api/v1/local-storage` | `200 LocalStorageStatus` | Read summary/draft counts and the safe retention setting. | `500`. |
 | `PUT /api/v1/local-storage/retention` | `200 LocalStorageStatus` | Save a `1..365` day retention policy and delete expired safe files. | `400`, `500`. |
 
-Current action values on `main` are `move`, `hold`, `contest`, and `retreat`.
+Current action values are `move`, `hold`, `contest`, `retreat`, `dodge`, and
+`outplay`.
 Whenever an action is added or changed, update the engine validation/resolution,
 reward/reference policy, logs, OpenAPI enum, Go/TypeScript types, action UI,
 fixtures as needed, and backend/frontend tests in the same change.
@@ -235,40 +242,48 @@ exactly one JSON value, and require `io.EOF` after it. Preserve
 localhost-only development CORS allowlist. Router-level 404/405 responses use
 the same structured error shape and 405 responses include `Allow`.
 
-Simulator constants live in `backend/internal/engine/engine.go`; do not duplicate
-or override them in React or the model daemon. Cooldowns are turns/frames, never
-seconds. The resolution order is validation, turn increment, user action,
-opponent response, cooldown tick, fog update, outcome update, then reference
-action selection. Reordering it is a behavior change and needs focused tests.
+Simulator geometry constants live in `backend/internal/engine/geometry.go`; do
+not duplicate or override them in React or the model daemon. Cooldowns are
+turns/frames, never seconds. The resolution order is validation, begin-turn
+shield/guard reset and cooldown tick, turn increment, user action, fog update,
+optional position-model request, allied resolution, fog update, enemy resolution,
+policy/fog update, objective and escape progress, advantage, terminal outcome,
+then reference/debrief output. Reordering it is a behavior change and needs
+focused tests.
 
 ## Model daemon contract
 
-There is no online model service or model endpoint on current `main`. The
-following is the reserved version `1.0` contract for `model-daemon/`; do not
-invent a competing path or let the frontend depend on it.
+There is no in-repository online model daemon. The Go connector and version
+`1.1` server-to-server contract are implemented; `model-daemon/` remains a
+reserved serving location. Do not invent a competing path or let the frontend
+depend on it.
 
 Keep the four model-related roles separate:
 
 - `ml/highlight.py` is the current offline heuristic highlight scorer.
 - A future trajectory/action policy is trained and evaluated offline in `ml/`.
-- `model-daemon/` serves optional next-frame opponent-position inference.
+- `model-daemon/` serves optional next-frame non-player position inference.
 - A future language layer may parse commands or explain simulator output, but it
   may only emit validated action JSON and is never part of game resolution.
 
 | Method and path | Contract |
 | --- | --- |
 | `GET /healthz` | Return `200 {"status":"ok"}` without loading user/session data. |
-| `POST /v1/positions` | Accept one authoritative next-frame snapshot and return advisory opponent position targets. |
+| `POST /v1/positions` | Accept one authoritative next-frame snapshot and return advisory targets for live non-controlled units. |
 
-The backend is configured with the complete `OPPONENT_MODEL_URL`, so deployments
-may route the service differently while retaining `/v1/positions` as the local
-and documented convention.
+The backend is configured with complete `POSITION_MODEL_URL`,
+`POSITION_MODEL_NAME`, and `POSITION_MODEL_VERSION` values. Deprecated
+`OPPONENT_MODEL_*` aliases remain available only as an all-or-nothing
+environment-name group; mixing the groups fails configuration. They do not
+enable the retired opponent-only wire semantics: the configured endpoint must
+implement schema `1.1`. Deployments may route the service differently while
+retaining `/v1/positions` as the documented convention.
 
 Request shape:
 
 ```json
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "stateScope": "authoritative_server_state",
   "sessionId": "session-1",
   "momentId": "objective-steal-742",
@@ -280,12 +295,12 @@ Request shape:
       "id": "red-jungle",
       "team": "red",
       "role": "jungler",
-      "class": "assassin",
+      "class": "fighter",
       "position": {"x": 48, "y": 51},
-      "hp": 55,
-      "maxHp": 100,
-      "moveRange": 13,
-      "attackRange": 12,
+      "hp": 69,
+      "maxHp": 125,
+      "moveRange": 10,
+      "attackRange": 14,
       "cooldownTurns": 0,
       "visible": true,
       "alive": true
@@ -308,12 +323,17 @@ Model integration rules:
 
 - Treat the request as privileged server state; never forward it to the browser
   or an untrusted/user-selected endpoint.
-- Suggestions may target opponents only. Reject duplicate/unknown units,
-  allied or controlled units, missing fields, unknown fields, non-finite
-  coordinates, and coordinates outside map bounds.
+- Suggestions may target any live snapshot unit except `controlledUnitId`,
+  including AI-controlled teammates. Reject the complete response for a
+  duplicate, unknown, controlled, or dead unit; missing or unknown fields;
+  non-finite coordinates; or coordinates outside map bounds. Never partially
+  apply a response.
+- Omitted teammates receive no model-driven movement target; omitted opponents
+  use the seeded chase behavior. Normal simulator support/combat policies still
+  resolve, and only opponents may execute the combat response against the player.
 - Cap request/response bodies at 64 KiB and snapshots/suggestions at 64 units.
 - Use a short bounded timeout (the connector target is 1.5 seconds), HTTP(S)
-  only, and deterministic fallback for timeouts, non-2xx responses, malformed
+  only, and deterministic fallback for timeouts, non-200 responses, malformed
   JSON, oversized bodies, or unusable suggestions.
 - Clamp accepted displacement to the unit's server-owned per-frame movement
   limit. A model may not author HP, damage, cooldowns, visibility, score, legal
@@ -321,10 +341,11 @@ Model integration rules:
 - Version request/response schema changes. Update the connector, daemon,
   OpenAPI webhook/component schemas, tests, Compose configuration, `.env.example`,
   README, and this file together.
-- Store the accepted response plus model name/version in server-side rollout
-  metadata or operator configuration; these fields do not belong in the strict
-  position response. Never claim action-sequence determinism for an unrecorded
-  remote call.
+- Store the connector schema version, accepted response, and model name/version
+  in server-side rollout metadata; these fields do not belong in the strict
+  position response. The current engine keeps session-scoped in-memory records
+  and clears them on reset. Never claim durable action-sequence reproducibility
+  until records are exported with the fixture and user actions.
 
 If an inference framework requires Python, isolate it in `model-daemon/` behind
 this HTTP contract. Keep the application backend and authoritative simulator in
@@ -346,11 +367,12 @@ validated action JSON outside the authoritative path.
   are `0..100`; health/cooldown values cannot be negative.
 - Keep the JSON Schema, loader validation, fixtures, and fixture tests aligned.
   Schema validation alone does not replace semantic validation in Go.
-- Hidden enemies must not render in React. The current synthetic prototype still
-  serializes their coordinates for inspectability, so it is not anti-cheat
-  hardened. A production view must omit hidden coordinates entirely.
-- Session status values are `active`, `won`, and `lost`; log actors are `user`
-  and `policy` unless the public contract is deliberately versioned.
+- Hidden enemies must not render in React or appear in the public session unit
+  array. The server exposes only visible/unknown enemy counts until fog reveals
+  them. This is still a prototype rather than an anti-cheat-hardened service.
+- Session status values are `active`, `won`, and `lost`; log actors are `user`,
+  `ally`, `enemy`, `policy`, and `system` unless the public contract is
+  deliberately versioned.
 
 The highlight score is intentionally duplicated in Go and Python and must stay
 identical:
@@ -417,7 +439,7 @@ applicable, and explanatory UI/docs in one PR.
   rollout stability, policy diversity, and analyst preference. Agreement is not
   proof that a model reproduced a professional player's decision process.
 
-## Known `main` gaps: do not canonize these
+## Known prototype gaps: do not canonize these
 
 These are current prototype limitations, not conventions to copy into new code:
 
@@ -427,9 +449,6 @@ These are current prototype limitations, not conventions to copy into new code:
   standards validator; Go performs strict fixture decoding and semantic checks.
 - The frontend trusts successful JSON through TypeScript casts; there is no
   generated client or runtime response validator.
-- `Engine.State()` shallow-copies `ReferenceAction.Target`; callers can mutate
-  that pointer. New state fields must be defensively copied, and this existing
-  pointer should be fixed when session-copy behavior is touched.
 - `npm run lint` exists, but no ESLint configuration is committed and lint is not
   a Make/CI gate. Do not report lint as passing until that is deliberately fixed.
 - `make build` writes `backend/server`, which is not currently ignored. Treat it

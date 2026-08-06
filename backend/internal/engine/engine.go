@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -13,7 +14,7 @@ import (
 
 var ErrIllegalAction = errors.New("illegal action")
 
-var actionTypes = []string{"move", "hold", "contest", "retreat"}
+var actionTypes = []string{"move", "hold", "contest", "retreat", "dodge", "outplay"}
 
 type Engine struct {
 	moment            model.Moment
@@ -21,14 +22,26 @@ type Engine struct {
 	rng               *rand.Rand
 	referenceOutcomes []model.ReferenceOutcome
 	bestCase          *model.BestCaseLine
+	positionModel     PositionModel
+	rollouts          []ModelRolloutRecord
+}
+
+type turnEffects struct {
+	dodgeActive      bool
+	dodgeEvaded      bool
+	outplaySucceeded bool
 }
 
 func New(moment model.Moment, sessionID string) *Engine {
-	return newEngine(moment, sessionID, true)
+	return newEngine(moment, sessionID, true, nil)
 }
 
-func newEngine(moment model.Moment, sessionID string, withReferences bool) *Engine {
-	e := &Engine{moment: normalizeMoment(cloneMoment(moment))}
+func NewWithPositionModel(moment model.Moment, sessionID string, positionModel PositionModel) *Engine {
+	return newEngine(moment, sessionID, true, positionModel)
+}
+
+func newEngine(moment model.Moment, sessionID string, withReferences bool, positionModel PositionModel) *Engine {
+	e := &Engine{moment: normalizeMoment(cloneMoment(moment)), positionModel: positionModel}
 	e.Reset(sessionID)
 	if withReferences {
 		e.referenceOutcomes = e.computeReferenceOutcomes()
@@ -39,6 +52,7 @@ func newEngine(moment model.Moment, sessionID string, withReferences bool) *Engi
 
 func (e *Engine) Reset(sessionID string) model.Session {
 	e.rng = rand.New(rand.NewSource(e.moment.Seed))
+	e.rollouts = nil
 	e.session = model.Session{
 		ID:                  sessionID,
 		MomentID:            e.moment.ID,
@@ -97,31 +111,33 @@ func (e *Engine) State() model.Session {
 }
 
 func (e *Engine) Apply(action model.Action) (model.Session, error) {
+	return e.ApplyContext(context.Background(), action)
+}
+
+func (e *Engine) ApplyContext(ctx context.Context, action model.Action) (model.Session, error) {
 	if e.session.Status != "active" {
 		return e.State(), fmt.Errorf("%w: session is complete", ErrIllegalAction)
 	}
-	if !slices.Contains(e.session.LegalActions, action.Type) {
-		return e.State(), fmt.Errorf("%w: unknown action %q", ErrIllegalAction, action.Type)
-	}
-	if action.Type == "move" && action.Target == nil {
-		return e.State(), fmt.Errorf("%w: move requires a target", ErrIllegalAction)
-	}
-	if action.Target != nil && !pointOnMap(*action.Target) {
-		return e.State(), fmt.Errorf("%w: target is outside the map", ErrIllegalAction)
-	}
-
 	controlled := e.unit(e.moment.ControlledUnitID)
 	if controlled == nil || !controlled.Alive {
 		return e.State(), fmt.Errorf("%w: controlled unit is unavailable", ErrIllegalAction)
 	}
+	if err := e.validateAction(action); err != nil {
+		return e.State(), err
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	e.beginTurn()
 	e.session.Turn++
-	e.resolveUser(controlled, action)
+	effects := e.resolveUser(controlled, action)
 	e.applyFog(true)
-	e.resolveAllies(controlled)
+	suggestions, modelUsed, fallback := e.modelSuggestions(ctx)
+	e.resolveAllies(controlled, suggestions, modelUsed)
 	e.applyFog(true)
-	e.resolveEnemies()
+	e.resolveEnemies(controlled, suggestions, modelUsed, &effects)
+	e.logPositionPolicy(modelUsed, fallback)
 	e.applyFog(true)
 	e.updateObjective()
 	e.updateEscape()
@@ -145,7 +161,8 @@ func (e *Engine) beginTurn() {
 	}
 }
 
-func (e *Engine) resolveUser(unit *model.Unit, action model.Action) {
+func (e *Engine) resolveUser(unit *model.Unit, action model.Action) turnEffects {
+	effects := turnEffects{}
 	switch action.Type {
 	case "move":
 		e.moveUnit(unit, *action.Target, 1, "user", "reposition")
@@ -166,7 +183,7 @@ func (e *Engine) resolveUser(unit *model.Unit, action model.Action) {
 				e.addLog("user", "defense", "contest", unit.ID, "", 0,
 					fmt.Sprintf("%s found no visible target and held position.", unitName(*unit)))
 			}
-			return
+			return effects
 		}
 		if distance(unit.Position, target.Position) > unit.AttackRange {
 			e.moveUnit(unit, target.Position, 1, "user", "close distance")
@@ -183,15 +200,44 @@ func (e *Engine) resolveUser(unit *model.Unit, action model.Action) {
 		e.moveUnit(unit, destination, 1.2, "user", "retreat")
 		e.addLog("user", "defense", "retreat", unit.ID, "", 0,
 			fmt.Sprintf("%s disengaged toward the safe zone and reduced incoming damage this turn.", unitName(*unit)))
+	case "dodge":
+		destination := e.automaticDodgeTarget(*unit)
+		if action.Target != nil {
+			destination = *action.Target
+		}
+		e.moveUnit(unit, destination, 1, "user", "dodge")
+		effects.dodgeActive = true
+		e.addLog("user", "defense", "dodge", unit.ID, "", 0,
+			fmt.Sprintf("%s prepared to evade the next incoming skillshot.", unitName(*unit)))
+	case "outplay":
+		target := e.nearestVisibleEnemy(*unit)
+		if target == nil || distance(unit.Position, target.Position) > unit.AttackRange || unit.Cooldown > 0 {
+			reason := "no visible enemy was in attack range"
+			if unit.Cooldown > 0 {
+				reason = "the ability was on cooldown"
+			}
+			e.addLog("user", "combat", "outplay-unavailable", unit.ID, "", 0,
+				fmt.Sprintf("The outplay was unavailable because %s.", reason))
+			break
+		}
+		effects.outplaySucceeded = e.attack(unit, target, "user", "outplay")
+		if effects.outplaySucceeded {
+			unit.Guarded = true
+			e.addLog("user", "combat", "outplay", unit.ID, target.ID, 0,
+				fmt.Sprintf("%s outplayed %s and reduced incoming damage this turn.", unitName(*unit), unitName(*target)))
+		}
 	}
+	return effects
 }
 
-func (e *Engine) resolveAllies(controlled *model.Unit) {
+func (e *Engine) resolveAllies(controlled *model.Unit, suggestions map[string]model.Point, modelUsed bool) {
 	for i := range e.session.Units {
 		unit := &e.session.Units[i]
 		if !unit.Alive || unit.Team != "blue" || unit.ID == controlled.ID {
 			continue
 		}
+		e.applySuggestedMove(unit, suggestions, "ally")
+		allowPolicyMovement := !modelUsed
 		switch unit.Policy {
 		case "support":
 			if unit.Cooldown == 0 && distance(unit.Position, controlled.Position) <= unit.VisionRange {
@@ -200,43 +246,44 @@ func (e *Engine) resolveAllies(controlled *model.Unit) {
 				unit.Cooldown = unit.AttackCooldown
 				e.addLog("ally", "support", "shield", unit.ID, controlled.ID, shield,
 					fmt.Sprintf("%s shielded %s for %d.", unitName(*unit), unitName(*controlled), shield))
-			} else {
+			} else if allowPolicyMovement {
 				e.moveUnit(unit, controlled.Position, .85, "ally", "follow")
 			}
 		case "protector":
 			target := e.nearestVisibleEnemy(*unit)
 			if target != nil && distance(target.Position, controlled.Position) <= 30 {
-				if distance(unit.Position, target.Position) > unit.AttackRange {
+				if allowPolicyMovement && distance(unit.Position, target.Position) > unit.AttackRange {
 					e.moveUnit(unit, target.Position, .9, "ally", "intercept")
 				}
 				if distance(unit.Position, target.Position) <= unit.AttackRange {
 					e.attack(unit, target, "ally", "intercept")
 				}
-			} else {
+			} else if allowPolicyMovement {
 				e.moveUnit(unit, controlled.Position, .75, "ally", "protect")
 			}
 		default:
 			target := e.nearestVisibleEnemy(*unit)
 			if target != nil && distance(unit.Position, target.Position) <= unit.VisionRange {
-				if distance(unit.Position, target.Position) > unit.AttackRange {
+				if allowPolicyMovement && distance(unit.Position, target.Position) > unit.AttackRange {
 					e.moveUnit(unit, target.Position, .85, "ally", "engage")
 				}
 				if distance(unit.Position, target.Position) <= unit.AttackRange {
 					e.attack(unit, target, "ally", "engage")
 				}
-			} else {
+			} else if allowPolicyMovement {
 				e.moveUnit(unit, controlled.Position, .75, "ally", "regroup")
 			}
 		}
 	}
 }
 
-func (e *Engine) resolveEnemies() {
+func (e *Engine) resolveEnemies(controlled *model.Unit, suggestions map[string]model.Point, _ bool, effects *turnEffects) {
 	for i := range e.session.Units {
 		unit := &e.session.Units[i]
 		if !unit.Alive || unit.Team != "red" {
 			continue
 		}
+		modelMoved := e.applySuggestedMove(unit, suggestions, "enemy")
 		if unit.Policy == "support" {
 			if e.resolveEnemySupport(unit) {
 				continue
@@ -250,17 +297,46 @@ func (e *Engine) resolveEnemies() {
 			continue
 		}
 		currentDistance := distance(unit.Position, target.Position)
-		if unit.Policy == "skirmisher" && currentDistance < unit.AttackRange*.5 {
+		if !modelMoved && unit.Policy == "skirmisher" && currentDistance < unit.AttackRange*.5 {
 			e.moveUnit(unit, moveAway(unit.Position, target.Position, unit.MoveSpeed), 1, "enemy", "kite")
 			currentDistance = distance(unit.Position, target.Position)
 		}
-		if currentDistance > unit.AttackRange {
+		if !modelMoved && currentDistance > unit.AttackRange {
 			e.moveUnit(unit, target.Position, 1, "enemy", "engage")
 		}
 		if distance(unit.Position, target.Position) <= unit.AttackRange {
+			if target.ID == controlled.ID && effects.dodgeActive && unit.Cooldown == 0 {
+				unit.Cooldown = unit.AttackCooldown
+				effects.dodgeEvaded = true
+				e.addLog("enemy", "combat", "skillshot-dodged", unit.ID, controlled.ID, 0,
+					fmt.Sprintf("%s dodged %s's skillshot.", unitName(*controlled), unitName(*unit)))
+				continue
+			}
 			e.attack(unit, target, "enemy", "attack")
 		}
 	}
+}
+
+func (e *Engine) applySuggestedMove(unit *model.Unit, suggestions map[string]model.Point, actor string) bool {
+	destination, ok := suggestions[unit.ID]
+	if !ok {
+		return false
+	}
+	e.moveUnit(unit, destination, 1, actor, "model-position")
+	return true
+}
+
+func (e *Engine) logPositionPolicy(modelUsed, fallback bool) {
+	if !modelUsed && !fallback {
+		return
+	}
+	action := "model-respond"
+	message := "The position model response was applied to eligible non-player units under authoritative class movement limits."
+	if fallback {
+		action = "fallback"
+		message = "The position model response was unusable; deterministic non-player policies were applied."
+	}
+	e.addLog("policy", "model", action, "", "", 0, message)
 }
 
 func (e *Engine) resolveEnemySupport(unit *model.Unit) bool {
@@ -295,7 +371,15 @@ func (e *Engine) moveUnit(unit *model.Unit, destination model.Point, speedScale 
 	}
 	public := unit.Team == "blue" || unit.Visible
 	start := unit.Position
-	limit := unit.MoveSpeed * speedScale * e.movementMultiplier(start)
+	classLimit := unit.MoveRange
+	if classLimit <= 0 {
+		classLimit = unit.MoveSpeed
+	}
+	requestedLimit := unit.MoveSpeed * speedScale
+	if requestedLimit <= 0 {
+		requestedLimit = classLimit
+	}
+	limit := min(classLimit, requestedLimit) * e.movementMultiplier(start)
 	unit.Position = clampPoint(moveToward(start, destination, limit))
 	moved := distance(start, unit.Position)
 	if moved < .05 || (actor == "enemy" && !public) {
@@ -537,7 +621,7 @@ func (e *Engine) revealReferenceForTurn() {
 func (e *Engine) computeReferenceOutcomes() []model.ReferenceOutcome {
 	outcomes := make([]model.ReferenceOutcome, 0, len(actionTypes))
 	for _, actionType := range actionTypes {
-		probe := newEngine(e.moment, "reference-"+actionType, false)
+		probe := newEngine(e.moment, "reference-"+actionType, false, nil)
 		firstAction := cloneAction(e.moment.Rules.ActionDefaults[actionType])
 		_, err := probe.Apply(firstAction)
 		continuation := e.moment.Rules.ReferenceContinuations[actionType]
@@ -568,7 +652,7 @@ type bestRolloutResult struct {
 
 func (e *Engine) computeBestCase() *model.BestCaseLine {
 	best := bestContinuation(e.moment, nil)
-	probe := newEngine(e.moment, "best-case-line", false)
+	probe := newEngine(e.moment, "best-case-line", false, nil)
 	prefix := make([]model.Action, 0, len(best.actions))
 	steps := make([]model.BestCaseStep, 0, len(best.actions))
 
@@ -598,13 +682,13 @@ func (e *Engine) computeBestCase() *model.BestCaseLine {
 	return &model.BestCaseLine{
 		Status: probe.session.Status, Turns: probe.session.Turn, Advantage: probe.session.Advantage,
 		OutcomeReason: probe.session.OutcomeReason,
-		Method:        "Exhaustive deterministic search over all four modeled commands at every remaining turn; Move uses the scenario's authored destination.",
+		Method:        "Exhaustive deterministic search over all six modeled commands at every remaining turn; Move uses the scenario's authored destination.",
 		Steps:         steps,
 	}
 }
 
 func bestContinuation(moment model.Moment, prefix []model.Action) bestRolloutResult {
-	probe := newEngine(moment, "best-case-probe", false)
+	probe := newEngine(moment, "best-case-probe", false, nil)
 	for _, action := range prefix {
 		if probe.session.Status != "active" {
 			break
@@ -874,7 +958,6 @@ func (e *Engine) unit(id string) *model.Unit {
 	}
 	return nil
 }
-
 func (e *Engine) addLog(actor, kind, action, actorID, targetID string, value int, message string) {
 	e.session.Log = append(e.session.Log, model.LogEntry{
 		Turn: e.session.Turn, Actor: actor, Kind: kind, Action: action,
@@ -934,22 +1017,11 @@ func normalizeMoment(moment model.Moment) model.Moment {
 	}
 	for i := range moment.Units {
 		unit := &moment.Units[i]
-		if unit.MaxHP <= 0 {
-			unit.MaxHP = 100
-		}
-		if unit.AttackRange <= 0 {
-			if unit.Role == "carry" || unit.Role == "mage" || unit.Role == "support" {
-				unit.AttackRange = 22
-			} else {
-				unit.AttackRange = 9
-			}
-		}
+		*unit = model.ApplyClassProfile(*unit)
 		if unit.AttackDamage <= 0 {
 			unit.AttackDamage = 16
 		}
-		if unit.MoveSpeed <= 0 {
-			unit.MoveSpeed = 14
-		}
+		unit.MoveSpeed = unit.MoveRange
 		if unit.VisionRange <= 0 {
 			unit.VisionRange = 34
 		}
@@ -970,26 +1042,6 @@ func normalizeMoment(moment model.Moment) model.Moment {
 		}
 	}
 	return moment
-}
-
-func pointOnMap(point model.Point) bool {
-	return point.X >= 0 && point.X <= 100 && point.Y >= 0 && point.Y <= 100
-}
-
-func clampPoint(point model.Point) model.Point {
-	return model.Point{X: clamp(point.X, 0, 100), Y: clamp(point.Y, 0, 100)}
-}
-
-func distance(a, b model.Point) float64 {
-	return math.Hypot(a.X-b.X, a.Y-b.Y)
-}
-
-func moveToward(from, to model.Point, limit float64) model.Point {
-	d := distance(from, to)
-	if d == 0 || d <= limit {
-		return to
-	}
-	return model.Point{X: from.X + (to.X-from.X)*limit/d, Y: from.Y + (to.Y-from.Y)*limit/d}
 }
 
 func moveAway(from, threat model.Point, limit float64) model.Point {
@@ -1183,8 +1235,4 @@ func cloneActions(actions []model.Action) []model.Action {
 		cloned[i] = cloneAction(action)
 	}
 	return cloned
-}
-
-func clamp(value, low, high float64) float64 {
-	return math.Max(low, math.Min(high, value))
 }

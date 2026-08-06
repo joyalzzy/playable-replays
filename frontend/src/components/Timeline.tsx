@@ -4,6 +4,7 @@ const actorLabels: Record<LogEntry["actor"], string> = {
   user: "You",
   ally: "Ally",
   enemy: "Enemy",
+  policy: "Model policy",
   system: "State"
 };
 

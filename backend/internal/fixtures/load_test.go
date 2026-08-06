@@ -1,6 +1,10 @@
 package fixtures
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/joyalzzy/playable-replays/backend/internal/highlight"
@@ -188,6 +192,104 @@ func TestSourceDetectionMustRemainConsistent(t *testing.T) {
 	moment.SourceDetection.Score = 0
 	if err := ValidateMoment(moment); err == nil {
 		t.Fatal("expected inconsistent detector score to be rejected")
+	}
+}
+
+func TestRejectsInvalidPlayableUnitState(t *testing.T) {
+	tests := map[string]func(*model.Moment){
+		"unknown class": func(moment *model.Moment) {
+			moment.Units[0].Class = "wizard"
+		},
+		"class health": func(moment *model.Moment) {
+			moment.Units[0].MaxHP++
+		},
+		"health overflow": func(moment *model.Moment) {
+			moment.Units[0].HP = moment.Units[0].MaxHP + 1
+		},
+		"alive mismatch": func(moment *model.Moment) {
+			moment.Units[0].Alive = !moment.Units[0].Alive
+		},
+		"invalid team": func(moment *model.Moment) {
+			moment.Units[0].Team = "green"
+		},
+		"negative cooldown": func(moment *model.Moment) {
+			moment.Units[0].Cooldown = -1
+		},
+		"outside map": func(moment *model.Moment) {
+			moment.Units[0].Position.X = 101
+		},
+		"duplicate id": func(moment *model.Moment) {
+			moment.Units[1].ID = moment.Units[0].ID
+		},
+		"missing controlled": func(moment *model.Moment) {
+			moment.ControlledUnitID = "missing"
+		},
+		"empty role": func(moment *model.Moment) {
+			moment.Units[0].Role = ""
+		},
+	}
+
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			moments, err := Load("../../../fixtures/moments.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			moment := moments[0]
+			mutate(&moment)
+			if err := ValidateMoment(moment); err == nil {
+				t.Fatal("expected invalid unit state to be rejected")
+			}
+		})
+	}
+}
+
+func TestRejectsMoreThanSnapshotLimit(t *testing.T) {
+	moments, err := Load("../../../fixtures/moments.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	moment := moments[0]
+	template := moment.Units[1]
+	for len(moment.Units) <= maxUnitsPerMoment {
+		unit := template
+		unit.ID = fmt.Sprintf("extra-unit-%d", len(moment.Units))
+		moment.Units = append(moment.Units, unit)
+	}
+	if err := ValidateMoment(moment); err == nil {
+		t.Fatalf("expected a %d-unit moment to be rejected", len(moment.Units))
+	}
+}
+
+func TestLoadRejectsUnknownFieldsAndTrailingJSON(t *testing.T) {
+	source, err := os.ReadFile("../../../fixtures/moments.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var document map[string]any
+	if err := json.Unmarshal(source, &document); err != nil {
+		t.Fatal(err)
+	}
+	document["admin"] = true
+	unknownField, err := json.Marshal(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for name, body := range map[string][]byte{
+		"unknown":  unknownField,
+		"trailing": append(append([]byte(nil), source...), []byte(" {}")...),
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "moments.json")
+			if err := os.WriteFile(path, body, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := Load(path); err == nil {
+				t.Fatal("expected invalid JSON fixture to be rejected")
+			}
+		})
 	}
 }
 

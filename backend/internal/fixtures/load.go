@@ -20,6 +20,7 @@ const (
 	minimumTradeoffs  = 2
 	minimumAlternates = 2
 	minimumTests      = 2
+	maxUnitsPerMoment = 64
 )
 
 var (
@@ -33,7 +34,7 @@ var (
 		"vision-uncertainty",
 	}
 	skillLevels               = []string{"beginner", "intermediate", "advanced"}
-	actionTypes               = []string{"move", "hold", "contest", "retreat"}
+	actionTypes               = []string{"move", "hold", "contest", "retreat", "dodge", "outplay"}
 	canonicalTerrainLandmarks = map[string]model.Point{
 		"base-gate":   {X: 16, Y: 82},
 		"tower-zone":  {X: 30, Y: 69},
@@ -136,6 +137,9 @@ func ValidateMoment(moment model.Moment) error {
 	if moment.StartTimeSeconds < 0 || moment.MaxTurns < 1 || moment.MaxTurns > 20 || len(moment.ReasonTags) == 0 || len(moment.Units) < 2 {
 		return fmt.Errorf("moment %q is not playable", moment.ID)
 	}
+	if len(moment.Units) > maxUnitsPerMoment {
+		return fmt.Errorf("moment %q exceeds the %d-unit simulation limit", moment.ID, maxUnitsPerMoment)
+	}
 	if !normalizedSignals(moment.Signals) {
 		return fmt.Errorf("moment %q has signals outside 0..1", moment.ID)
 	}
@@ -153,16 +157,21 @@ func ValidateMoment(moment model.Moment) error {
 	unitIDs := make(map[string]bool, len(moment.Units))
 	unitTeams := make(map[string]string, len(moment.Units))
 	for _, unit := range moment.Units {
-		if unit.ID == "" || unitIDs[unit.ID] {
+		if unit.ID == "" || unit.Role == "" || unitIDs[unit.ID] {
 			return fmt.Errorf("moment %q has an empty or duplicate unit id", moment.ID)
 		}
 		unitIDs[unit.ID] = true
 		unitTeams[unit.ID] = unit.Team
 		teams[unit.Team] = true
 		controlledFound = controlledFound || unit.ID == moment.ControlledUnitID && unit.Team == "blue" && unit.Policy == "controlled" && unit.Alive
+		profile, classValid := model.Profile(unit.Class)
+		if !classValid || unit.MaxHP != profile.MaxHP || unit.MoveRange != profile.MoveRange ||
+			unit.MoveSpeed != profile.MoveRange || unit.AttackRange != profile.AttackRange {
+			return fmt.Errorf("moment %q unit %q does not match class %q profile", moment.ID, unit.ID, unit.Class)
+		}
 		if !oneOf(unit.Team, "blue", "red") || !oneOf(unit.Policy, "controlled", "support", "protector", "aggressive", "skirmisher") ||
-			!pointOnMap(unit.Position) || unit.MaxHP < 1 || unit.HP < 0 || unit.HP > unit.MaxHP || unit.AttackRange <= 0 ||
-			unit.AttackDamage <= 0 || unit.MoveSpeed <= 0 || unit.Armor < 0 || unit.VisionRange <= 0 ||
+			!pointOnMap(unit.Position) || unit.HP < 0 || unit.HP > unit.MaxHP || unit.Alive != (unit.HP > 0) ||
+			unit.AttackDamage <= 0 || unit.Armor < 0 || unit.VisionRange <= 0 ||
 			unit.AttackCooldown < 1 || unit.Cooldown < 0 {
 			return fmt.Errorf("moment %q has invalid combat state for unit %q", moment.ID, unit.ID)
 		}

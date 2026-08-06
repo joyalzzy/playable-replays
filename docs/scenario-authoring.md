@@ -29,7 +29,7 @@ Fixture version `2.1` requires every scenario to include:
 - at least two plausible alternative actions, each with the condition that
   makes it reasonable and its cost;
 - a reference action and reason for every turn;
-- a default Move destination and complete continuations for all four commands;
+- a default Move destination and complete continuations for all six commands;
 - at least two executable acceptance cases, including one modeled win and one
   modeled loss.
 

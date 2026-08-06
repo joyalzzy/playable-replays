@@ -23,27 +23,41 @@ import (
 const maxBodyBytes = 64 << 10
 
 type Server struct {
-	moments   map[string]model.Moment
-	ordered   []model.Moment
-	sessions  map[string]*sessionEntry
-	nextID    atomic.Uint64
-	mu        sync.RWMutex
-	log       *slog.Logger
-	telemetry *telemetry.Service
-	now       func() time.Time
+	moments       map[string]model.Moment
+	ordered       []model.Moment
+	sessions      map[string]*sessionEntry
+	positionModel engine.PositionModel
+	nextID        atomic.Uint64
+	mu            sync.RWMutex
+	log           *slog.Logger
+	telemetry     *telemetry.Service
+	now           func() time.Time
 }
 
 type sessionEntry struct {
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	engine  *engine.Engine
 	limiter fixedWindowLimiter
 }
 
 func New(moments []model.Moment, logger *slog.Logger) *Server {
-	return NewWithTelemetry(moments, logger, telemetry.NewService())
+	return NewWithTelemetryAndPositionModel(moments, logger, telemetry.NewService(), nil)
 }
 
 func NewWithTelemetry(moments []model.Moment, logger *slog.Logger, telemetryService *telemetry.Service) *Server {
+	return NewWithTelemetryAndPositionModel(moments, logger, telemetryService, nil)
+}
+
+func NewWithPositionModel(moments []model.Moment, logger *slog.Logger, positionModel engine.PositionModel) *Server {
+	return NewWithTelemetryAndPositionModel(moments, logger, telemetry.NewService(), positionModel)
+}
+
+func NewWithTelemetryAndPositionModel(
+	moments []model.Moment,
+	logger *slog.Logger,
+	telemetryService *telemetry.Service,
+	positionModel engine.PositionModel,
+) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -57,7 +71,7 @@ func NewWithTelemetry(moments []model.Moment, logger *slog.Logger, telemetryServ
 	return &Server{
 		moments: indexed, ordered: moments,
 		sessions: make(map[string]*sessionEntry), log: logger,
-		telemetry: telemetryService, now: time.Now,
+		positionModel: positionModel, telemetry: telemetryService, now: time.Now,
 	}
 }
 
@@ -245,7 +259,7 @@ func (s *Server) previewTelemetryDraft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := "preview-" + strconv.FormatUint(s.nextID.Add(1), 36)
-	instance := engine.New(draft.Scenario, id)
+	instance := engine.NewWithPositionModel(draft.Scenario, id, s.positionModel)
 	s.mu.Lock()
 	s.sessions[id] = &sessionEntry{engine: instance}
 	s.mu.Unlock()
@@ -343,11 +357,12 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := "session-" + strconv.FormatUint(s.nextID.Add(1), 36)
-	instance := engine.New(moment, id)
+	entry := &sessionEntry{engine: engine.NewWithPositionModel(moment, id, s.positionModel)}
+	state := entry.engine.State()
 	s.mu.Lock()
-	s.sessions[id] = &sessionEntry{engine: instance}
+	s.sessions[id] = entry
 	s.mu.Unlock()
-	writeJSON(w, http.StatusCreated, instance.State())
+	writeJSON(w, http.StatusCreated, state)
 }
 
 func (s *Server) getSession(w http.ResponseWriter, r *http.Request) {
@@ -356,9 +371,10 @@ func (s *Server) getSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "session_not_found", "the requested session does not exist")
 		return
 	}
-	entry.mu.Lock()
-	defer entry.mu.Unlock()
-	writeJSON(w, http.StatusOK, entry.engine.State())
+	entry.mu.RLock()
+	state := entry.engine.State()
+	entry.mu.RUnlock()
+	writeJSON(w, http.StatusOK, state)
 }
 
 func (s *Server) applyTurn(w http.ResponseWriter, r *http.Request) {
@@ -377,7 +393,7 @@ func (s *Server) applyTurn(w http.ResponseWriter, r *http.Request) {
 	if !s.allowSessionMutation(w, entry) {
 		return
 	}
-	state, err := entry.engine.Apply(request.Action)
+	state, err := entry.engine.ApplyContext(r.Context(), request.Action)
 	if errors.Is(err, engine.ErrIllegalAction) {
 		writeError(w, http.StatusUnprocessableEntity, "illegal_action", err.Error())
 		return
