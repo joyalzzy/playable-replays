@@ -9,18 +9,21 @@ publisher's game engine.
 
 ```mermaid
 flowchart TD
-    A["Authorized or synthetic telemetry"] --> B["Offline highlight scorer"]
-    B --> C["Versioned moment fixture"]
-    C --> D["Go authoritative simulator"]
+    A["Authorized or synthetic normalized telemetry"] --> B["Offline scorer or local collector"]
+    B --> C["Deterministic highlight detector"]
+    C --> F["Live review and incomplete version 2.1 draft"]
+    F --> G["Analyst authors and validates teaching content"]
+    G --> H["Versioned moment fixture"]
+    H --> D["Go authoritative simulator"]
     D --> E["TypeScript tactical board"]
     E -->|Legal action| D
-    D -.->|Optional snapshot| F["Non-player position model"]
-    F -.->|Advisory targets| D
+    D -.->|Optional snapshot| I["Non-player position model"]
+    I -.->|Advisory targets| D
 ```
 
 ## Determinism
 
-Each fixture carries a stable seed. With the default built-in opponent policy,
+Each fixture carries a stable seed. With the default built-in non-player policies,
 the backend owns the random generator and all state transitions. The same
 fixture and action sequence therefore produce the same state, score, and
 terminal result. Invalid user actions leave the state unchanged.
@@ -34,11 +37,12 @@ the seeded built-in policy.
 
 ## Information boundary
 
-The full simulator state remains on the server. The returned `visible` flag is
-the browser's display boundary; a production implementation should instead
-serialize a filtered view that omits hidden coordinates altogether. The
-prototype keeps coordinates in the synthetic response to make tests and
-debugging inspectable, so it must not be described as anti-cheat hardened.
+The full simulator state remains on the server. Public session responses omit
+hidden enemy units entirely, including their coordinates and statistics, and
+instead return visible and unknown enemy counts. Terrain can block long-range
+vision, and reveal events are logged only when a blue unit obtains vision.
+This is a meaningful information boundary, but it is still a prototype rather
+than an anti-cheat-hardened production service.
 
 The optional position connector is also server-side and receives the unit snapshot. Its
 URL is an operator configuration value, never a per-session user input. A
@@ -73,7 +77,7 @@ Each accepted user turn produces one HTTP `POST` containing `sessionId`,
 `momentId`, `turn`, the map bounds, `controlledUnitId`, and the current units.
 The request is versioned as `schemaVersion: "1.1"` and explicitly marked
 `stateScope: "authoritative_server_state"`. Here `turn` is the one-based index
-of the next frame being resolved. The model returns a required `positions`
+of the current frame being resolved. The model returns a required `positions`
 array of unit IDs and complete `x`/`y` points.
 
 The connector response is advisory. Missing teammate targets hold position;
@@ -104,6 +108,37 @@ Frame resolution remains server-owned:
 - Compact behavioral-cloning trajectory policy
 - Durable export/storage for in-memory external-model rollout records
 - Identity-aware pro-player style models
-- Ranking evaluation with analyst-labelled pivotal moments
-- Durable session storage, authentication, abuse controls, and rate limiting
+- Held-out authorized-match ranking calibration beyond the synthetic regression pack
+- Durable simulator-session storage, authentication, and network-wide abuse controls
 - In-game engine integration and publisher approval
+
+## Local live telemetry boundary
+
+The Go API includes a bounded, process-local telemetry registry for normalized
+frames plus a durable local store for finalized summaries and analyst drafts.
+An ephemeral collector credential protects ordered frame ingestion;
+the browser receives minimized match summaries, canonical detector signals,
+candidate evidence, and a separate bounded visual trace. The trace uses stable
+A/B aliases and includes only normalized positions, alive state, time, and
+aggregated normalized events. Raw IDs, health, gold, frames, movement traces,
+and tokens are not persisted. Detector evidence is converted to stable A/B
+aliases before a summary or draft reaches disk. Seven-day retention, selectable
+`1..365` day cleanup, single-match deletion, and delete-all controls are exposed
+through the same loopback API. A detected candidate cannot enter the authored library
+directly: it first becomes an incomplete draft guarded by the existing analyst
+authorship and acceptance-test validator.
+
+See [`live-telemetry.md`](live-telemetry.md) for the local journey and exact
+privacy, finalization, and publication boundaries.
+
+## Authored simulation rules
+
+Fixture version 2.1 declares unit combat statistics and policies, terrain,
+vision, objectives, escape routes, explicit victory conditions, and reference
+plans. The server resolves a turn in this order: cooldown and defense reset,
+user action, allied policies, enemy policies, visibility, objective and escape
+progress, state-derived advantage, then terminal conditions.
+
+Reference advice is withheld until the user commits. Complete deterministic
+rollouts for all legal first actions are returned only when the scenario
+ends. They are labelled as authored baselines rather than historical outcomes.

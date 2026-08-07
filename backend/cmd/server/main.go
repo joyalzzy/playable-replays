@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/joyalzzy/playable-replays/backend/internal/engine"
 	"github.com/joyalzzy/playable-replays/backend/internal/fixtures"
 	"github.com/joyalzzy/playable-replays/backend/internal/positionmodel"
+	"github.com/joyalzzy/playable-replays/backend/internal/telemetry"
 )
 
 func main() {
@@ -25,6 +27,17 @@ func main() {
 		logger.Error("load fixtures", "error", err)
 		os.Exit(1)
 	}
+	retentionDays, err := envInt("LOCAL_DATA_RETENTION_DAYS", 7)
+	if err != nil {
+		logger.Error("configure local data retention", "error", err)
+		os.Exit(1)
+	}
+	telemetryService, err := telemetry.NewPersistentService(env("LOCAL_DATA_DIR", "../.local-data"), retentionDays)
+	if err != nil {
+		logger.Error("open local telemetry storage", "error", err)
+		os.Exit(1)
+	}
+
 	var positionModel engine.PositionModel
 	modelConfig, err := loadPositionModelConfig()
 	if err != nil {
@@ -49,7 +62,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              env("LISTEN_ADDR", "127.0.0.1:8080"),
-		Handler:           api.NewWithPositionModel(moments, logger, positionModel).Handler(),
+		Handler:           api.NewWithTelemetryAndPositionModel(moments, logger, telemetryService, positionModel).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -82,4 +95,16 @@ func env(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func envInt(key string, fallback int) (int, error) {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback, nil
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, err
+	}
+	return parsed, nil
 }

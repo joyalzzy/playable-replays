@@ -1,42 +1,446 @@
 {
-  "version": "1.0",
+  "version": "2.1",
   "moments": [
     {
       "id": "objective-steal-742",
       "slug": "river-pit-steal",
       "title": "The River Pit Steal",
-      "description": "Blue carry is outnumbered near the objective. Choose whether to contest, reposition, or preserve the escape route.",
+      "description": "Blue carry is outnumbered near the objective. Secure the pit before red completes control, or stabilize an escape through the lower river.",
       "map": "Synthetic Rift",
       "startTimeSeconds": 742,
       "seed": 104729,
       "maxTurns": 5,
       "controlledUnitId": "blue-carry",
-      "reasonTags": ["objective-steal", "one-versus-many", "win-probability-swing"],
+      "reasonTags": [
+        "objective-steal",
+        "one-versus-many",
+        "win-probability-swing"
+      ],
       "signals": {
         "winProbabilitySwing": 0.88,
         "eventDensity": 0.81,
         "entityProximity": 0.18,
         "resourceAsymmetry": 0.72
       },
+      "mechanicBriefing": {
+        "mechanics": [
+          {
+            "elementId": "river-core",
+            "name": "River Core",
+            "description": "The gold-ringed River Core is a capturable objective. Uncontested blue presence inside its ring adds one blue control point at the end of a turn; uncontested red presence does the same for red. If both teams are inside, control stalls. Four points secure it.",
+            "roleInScenario": "Securing the Core is one way to win this replay. The lower-river escape is also valid, so entering the objective ring is a strategic choice rather than a requirement."
+          }
+        ]
+      },
       "units": [
-        {"id":"blue-carry","team":"blue","role":"carry","class":"marksman","position":{"x":31,"y":54},"hp":61,"maxHp":90,"cooldownTurns":0,"visible":true,"alive":true},
-        {"id":"blue-support","team":"blue","role":"support","class":"support","position":{"x":18,"y":65},"hp":46,"maxHp":110,"cooldownTurns":1,"visible":true,"alive":true},
-        {"id":"red-jungle","team":"red","role":"jungler","class":"fighter","position":{"x":48,"y":51},"hp":69,"maxHp":125,"cooldownTurns":0,"visible":true,"alive":true},
-        {"id":"red-mid","team":"red","role":"mid","class":"mage","position":{"x":61,"y":43},"hp":69,"maxHp":95,"cooldownTurns":0,"visible":true,"alive":true},
-        {"id":"red-support","team":"red","role":"support","class":"support","position":{"x":72,"y":70},"hp":97,"maxHp":110,"cooldownTurns":1,"visible":false,"alive":true}
-      ]
+        {
+          "id": "blue-carry",
+          "team": "blue",
+          "role": "carry",
+          "policy": "controlled",
+          "position": {
+            "x": 31,
+            "y": 54
+          },
+          "hp": 61,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 22,
+          "moveSpeed": 11,
+          "armor": 15,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "blue-support",
+          "team": "blue",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 18,
+            "y": 65
+          },
+          "hp": 46,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 9,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 36,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": true,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        },
+        {
+          "id": "red-jungle",
+          "team": "red",
+          "role": "jungler",
+          "policy": "aggressive",
+          "position": {
+            "x": 48,
+            "y": 51
+          },
+          "hp": 69,
+          "maxHp": 125,
+          "attackRange": 14,
+          "attackDamage": 19,
+          "moveSpeed": 10,
+          "armor": 20,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "fighter",
+          "moveRange": 10
+        },
+        {
+          "id": "red-mid",
+          "team": "red",
+          "role": "mage",
+          "policy": "skirmisher",
+          "position": {
+            "x": 61,
+            "y": 43
+          },
+          "hp": 69,
+          "maxHp": 95,
+          "attackRange": 24,
+          "attackDamage": 22,
+          "moveSpeed": 9,
+          "armor": 10,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "mage",
+          "moveRange": 9
+        },
+        {
+          "id": "red-support",
+          "team": "red",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 72,
+            "y": 70
+          },
+          "hp": 97,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 8,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 36,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": false,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.36,
+        "objective": {
+          "id": "river-core",
+          "label": "River core",
+          "position": {
+            "x": 50,
+            "y": 52
+          },
+          "radius": 14,
+          "captureTurns": 4
+        },
+        "victory": {
+          "kind": "secure-objective",
+          "description": "Secure the River core before red completes control, or hold the lower-river safe zone for two turns.",
+          "defeatDescription": "The blue carry was eliminated before the objective or escape route was secured.",
+          "allowEscape": true,
+          "safeZone": {
+            "x": 10,
+            "y": 68
+          },
+          "safeRadius": 9,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "river",
+            "label": "River",
+            "kind": "river",
+            "position": {
+              "x": 50,
+              "y": 52
+            },
+            "radius": 23,
+            "moveMultiplier": 0.9,
+            "blocksVision": false
+          },
+          {
+            "id": "lower-brush",
+            "label": "Lower brush",
+            "kind": "brush",
+            "position": {
+              "x": 67,
+              "y": 69
+            },
+            "radius": 11,
+            "moveMultiplier": 0.82,
+            "blocksVision": true
+          },
+          {
+            "id": "pit-wall",
+            "label": "Pit wall",
+            "kind": "wall",
+            "position": {
+              "x": 53,
+              "y": 34
+            },
+            "radius": 8,
+            "moveMultiplier": 0.7,
+            "blocksVision": true
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "move",
+            "target": {
+              "x": 4,
+              "y": 72
+            }
+          },
+          {
+            "type": "hold"
+          },
+          {
+            "type": "hold"
+          }
+        ],
+        "referenceReasons": [
+          "Disengage immediately while the opposing formation is still committed to the objective.",
+          "Enter the lower-river safe zone before the pursuer can close the route.",
+          "Sidestep within the safe zone so the pursuing fighter cannot reset escape progress.",
+          "The authored line has already completed; hold is retained only to keep the reference horizon explicit.",
+          "The authored line has already completed; hold is retained only to keep the reference horizon explicit."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "contest": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 43,
+              "y": 54
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "objective-contest",
+        "skillLevel": "advanced",
+        "analystRationale": "The carry begins near a contested objective with one visible front-line threat, a collapsing mage, and an unseen support. The scenario teaches that securing the modeled objective is not always the strongest available outcome when the safe route is already viable.",
+        "intendedTradeoffs": [
+          "Entering the pit can create objective pressure, but exposes the carry to the mage collapse and hidden support.",
+          "Retreating concedes objective tempo while preserving the carry and completing a reliable lower-river escape."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "contest"
+            },
+            "when": "The visible jungler is already low and allied support remains in shielding range.",
+            "tradeoff": "Immediate damage may create a steal window, but delays the safe-route timer."
+          },
+          {
+            "action": {
+              "type": "retreat"
+            },
+            "when": "The mage closes and the unseen contact cannot be accounted for.",
+            "tradeoff": "The objective may be lost, but the carry avoids an unfavorable collapse."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "immediate disengage completes the safe route",
+            "actions": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 4,
+                  "y": 72
+                }
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 3,
+            "expectedOutcomeContains": "disengaged"
+          },
+          {
+            "name": "late disengage loses objective control",
+            "actions": [
+              {
+                "type": "move",
+                "target": {
+                  "x": 43,
+                  "y": 54
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 5,
+            "expectedOutcomeContains": "objective window closed"
+          }
+        ]
+      }
     },
     {
       "id": "teamfight-reversal-1091",
       "slug": "base-gate-reversal",
       "title": "Base Gate Reversal",
-      "description": "A low-health blue squad can turn on an overextended opponent or disengage through the gate.",
+      "description": "A low-health blue squad can punish an isolated carry before the tank arrives, or disengage through the base gate.",
       "map": "Synthetic Rift",
       "startTimeSeconds": 1091,
       "seed": 130363,
       "maxTurns": 5,
       "controlledUnitId": "blue-carry",
-      "reasonTags": ["team-fight-reversal", "successful-escape", "high-risk-decision"],
+      "reasonTags": [
+        "team-fight-reversal",
+        "successful-escape",
+        "high-risk-decision"
+      ],
       "signals": {
         "winProbabilitySwing": 0.74,
         "eventDensity": 0.93,
@@ -44,11 +448,4231 @@
         "resourceAsymmetry": 0.61
       },
       "units": [
-        {"id":"blue-carry","team":"blue","role":"carry","class":"marksman","position":{"x":26,"y":45},"hp":46,"maxHp":90,"cooldownTurns":0,"visible":true,"alive":true},
-        {"id":"blue-tank","team":"blue","role":"frontline","class":"tank","position":{"x":34,"y":54},"hp":44,"maxHp":160,"cooldownTurns":0,"visible":true,"alive":true},
-        {"id":"red-carry","team":"red","role":"carry","class":"assassin","position":{"x":51,"y":47},"hp":38,"maxHp":100,"cooldownTurns":1,"visible":true,"alive":true},
-        {"id":"red-tank","team":"red","role":"frontline","class":"tank","position":{"x":66,"y":57},"hp":109,"maxHp":160,"cooldownTurns":0,"visible":false,"alive":true}
-      ]
+        {
+          "id": "blue-carry",
+          "team": "blue",
+          "role": "carry",
+          "policy": "controlled",
+          "position": {
+            "x": 26,
+            "y": 69
+          },
+          "hp": 46,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 23,
+          "moveSpeed": 11,
+          "armor": 12,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "blue-tank",
+          "team": "blue",
+          "role": "tank",
+          "policy": "protector",
+          "position": {
+            "x": 38,
+            "y": 70
+          },
+          "hp": 44,
+          "maxHp": 160,
+          "attackRange": 10,
+          "attackDamage": 15,
+          "moveSpeed": 7,
+          "armor": 32,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "tank",
+          "moveRange": 7
+        },
+        {
+          "id": "red-carry",
+          "team": "red",
+          "role": "carry",
+          "policy": "skirmisher",
+          "position": {
+            "x": 45,
+            "y": 53
+          },
+          "hp": 34,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 21,
+          "moveSpeed": 11,
+          "armor": 10,
+          "visionRange": 33,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "red-tank",
+          "team": "red",
+          "role": "tank",
+          "policy": "protector",
+          "position": {
+            "x": 63,
+            "y": 50
+          },
+          "hp": 109,
+          "maxHp": 160,
+          "attackRange": 10,
+          "attackDamage": 16,
+          "moveSpeed": 7,
+          "armor": 34,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": false,
+          "alive": true,
+          "class": "tank",
+          "moveRange": 7
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.44,
+        "victory": {
+          "kind": "eliminate-target",
+          "targetUnitId": "red-carry",
+          "description": "Eliminate the isolated red carry before reinforcements stabilize, or hold inside the base gate for two turns.",
+          "defeatDescription": "The blue carry was eliminated before the target or escape condition was secured.",
+          "allowEscape": true,
+          "safeZone": {
+            "x": 16,
+            "y": 82
+          },
+          "safeRadius": 9,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "base-gate",
+            "label": "Base gate",
+            "kind": "safe-zone",
+            "position": {
+              "x": 16,
+              "y": 82
+            },
+            "radius": 9,
+            "moveMultiplier": 1,
+            "blocksVision": false
+          },
+          {
+            "id": "gate-wall",
+            "label": "Gate wall",
+            "kind": "wall",
+            "position": {
+              "x": 52,
+              "y": 74
+            },
+            "radius": 9,
+            "moveMultiplier": 0.72,
+            "blocksVision": true
+          },
+          {
+            "id": "upper-brush",
+            "label": "Upper brush",
+            "kind": "brush",
+            "position": {
+              "x": 60,
+              "y": 50
+            },
+            "radius": 10,
+            "moveMultiplier": 0.84,
+            "blocksVision": true
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "contest"
+          },
+          {
+            "type": "contest"
+          },
+          {
+            "type": "hold"
+          },
+          {
+            "type": "contest"
+          },
+          {
+            "type": "hold"
+          }
+        ],
+        "referenceReasons": [
+          "Pressure the exposed carry before the red tank enters protection range.",
+          "Continue only while the target remains isolated and in attack range.",
+          "Brace as the reinforcement closes and let allied protection absorb pressure.",
+          "Take the final attack window before the reinforcement can fully protect the carry.",
+          "If the target survives, brace and reassess rather than inventing another attack."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "contest": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 39,
+              "y": 60
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "team-fight-engagement",
+        "skillLevel": "beginner",
+        "analystRationale": "The visible fight is temporarily two versus one. The scenario isolates the beginner lesson of focusing the exposed carry before the tank can enter protection range.",
+        "intendedTradeoffs": [
+          "Immediate focus fire spends health and cooldowns to remove the highest-value exposed target.",
+          "Waiting reduces immediate risk but gives the opposing tank enough time to stabilize the carry."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "contest"
+            },
+            "when": "The red carry remains isolated and inside closing distance.",
+            "tradeoff": "This maximizes target pressure while accepting return damage."
+          },
+          {
+            "action": {
+              "type": "hold"
+            },
+            "when": "The red tank has already entered protection range.",
+            "tradeoff": "Guarding reduces incoming damage but may forfeit the elimination window."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "focus fire removes the isolated carry",
+            "actions": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 4,
+            "expectedOutcomeContains": "isolated carry"
+          },
+          {
+            "name": "passive play lets reinforcements stabilize",
+            "actions": [
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 5,
+            "expectedOutcomeContains": "target survived"
+          }
+        ]
+      }
+    },
+    {
+      "id": "objective-contest-318",
+      "slug": "outer-shrine-countdown",
+      "title": "Outer Shrine Countdown",
+      "description": "Blue has four turns to clear a wounded jungler and establish uncontested control of the outer shrine.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 318,
+      "seed": 15485863,
+      "maxTurns": 4,
+      "controlledUnitId": "blue-carry",
+      "reasonTags": [
+        "objective-contest",
+        "numbers-advantage",
+        "beginner-window"
+      ],
+      "signals": {
+        "winProbabilitySwing": 0.58,
+        "eventDensity": 0.67,
+        "entityProximity": 0.19,
+        "resourceAsymmetry": 0.34
+      },
+      "mechanicBriefing": {
+        "mechanics": [
+          {
+            "elementId": "outer-shrine",
+            "name": "Outer Shrine",
+            "description": "The gold inner ring is a capturable objective. A team earns one control point after a turn with allied units inside and no opponents inside. Both teams in the ring make it contested, so neither gains progress. Blue needs two points to secure it.",
+            "roleInScenario": "The wounded red jungler begins close enough to deny control. Blue must remove or displace that defender, then keep uncontested presence inside the gold ring for two turns."
+          },
+          {
+            "elementId": "shrine-ring",
+            "name": "Shrine Ring",
+            "description": "The larger blue-tinted ground around the Shrine marks its approach area and slows movement slightly. It does not award capture progress by itself; only the smaller gold objective ring does.",
+            "roleInScenario": "The approach ring affects how quickly units enter or leave the fight, while the inner ring shows exactly where Blue must stand to gain Shrine control."
+          }
+        ]
+      },
+      "units": [
+        {
+          "id": "blue-carry",
+          "team": "blue",
+          "role": "carry",
+          "policy": "controlled",
+          "position": {
+            "x": 32,
+            "y": 50
+          },
+          "hp": 74,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 25,
+          "moveSpeed": 11,
+          "armor": 15,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "blue-support",
+          "team": "blue",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 26,
+            "y": 58
+          },
+          "hp": 77,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 9,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 36,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        },
+        {
+          "id": "red-jungle",
+          "team": "red",
+          "role": "jungler",
+          "policy": "aggressive",
+          "position": {
+            "x": 53,
+            "y": 50
+          },
+          "hp": 25,
+          "maxHp": 125,
+          "attackRange": 14,
+          "attackDamage": 17,
+          "moveSpeed": 10,
+          "armor": 12,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": true,
+          "alive": true,
+          "class": "fighter",
+          "moveRange": 10
+        },
+        {
+          "id": "red-support",
+          "team": "red",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 95,
+            "y": 92
+          },
+          "hp": 88,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 8,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": false,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.52,
+        "objective": {
+          "id": "outer-shrine",
+          "label": "Outer shrine",
+          "position": {
+            "x": 50,
+            "y": 50
+          },
+          "radius": 14,
+          "captureTurns": 2
+        },
+        "victory": {
+          "kind": "secure-objective",
+          "description": "Clear the shrine edge and hold uncontested control for two turns.",
+          "defeatDescription": "Blue lost the shrine window before establishing control.",
+          "allowEscape": false,
+          "safeZone": {
+            "x": 8,
+            "y": 72
+          },
+          "safeRadius": 8,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "shrine-ring",
+            "label": "Shrine ring",
+            "kind": "river",
+            "position": {
+              "x": 50,
+              "y": 50
+            },
+            "radius": 18,
+            "moveMultiplier": 0.95,
+            "blocksVision": false
+          },
+          {
+            "id": "north-brush",
+            "label": "North brush",
+            "kind": "brush",
+            "position": {
+              "x": 61,
+              "y": 34
+            },
+            "radius": 9,
+            "moveMultiplier": 0.84,
+            "blocksVision": true
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "hold"
+          },
+          {
+            "type": "dodge"
+          },
+          {
+            "type": "move",
+            "target": {
+              "x": 43,
+              "y": 50
+            }
+          },
+          {
+            "type": "move",
+            "target": {
+              "x": 43,
+              "y": 50
+            }
+          }
+        ],
+        "referenceReasons": [
+          "Guard while the wounded defender commits to the edge of the shrine.",
+          "Dodge across the defender's approach and draw it away from uncontested control.",
+          "Move into the shrine once the defender has left the capture ring.",
+          "Complete the second uncontested control tick without extending past the objective."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "contest": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 43,
+              "y": 50
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "objective-contest",
+        "skillLevel": "beginner",
+        "analystRationale": "A low-health objective defender creates a legible sequence: guard its first approach, dodge it out of the capture ring, then move into the shrine long enough to score control.",
+        "intendedTradeoffs": [
+          "Contesting delays capture progress while removing the only nearby defender.",
+          "Retreating preserves health but allows uncontested red capture ticks."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "contest"
+            },
+            "when": "The wounded jungler remains the only red unit inside the shrine ring.",
+            "tradeoff": "The carry accepts a short exchange to unlock later objective control."
+          },
+          {
+            "action": {
+              "type": "hold"
+            },
+            "when": "The carry attack is cooling down and support protection is available.",
+            "tradeoff": "No damage is dealt this turn, but incoming damage is reduced."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "draw defender out then capture shrine",
+            "actions": [
+              {
+                "type": "hold"
+              },
+              {
+                "type": "dodge"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 43,
+                  "y": 50
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 43,
+                  "y": 50
+                }
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 4,
+            "expectedOutcomeContains": "secured Outer shrine"
+          },
+          {
+            "name": "full retreat concedes shrine",
+            "actions": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 4,
+            "expectedOutcomeContains": "objective window closed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "teamfight-engagement-864",
+      "slug": "brush-flank-collapse",
+      "title": "Brush Flank Collapse",
+      "description": "Blue can absorb the exposed mage's first approach, then collapse before the hidden tank reaches the fight.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 864,
+      "seed": 32452843,
+      "maxTurns": 5,
+      "controlledUnitId": "blue-carry",
+      "reasonTags": [
+        "team-fight-engagement",
+        "flank-window",
+        "reinforcement-timing"
+      ],
+      "signals": {
+        "winProbabilitySwing": 0.72,
+        "eventDensity": 0.88,
+        "entityProximity": 0.14,
+        "resourceAsymmetry": 0.49
+      },
+      "units": [
+        {
+          "id": "blue-carry",
+          "team": "blue",
+          "role": "carry",
+          "policy": "controlled",
+          "position": {
+            "x": 28,
+            "y": 44
+          },
+          "hp": 65,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 24,
+          "moveSpeed": 11,
+          "armor": 13,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "blue-tank",
+          "team": "blue",
+          "role": "tank",
+          "policy": "protector",
+          "position": {
+            "x": 34,
+            "y": 58
+          },
+          "hp": 101,
+          "maxHp": 160,
+          "attackRange": 10,
+          "attackDamage": 16,
+          "moveSpeed": 7,
+          "armor": 32,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "tank",
+          "moveRange": 7
+        },
+        {
+          "id": "red-mage",
+          "team": "red",
+          "role": "mage",
+          "policy": "skirmisher",
+          "position": {
+            "x": 55,
+            "y": 43
+          },
+          "hp": 34,
+          "maxHp": 95,
+          "attackRange": 24,
+          "attackDamage": 21,
+          "moveSpeed": 9,
+          "armor": 9,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "mage",
+          "moveRange": 9
+        },
+        {
+          "id": "red-tank",
+          "team": "red",
+          "role": "tank",
+          "policy": "protector",
+          "position": {
+            "x": 76,
+            "y": 62
+          },
+          "hp": 140,
+          "maxHp": 160,
+          "attackRange": 10,
+          "attackDamage": 16,
+          "moveSpeed": 7,
+          "armor": 34,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": false,
+          "alive": true,
+          "class": "tank",
+          "moveRange": 7
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.48,
+        "victory": {
+          "kind": "eliminate-target",
+          "targetUnitId": "red-mage",
+          "description": "Bait the exposed mage into range and eliminate it before the red tank stabilizes the fight.",
+          "defeatDescription": "The mage survived until the red formation closed.",
+          "allowEscape": false,
+          "safeZone": {
+            "x": 9,
+            "y": 45
+          },
+          "safeRadius": 8,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "lower-brush",
+            "label": "Lower brush",
+            "kind": "brush",
+            "position": {
+              "x": 40,
+              "y": 58
+            },
+            "radius": 10,
+            "moveMultiplier": 0.84,
+            "blocksVision": true
+          },
+          {
+            "id": "mid-wall",
+            "label": "Mid wall",
+            "kind": "wall",
+            "position": {
+              "x": 58,
+              "y": 64
+            },
+            "radius": 8,
+            "moveMultiplier": 0.72,
+            "blocksVision": true
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "hold"
+          },
+          {
+            "type": "contest"
+          },
+          {
+            "type": "hold"
+          },
+          {
+            "type": "contest"
+          },
+          {
+            "type": "hold"
+          }
+        ],
+        "referenceReasons": [
+          "Hold the brush edge so the exposed mage commits before its tank can screen.",
+          "Convert the mage's approach into focused damage while it remains isolated.",
+          "Guard during the attack cooldown and let the allied tank intercept.",
+          "Use the second damage window before the red tank can fully screen.",
+          "If the mage survives, hold formation rather than chase through the wall."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "move",
+              "target": {
+                "x": 40,
+                "y": 46
+              }
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            }
+          ],
+          "contest": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 40,
+              "y": 46
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "team-fight-engagement",
+        "skillLevel": "intermediate",
+        "analystRationale": "The mage is punishable, but chasing shortens the hidden tank's route. The authored line introduces a guarded bait before target focus.",
+        "intendedTradeoffs": [
+          "Repositioning spends one damage turn to improve the engagement angle.",
+          "Immediate contest applies pressure sooner but leaves the carry in the reinforcement lane."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "move",
+              "target": {
+                "x": 40,
+                "y": 46
+              }
+            },
+            "when": "The tank is still hidden behind the wall and the mage has no nearby screen.",
+            "tradeoff": "Blue delays its first attack to create a safer collapse angle."
+          },
+          {
+            "action": {
+              "type": "contest"
+            },
+            "when": "The mage is already inside attack range and visibly unsupported.",
+            "tradeoff": "Blue gains tempo but accepts a more direct counter-engage path."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "guarded bait then focus eliminates mage",
+            "actions": [
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 2,
+            "expectedOutcomeContains": "isolated mage"
+          },
+          {
+            "name": "waiting forfeits collapse window",
+            "actions": [
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 5,
+            "expectedOutcomeContains": "target survived"
+          }
+        ]
+      }
+    },
+    {
+      "id": "escape-412",
+      "slug": "tower-lane-exit",
+      "title": "Tower Lane Exit",
+      "description": "A low-health carry has a clear route to the allied tower while two opponents approach from outside immediate threat range.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 412,
+      "seed": 49979687,
+      "maxTurns": 4,
+      "controlledUnitId": "blue-carry",
+      "reasonTags": [
+        "escape",
+        "safe-route",
+        "beginner-window"
+      ],
+      "signals": {
+        "winProbabilitySwing": 0.44,
+        "eventDensity": 0.52,
+        "entityProximity": 0.31,
+        "resourceAsymmetry": 0.66
+      },
+      "units": [
+        {
+          "id": "blue-carry",
+          "team": "blue",
+          "role": "carry",
+          "policy": "controlled",
+          "position": {
+            "x": 58,
+            "y": 41
+          },
+          "hp": 34,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 21,
+          "moveSpeed": 11,
+          "armor": 12,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "blue-support",
+          "team": "blue",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 44,
+            "y": 46
+          },
+          "hp": 61,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 8,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 36,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        },
+        {
+          "id": "red-jungle",
+          "team": "red",
+          "role": "jungler",
+          "policy": "aggressive",
+          "position": {
+            "x": 88,
+            "y": 38
+          },
+          "hp": 95,
+          "maxHp": 125,
+          "attackRange": 14,
+          "attackDamage": 18,
+          "moveSpeed": 10,
+          "armor": 18,
+          "visionRange": 31,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "fighter",
+          "moveRange": 10
+        },
+        {
+          "id": "red-mage",
+          "team": "red",
+          "role": "mage",
+          "policy": "skirmisher",
+          "position": {
+            "x": 96,
+            "y": 56
+          },
+          "hp": 78,
+          "maxHp": 95,
+          "attackRange": 24,
+          "attackDamage": 20,
+          "moveSpeed": 9,
+          "armor": 10,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": false,
+          "alive": true,
+          "class": "mage",
+          "moveRange": 9
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.37,
+        "victory": {
+          "kind": "skirmish",
+          "description": "Reach the allied tower zone and remain unthreatened for two turns.",
+          "defeatDescription": "The carry was eliminated before stabilizing under the tower.",
+          "allowEscape": true,
+          "safeZone": {
+            "x": 30,
+            "y": 69
+          },
+          "safeRadius": 10,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "tower-zone",
+            "label": "Allied tower",
+            "kind": "safe-zone",
+            "position": {
+              "x": 30,
+              "y": 69
+            },
+            "radius": 10,
+            "moveMultiplier": 1,
+            "blocksVision": false
+          },
+          {
+            "id": "lane-wall",
+            "label": "Lane wall",
+            "kind": "wall",
+            "position": {
+              "x": 67,
+              "y": 59
+            },
+            "radius": 9,
+            "moveMultiplier": 0.76,
+            "blocksVision": true
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "hold"
+          }
+        ],
+        "referenceReasons": [
+          "Start moving before the jungler reaches attack range.",
+          "Continue the route while the slower class movement keeps the carry outside the tower ring.",
+          "Complete the route into the allied tower zone and start the stabilization timer.",
+          "Remain guarded until the escape condition completes."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "contest": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 39,
+              "y": 42
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "escape",
+        "skillLevel": "beginner",
+        "analystRationale": "The scenario makes disengagement timing visible: the safe route is available now, but disappears once the faster pursuer reaches the carry.",
+        "intendedTradeoffs": [
+          "Retreating immediately gives up damage opportunities but starts the only reliable escape timer.",
+          "Holding or contesting may trade some health from an opponent while allowing the pursuit to close."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "retreat"
+            },
+            "when": "Both opponents remain outside immediate threat range and the tower path is open.",
+            "tradeoff": "The carry concedes lane pressure in exchange for survival."
+          },
+          {
+            "action": {
+              "type": "hold"
+            },
+            "when": "A pursuer has already reached the route and an extra guarded turn is needed.",
+            "tradeoff": "Guarding reduces one exchange but makes no progress toward the tower."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "immediate retreat reaches tower",
+            "actions": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 4,
+            "expectedOutcomeContains": "disengaged"
+          },
+          {
+            "name": "waiting leaves carry under pressure",
+            "actions": [
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 4,
+            "expectedOutcomeContains": "greater pressure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "escape-1260",
+      "slug": "fogline-breakout",
+      "title": "Fogline Breakout",
+      "description": "Blue must route around vision-blocking terrain while a visible jungler and two uncertain contacts close from different angles.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 1260,
+      "seed": 67867967,
+      "maxTurns": 6,
+      "controlledUnitId": "blue-mage",
+      "reasonTags": [
+        "escape",
+        "vision-uncertainty",
+        "multi-step-route"
+      ],
+      "signals": {
+        "winProbabilitySwing": 0.69,
+        "eventDensity": 0.73,
+        "entityProximity": 0.22,
+        "resourceAsymmetry": 0.71
+      },
+      "units": [
+        {
+          "id": "blue-mage",
+          "team": "blue",
+          "role": "mage",
+          "policy": "controlled",
+          "position": {
+            "x": 52,
+            "y": 32
+          },
+          "hp": 44,
+          "maxHp": 95,
+          "attackRange": 24,
+          "attackDamage": 22,
+          "moveSpeed": 9,
+          "armor": 10,
+          "visionRange": 35,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": true,
+          "alive": true,
+          "class": "mage",
+          "moveRange": 9
+        },
+        {
+          "id": "blue-support",
+          "team": "blue",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 38,
+            "y": 28
+          },
+          "hp": 45,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 8,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 38,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        },
+        {
+          "id": "red-jungle",
+          "team": "red",
+          "role": "jungler",
+          "policy": "aggressive",
+          "position": {
+            "x": 66,
+            "y": 35
+          },
+          "hp": 105,
+          "maxHp": 125,
+          "attackRange": 14,
+          "attackDamage": 19,
+          "moveSpeed": 10,
+          "armor": 20,
+          "visionRange": 33,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "fighter",
+          "moveRange": 10
+        },
+        {
+          "id": "red-mage",
+          "team": "red",
+          "role": "mage",
+          "policy": "skirmisher",
+          "position": {
+            "x": 47,
+            "y": 61
+          },
+          "hp": 74,
+          "maxHp": 95,
+          "attackRange": 24,
+          "attackDamage": 21,
+          "moveSpeed": 9,
+          "armor": 10,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": false,
+          "alive": true,
+          "class": "mage",
+          "moveRange": 9
+        },
+        {
+          "id": "red-support",
+          "team": "red",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 75,
+            "y": 70
+          },
+          "hp": 97,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 8,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 36,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": false,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.34,
+        "victory": {
+          "kind": "skirmish",
+          "description": "Break line of sight, reach the lower-left exit, and stabilize there for two turns.",
+          "defeatDescription": "The mage was caught before completing the fogline route.",
+          "allowEscape": true,
+          "safeZone": {
+            "x": 12,
+            "y": 78
+          },
+          "safeRadius": 20,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "central-brush",
+            "label": "Central brush",
+            "kind": "brush",
+            "position": {
+              "x": 43,
+              "y": 51
+            },
+            "radius": 12,
+            "moveMultiplier": 0.82,
+            "blocksVision": true
+          },
+          {
+            "id": "ridge-wall",
+            "label": "Ridge wall",
+            "kind": "wall",
+            "position": {
+              "x": 60,
+              "y": 55
+            },
+            "radius": 10,
+            "moveMultiplier": 0.7,
+            "blocksVision": true
+          },
+          {
+            "id": "exit-zone",
+            "label": "Lower-left exit",
+            "kind": "safe-zone",
+            "position": {
+              "x": 12,
+              "y": 78
+            },
+            "radius": 20,
+            "moveMultiplier": 1,
+            "blocksVision": false
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "move",
+            "target": {
+              "x": 38,
+              "y": 49
+            }
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          }
+        ],
+        "referenceReasons": [
+          "Cut behind the central brush instead of retreating through the visible jungler.",
+          "Turn toward the exit once the brush blocks the direct chase lane.",
+          "Continue the guarded route before the hidden mage can establish range.",
+          "Continue toward the expanded exit pocket at the mage class movement limit.",
+          "Enter the edge of the lower-left safe zone and start stabilizing.",
+          "Continue through the exit pocket to complete the second stabilization turn."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "move",
+              "target": {
+                "x": 38,
+                "y": 49
+              }
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "contest": [
+            {
+              "type": "move",
+              "target": {
+                "x": 38,
+                "y": 49
+              }
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 38,
+              "y": 49
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "escape",
+        "skillLevel": "advanced",
+        "analystRationale": "The direct safe-zone vector crosses two threat lanes. The authored route first uses brush geometry to break the visible chase before committing to the exit.",
+        "intendedTradeoffs": [
+          "The brush detour costs distance but reduces how many enemies can maintain vision.",
+          "Direct retreat is faster geometrically but can keep the aggressive jungler on the same line."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "move",
+              "target": {
+                "x": 38,
+                "y": 49
+              }
+            },
+            "when": "The central brush is uncontested and the visible jungler is approaching from the upper side.",
+            "tradeoff": "The detour delays safe-zone entry but disrupts the direct pursuit."
+          },
+          {
+            "action": {
+              "type": "retreat"
+            },
+            "when": "The carry has already crossed behind the brush or the upper chase lane is closed.",
+            "tradeoff": "Retreat gains speed and guard but follows the fixed safe-zone vector."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "brush route completes fogline escape",
+            "actions": [
+              {
+                "type": "move",
+                "target": {
+                  "x": 38,
+                  "y": 49
+                }
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 6,
+            "expectedOutcomeContains": "disengaged"
+          },
+          {
+            "name": "turning to fight loses the exit",
+            "actions": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 3,
+            "expectedOutcomeContains": "caught"
+          }
+        ]
+      }
+    },
+    {
+      "id": "positioning-552",
+      "slug": "support-anchor-line",
+      "title": "Support Anchor Line",
+      "description": "The carry can step back toward allied support before the enemy jungler and mage enter overlapping threat ranges.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 552,
+      "seed": 86028121,
+      "maxTurns": 4,
+      "controlledUnitId": "blue-carry",
+      "reasonTags": [
+        "positioning",
+        "support-spacing",
+        "threat-overlap"
+      ],
+      "signals": {
+        "winProbabilitySwing": 0.51,
+        "eventDensity": 0.61,
+        "entityProximity": 0.2,
+        "resourceAsymmetry": 0.39
+      },
+      "units": [
+        {
+          "id": "blue-carry",
+          "team": "blue",
+          "role": "carry",
+          "policy": "controlled",
+          "position": {
+            "x": 31,
+            "y": 50
+          },
+          "hp": 61,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 23,
+          "moveSpeed": 11,
+          "armor": 13,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "blue-support",
+          "team": "blue",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 20,
+            "y": 60
+          },
+          "hp": 70,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 9,
+          "moveSpeed": 8,
+          "armor": 19,
+          "visionRange": 38,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        },
+        {
+          "id": "red-jungle",
+          "team": "red",
+          "role": "jungler",
+          "policy": "aggressive",
+          "position": {
+            "x": 48,
+            "y": 50
+          },
+          "hp": 85,
+          "maxHp": 125,
+          "attackRange": 14,
+          "attackDamage": 19,
+          "moveSpeed": 10,
+          "armor": 19,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "fighter",
+          "moveRange": 10
+        },
+        {
+          "id": "red-mage",
+          "team": "red",
+          "role": "mage",
+          "policy": "skirmisher",
+          "position": {
+            "x": 66,
+            "y": 42
+          },
+          "hp": 74,
+          "maxHp": 95,
+          "attackRange": 24,
+          "attackDamage": 22,
+          "moveSpeed": 9,
+          "armor": 10,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "mage",
+          "moveRange": 9
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.59,
+        "victory": {
+          "kind": "skirmish",
+          "description": "End the exchange with the carry inside the support line and the stronger tactical state.",
+          "defeatDescription": "The carry was isolated outside allied protection.",
+          "allowEscape": false,
+          "safeZone": {
+            "x": 10,
+            "y": 68
+          },
+          "safeRadius": 8,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "lane-edge",
+            "label": "Lane edge",
+            "kind": "wall",
+            "position": {
+              "x": 47,
+              "y": 69
+            },
+            "radius": 8,
+            "moveMultiplier": 0.78,
+            "blocksVision": true
+          },
+          {
+            "id": "support-brush",
+            "label": "Support brush",
+            "kind": "brush",
+            "position": {
+              "x": 20,
+              "y": 60
+            },
+            "radius": 9,
+            "moveMultiplier": 0.86,
+            "blocksVision": true
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "move",
+            "target": {
+              "x": 24,
+              "y": 56
+            }
+          },
+          {
+            "type": "hold"
+          },
+          {
+            "type": "contest"
+          },
+          {
+            "type": "hold"
+          }
+        ],
+        "referenceReasons": [
+          "Move back toward support before the two enemy threat ranges overlap.",
+          "Use guard and the refreshed support shield to absorb the first collapse.",
+          "Contest the nearest threat after the mage has spent its first attack window.",
+          "Hold the restored formation instead of chasing beyond support range."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "move",
+              "target": {
+                "x": 24,
+                "y": 56
+              }
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "contest": [
+            {
+              "type": "move",
+              "target": {
+                "x": 24,
+                "y": 56
+              }
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 24,
+              "y": 56
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "positioning",
+        "skillLevel": "beginner",
+        "analystRationale": "This fixture encodes the participant insight that the carry should move back toward support when the jungler is nearby. It teaches ally-relative spacing before damage optimization.",
+        "intendedTradeoffs": [
+          "Moving toward support gives up immediate damage but restores shielding and a safer firing line.",
+          "Stepping forward can poke the jungler sooner but enters overlapping jungle and mage pressure."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "move",
+              "target": {
+                "x": 24,
+                "y": 56
+              }
+            },
+            "when": "The jungler enters the lane while support remains behind the carry.",
+            "tradeoff": "Blue loses one attack window to restore protective spacing."
+          },
+          {
+            "action": {
+              "type": "hold"
+            },
+            "when": "The carry is already inside support range and expects the first enemy cooldowns.",
+            "tradeoff": "Guarding preserves formation but does not widen the gap from the mage."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "support-side reposition wins exchange",
+            "actions": [
+              {
+                "type": "move",
+                "target": {
+                  "x": 24,
+                  "y": 56
+                }
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 4,
+            "expectedOutcomeContains": "stronger tactical state"
+          },
+          {
+            "name": "forward step creates isolation",
+            "actions": [
+              {
+                "type": "move",
+                "target": {
+                  "x": 80,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 80,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 80,
+                  "y": 45
+                }
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 3,
+            "expectedOutcomeContains": "isolated outside allied protection"
+          }
+        ]
+      }
+    },
+    {
+      "id": "positioning-931",
+      "slug": "choke-range-discipline",
+      "title": "Choke Range Discipline",
+      "description": "A mage must hold the edge of a narrow choke while allied tank protection separates an assassin from the red back line.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 931,
+      "seed": 104395301,
+      "maxTurns": 5,
+      "controlledUnitId": "blue-mage",
+      "reasonTags": [
+        "positioning",
+        "range-discipline",
+        "choke-control"
+      ],
+      "signals": {
+        "winProbabilitySwing": 0.63,
+        "eventDensity": 0.79,
+        "entityProximity": 0.16,
+        "resourceAsymmetry": 0.43
+      },
+      "units": [
+        {
+          "id": "blue-mage",
+          "team": "blue",
+          "role": "mage",
+          "policy": "controlled",
+          "position": {
+            "x": 32,
+            "y": 70
+          },
+          "hp": 67,
+          "maxHp": 95,
+          "attackRange": 24,
+          "attackDamage": 24,
+          "moveSpeed": 9,
+          "armor": 10,
+          "visionRange": 36,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "mage",
+          "moveRange": 9
+        },
+        {
+          "id": "blue-tank",
+          "team": "blue",
+          "role": "tank",
+          "policy": "protector",
+          "position": {
+            "x": 38,
+            "y": 59
+          },
+          "hp": 123,
+          "maxHp": 160,
+          "attackRange": 10,
+          "attackDamage": 16,
+          "moveSpeed": 7,
+          "armor": 34,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "tank",
+          "moveRange": 7
+        },
+        {
+          "id": "red-assassin",
+          "team": "red",
+          "role": "assassin",
+          "policy": "aggressive",
+          "position": {
+            "x": 55,
+            "y": 61
+          },
+          "hp": 62,
+          "maxHp": 100,
+          "attackRange": 12,
+          "attackDamage": 24,
+          "moveSpeed": 13,
+          "armor": 14,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "assassin",
+          "moveRange": 13
+        },
+        {
+          "id": "red-carry",
+          "team": "red",
+          "role": "carry",
+          "policy": "skirmisher",
+          "position": {
+            "x": 71,
+            "y": 51
+          },
+          "hp": 77,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 22,
+          "moveSpeed": 11,
+          "armor": 11,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": false,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.55,
+        "victory": {
+          "kind": "skirmish",
+          "description": "Maintain maximum casting range through the choke and finish with the stronger tactical state.",
+          "defeatDescription": "The mage crossed the tank line and was collapsed on inside the choke.",
+          "allowEscape": false,
+          "safeZone": {
+            "x": 18,
+            "y": 80
+          },
+          "safeRadius": 8,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "choke-wall-a",
+            "label": "West choke wall",
+            "kind": "wall",
+            "position": {
+              "x": 50,
+              "y": 48
+            },
+            "radius": 10,
+            "moveMultiplier": 0.68,
+            "blocksVision": true
+          },
+          {
+            "id": "choke-wall-b",
+            "label": "East choke wall",
+            "kind": "wall",
+            "position": {
+              "x": 60,
+              "y": 75
+            },
+            "radius": 9,
+            "moveMultiplier": 0.68,
+            "blocksVision": true
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "move",
+            "target": {
+              "x": 35,
+              "y": 76
+            }
+          },
+          {
+            "type": "contest"
+          },
+          {
+            "type": "hold"
+          },
+          {
+            "type": "contest"
+          },
+          {
+            "type": "hold"
+          }
+        ],
+        "referenceReasons": [
+          "Shift laterally so the tank stays between the mage and assassin.",
+          "Cast at the nearest visible threat from maximum range.",
+          "Guard during cooldown while the tank continues the intercept.",
+          "Use the second range window without crossing the choke midpoint.",
+          "Hold the surviving formation through the final response."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "move",
+              "target": {
+                "x": 35,
+                "y": 76
+              }
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            }
+          ],
+          "contest": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 35,
+              "y": 76
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "positioning",
+        "skillLevel": "advanced",
+        "analystRationale": "The correct position is defined by a moving ally screen and two enemy ranges, not a fixed safe coordinate. The line rewards lateral spacing and cooldown discipline.",
+        "intendedTradeoffs": [
+          "Lateral movement preserves the tank screen but delays the first spell.",
+          "Crossing the choke creates a shorter attack path while exposing the mage to assassin and carry ranges."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "move",
+              "target": {
+                "x": 35,
+                "y": 76
+              }
+            },
+            "when": "The assassin is approaching the tank's right edge and the red carry remains hidden.",
+            "tradeoff": "The mage maintains a safe angle but spends the turn repositioning."
+          },
+          {
+            "action": {
+              "type": "contest"
+            },
+            "when": "The assassin is visible at maximum casting range with the tank still screening.",
+            "tradeoff": "The mage deals damage but starts its cooldown and may need to guard next turn."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "edge spacing preserves stronger state",
+            "actions": [
+              {
+                "type": "move",
+                "target": {
+                  "x": 35,
+                  "y": 76
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 5,
+            "expectedOutcomeContains": "stronger tactical state"
+          },
+          {
+            "name": "crossing choke loses formation",
+            "actions": [
+              {
+                "type": "move",
+                "target": {
+                  "x": 80,
+                  "y": 50
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 80,
+                  "y": 50
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 80,
+                  "y": 50
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 80,
+                  "y": 50
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 80,
+                  "y": 50
+                }
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 5,
+            "expectedOutcomeContains": "greater pressure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "resource-trade-678",
+      "slug": "cannon-wave-trade",
+      "title": "Cannon Wave Trade",
+      "description": "Blue can spend two safe attack windows to remove a low-health carry, but only if it guards while the first cooldown recovers.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 678,
+      "seed": 122949829,
+      "maxTurns": 4,
+      "controlledUnitId": "blue-carry",
+      "reasonTags": [
+        "resource-trade",
+        "cooldown-trade",
+        "target-priority"
+      ],
+      "signals": {
+        "winProbabilitySwing": 0.57,
+        "eventDensity": 0.7,
+        "entityProximity": 0.17,
+        "resourceAsymmetry": 0.77
+      },
+      "mechanicBriefing": {
+        "mechanics": [
+          {
+            "elementId": "wave-line",
+            "name": "Cannon Wave",
+            "description": "The highlighted lane strip represents the cannon-wave trade area and slows movement slightly. It does not award capture progress or deal damage by itself.",
+            "roleInScenario": "The wave frames a short resource trade: use an available attack window, guard while the cooldown recovers, and avoid chasing beyond the controlled lane space."
+          }
+        ]
+      },
+      "units": [
+        {
+          "id": "blue-carry",
+          "team": "blue",
+          "role": "carry",
+          "policy": "controlled",
+          "position": {
+            "x": 30,
+            "y": 48
+          },
+          "hp": 52,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 25,
+          "moveSpeed": 11,
+          "armor": 12,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "blue-support",
+          "team": "blue",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 21,
+            "y": 58
+          },
+          "hp": 57,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 8,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 36,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        },
+        {
+          "id": "red-carry",
+          "team": "red",
+          "role": "carry",
+          "policy": "skirmisher",
+          "position": {
+            "x": 50,
+            "y": 47
+          },
+          "hp": 38,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 22,
+          "moveSpeed": 11,
+          "armor": 10,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "red-tank",
+          "team": "red",
+          "role": "tank",
+          "policy": "protector",
+          "position": {
+            "x": 76,
+            "y": 61
+          },
+          "hp": 149,
+          "maxHp": 160,
+          "attackRange": 10,
+          "attackDamage": 16,
+          "moveSpeed": 7,
+          "armor": 35,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": false,
+          "alive": true,
+          "class": "tank",
+          "moveRange": 7
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.47,
+        "victory": {
+          "kind": "eliminate-target",
+          "targetUnitId": "red-carry",
+          "description": "Trade two controlled attack windows for the exposed carry without chasing the tank line.",
+          "defeatDescription": "The target survived and converted the trade into red tempo.",
+          "allowEscape": false,
+          "safeZone": {
+            "x": 10,
+            "y": 55
+          },
+          "safeRadius": 8,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "wave-line",
+            "label": "Cannon wave",
+            "kind": "river",
+            "position": {
+              "x": 42,
+              "y": 49
+            },
+            "radius": 13,
+            "moveMultiplier": 0.95,
+            "blocksVision": false
+          },
+          {
+            "id": "alcove",
+            "label": "Lane alcove",
+            "kind": "brush",
+            "position": {
+              "x": 66,
+              "y": 63
+            },
+            "radius": 9,
+            "moveMultiplier": 0.84,
+            "blocksVision": true
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "contest"
+          },
+          {
+            "type": "hold"
+          },
+          {
+            "type": "contest"
+          },
+          {
+            "type": "hold"
+          }
+        ],
+        "referenceReasons": [
+          "Spend the first available attack on the high-value exposed carry.",
+          "Guard during cooldown instead of paying health for an unavailable attack.",
+          "Use the recovered attack window to complete the favorable trade.",
+          "Stop at the wave line rather than chase the arriving tank."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            }
+          ],
+          "hold": [
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            }
+          ],
+          "contest": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 38,
+              "y": 49
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "resource-trade",
+        "skillLevel": "intermediate",
+        "analystRationale": "The controlled resource is the attack cooldown and the carry's limited health. The intended line attacks only when damage is available and guards between windows.",
+        "intendedTradeoffs": [
+          "Contesting on an available cooldown converts health risk into meaningful target damage.",
+          "Contesting while cooling down closes distance without damage and can donate health to the response."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "contest"
+            },
+            "when": "The attack is available and the exposed carry remains the nearest visible target.",
+            "tradeoff": "Blue accepts return damage for a high-value health trade."
+          },
+          {
+            "action": {
+              "type": "hold"
+            },
+            "when": "The attack is cooling down or the tank is entering protection range.",
+            "tradeoff": "Guarding deals no damage but protects the next useful attack window."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "attack guard attack wins trade",
+            "actions": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 3,
+            "expectedOutcomeContains": "isolated carry"
+          },
+          {
+            "name": "retreat concedes target window",
+            "actions": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 4,
+            "expectedOutcomeContains": "target survived"
+          }
+        ]
+      }
+    },
+    {
+      "id": "resource-trade-1188",
+      "slug": "buff-or-base-timing",
+      "title": "Buff or Base Timing",
+      "description": "A low-health mage can leave the enemy buff and preserve its reset, or remain for a contested resource while unseen reinforcements approach.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 1188,
+      "seed": 141650939,
+      "maxTurns": 6,
+      "controlledUnitId": "blue-mage",
+      "reasonTags": [
+        "resource-trade",
+        "reset-timing",
+        "hidden-reinforcement"
+      ],
+      "signals": {
+        "winProbabilitySwing": 0.66,
+        "eventDensity": 0.75,
+        "entityProximity": 0.21,
+        "resourceAsymmetry": 0.82
+      },
+      "mechanicBriefing": {
+        "mechanics": [
+          {
+            "elementId": "red-buff",
+            "name": "Red Buff Cache",
+            "description": "The gold-ringed cache uses objective control. A team with uncontested presence inside gains one control point each turn; both teams inside stall progress. Six points secure the cache.",
+            "roleInScenario": "The cache is the high-risk win route, not a mandatory pickup. Blue begins low on health while an unseen reinforcement approaches, so the value of contesting must be weighed against the reset."
+          },
+          {
+            "elementId": "reset-zone",
+            "name": "Reset Path",
+            "description": "The dashed blue safe zone records one escape point when the controlled mage ends a turn inside with no red unit within 18 map units. Leaving it or being threatened resets that progress. Two consecutive safe turns complete the reset.",
+            "roleInScenario": "This is the lower-risk alternative to fighting for the cache. Reaching and holding the path preserves the mage instead of spending health on the optional objective."
+          }
+        ]
+      },
+      "units": [
+        {
+          "id": "blue-mage",
+          "team": "blue",
+          "role": "mage",
+          "policy": "controlled",
+          "position": {
+            "x": 52,
+            "y": 64
+          },
+          "hp": 32,
+          "maxHp": 95,
+          "attackRange": 24,
+          "attackDamage": 23,
+          "moveSpeed": 9,
+          "armor": 10,
+          "visionRange": 35,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": true,
+          "alive": true,
+          "class": "mage",
+          "moveRange": 9
+        },
+        {
+          "id": "blue-support",
+          "team": "blue",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 38,
+            "y": 70
+          },
+          "hp": 44,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 8,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 37,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        },
+        {
+          "id": "red-jungle",
+          "team": "red",
+          "role": "jungler",
+          "policy": "aggressive",
+          "position": {
+            "x": 65,
+            "y": 60
+          },
+          "hp": 90,
+          "maxHp": 125,
+          "attackRange": 14,
+          "attackDamage": 20,
+          "moveSpeed": 10,
+          "armor": 20,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "fighter",
+          "moveRange": 10
+        },
+        {
+          "id": "red-mage",
+          "team": "red",
+          "role": "mage",
+          "policy": "skirmisher",
+          "position": {
+            "x": 80,
+            "y": 48
+          },
+          "hp": 82,
+          "maxHp": 95,
+          "attackRange": 24,
+          "attackDamage": 23,
+          "moveSpeed": 9,
+          "armor": 10,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": false,
+          "alive": true,
+          "class": "mage",
+          "moveRange": 9
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.31,
+        "objective": {
+          "id": "red-buff",
+          "label": "Red buff cache",
+          "position": {
+            "x": 61,
+            "y": 61
+          },
+          "radius": 11,
+          "captureTurns": 6
+        },
+        "victory": {
+          "kind": "secure-objective",
+          "description": "Secure the buff only if the fight is favorable; otherwise reach the reset path and stabilize for two turns.",
+          "defeatDescription": "The mage lost both the contested resource and its safe reset.",
+          "allowEscape": true,
+          "safeZone": {
+            "x": 12,
+            "y": 82
+          },
+          "safeRadius": 10,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "buff-wall",
+            "label": "Buff wall",
+            "kind": "wall",
+            "position": {
+              "x": 59,
+              "y": 76
+            },
+            "radius": 9,
+            "moveMultiplier": 0.7,
+            "blocksVision": true
+          },
+          {
+            "id": "reset-brush",
+            "label": "Reset brush",
+            "kind": "brush",
+            "position": {
+              "x": 30,
+              "y": 76
+            },
+            "radius": 11,
+            "moveMultiplier": 0.84,
+            "blocksVision": true
+          },
+          {
+            "id": "reset-zone",
+            "label": "Reset path",
+            "kind": "safe-zone",
+            "position": {
+              "x": 12,
+              "y": 82
+            },
+            "radius": 10,
+            "moveMultiplier": 1,
+            "blocksVision": false
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "hold"
+          }
+        ],
+        "referenceReasons": [
+          "Treat low health and missing enemies as a reason to value the reset over the buff.",
+          "Continue through the brush before the visible jungler closes.",
+          "Continue around the reset brush at the mage class movement limit.",
+          "Enter the reset zone with guard still active.",
+          "Hold the route while unseen reinforcements remain outside threat range.",
+          "Complete stabilization instead of returning for a late resource contest."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "contest": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 35,
+              "y": 74
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "resource-trade",
+        "skillLevel": "advanced",
+        "analystRationale": "The scenario treats the buff as optional and the low-health reset as the scarce strategic resource. Hidden reinforcement timing makes a mechanically available contest strategically poor.",
+        "intendedTradeoffs": [
+          "Retreating concedes the local buff but preserves health, tempo, and the next map action.",
+          "Contesting can secure immediate value only if the unseen reinforcement is late."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "retreat"
+            },
+            "when": "The mage is below half health and at least one red contact is missing.",
+            "tradeoff": "Blue gives up the buff to preserve the reset timing."
+          },
+          {
+            "action": {
+              "type": "contest"
+            },
+            "when": "The red jungler is disabled or the missing mage has been confirmed elsewhere.",
+            "tradeoff": "Blue can gain the buff but remains exposed until the second capture tick."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "reset path preserves tempo",
+            "actions": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 6,
+            "expectedOutcomeContains": "disengaged"
+          },
+          {
+            "name": "greedy buff contest is punished",
+            "actions": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 3,
+            "expectedOutcomeContains": "contested resource"
+          }
+        ]
+      }
+    },
+    {
+      "id": "vision-uncertainty-356",
+      "slug": "unseen-brush-check",
+      "title": "Unseen Brush Check",
+      "description": "A visible mage is baiting near a vision-blocking brush while the enemy assassin is unaccounted for.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 356,
+      "seed": 160481183,
+      "maxTurns": 5,
+      "controlledUnitId": "blue-carry",
+      "reasonTags": [
+        "vision-uncertainty",
+        "brush-threat",
+        "missing-assassin"
+      ],
+      "signals": {
+        "winProbabilitySwing": 0.49,
+        "eventDensity": 0.56,
+        "entityProximity": 0.24,
+        "resourceAsymmetry": 0.45
+      },
+      "mechanicBriefing": {
+        "mechanics": [
+          {
+            "elementId": "lane-pocket",
+            "name": "Allied Lane Pocket",
+            "description": "The dashed blue pocket is a safe regroup zone. The controlled carry earns one escape point by ending a turn inside with no red unit within 18 map units. Leaving it or being threatened resets progress; two consecutive safe turns complete the regroup.",
+            "roleInScenario": "The pocket gives Blue a concrete destination when the assassin is missing. Stabilizing beside support is the intended alternative to walking into the bait brush."
+          }
+        ]
+      },
+      "units": [
+        {
+          "id": "blue-carry",
+          "team": "blue",
+          "role": "carry",
+          "policy": "controlled",
+          "position": {
+            "x": 44,
+            "y": 54
+          },
+          "hp": 55,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 23,
+          "moveSpeed": 11,
+          "armor": 12,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "blue-support",
+          "team": "blue",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 32,
+            "y": 72
+          },
+          "hp": 73,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 9,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 39,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        },
+        {
+          "id": "red-mage",
+          "team": "red",
+          "role": "mage",
+          "policy": "skirmisher",
+          "position": {
+            "x": 62,
+            "y": 35
+          },
+          "hp": 72,
+          "maxHp": 95,
+          "attackRange": 24,
+          "attackDamage": 21,
+          "moveSpeed": 9,
+          "armor": 10,
+          "visionRange": 34,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "mage",
+          "moveRange": 9
+        },
+        {
+          "id": "red-assassin",
+          "team": "red",
+          "role": "assassin",
+          "policy": "aggressive",
+          "position": {
+            "x": 61,
+            "y": 56
+          },
+          "hp": 82,
+          "maxHp": 100,
+          "attackRange": 12,
+          "attackDamage": 24,
+          "moveSpeed": 13,
+          "armor": 14,
+          "visionRange": 31,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": false,
+          "alive": true,
+          "class": "assassin",
+          "moveRange": 13
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.43,
+        "victory": {
+          "kind": "skirmish",
+          "description": "Respect the missing assassin, regroup with support, and stabilize in the allied lane pocket.",
+          "defeatDescription": "The carry entered the unverified brush and was collapsed on.",
+          "allowEscape": true,
+          "safeZone": {
+            "x": 20,
+            "y": 78
+          },
+          "safeRadius": 10,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "bait-brush",
+            "label": "Bait brush",
+            "kind": "brush",
+            "position": {
+              "x": 60,
+              "y": 54
+            },
+            "radius": 11,
+            "moveMultiplier": 0.82,
+            "blocksVision": true
+          },
+          {
+            "id": "lane-pocket",
+            "label": "Allied lane pocket",
+            "kind": "safe-zone",
+            "position": {
+              "x": 20,
+              "y": 78
+            },
+            "radius": 10,
+            "moveMultiplier": 1,
+            "blocksVision": false
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "dodge"
+          },
+          {
+            "type": "move",
+            "target": {
+              "x": 35,
+              "y": 69
+            }
+          },
+          {
+            "type": "move",
+            "target": {
+              "x": 35,
+              "y": 69
+            }
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "hold"
+          }
+        ],
+        "referenceReasons": [
+          "Dodge the first visible skillshot without entering the unverified brush.",
+          "Move toward support to restore allied vision overlap.",
+          "Continue the support-side route at the marksman class movement limit.",
+          "Enter the allied lane pocket with guard active.",
+          "Hold the pocket long enough to complete the escape timer."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "move",
+              "target": {
+                "x": 35,
+                "y": 69
+              }
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "contest": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 35,
+              "y": 69
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "vision-uncertainty",
+        "skillLevel": "beginner",
+        "analystRationale": "The visible mage is not the full situation. The fixture teaches beginners to treat an unaccounted assassin and blocking brush as actionable information.",
+        "intendedTradeoffs": [
+          "Regrouping with support gives up a possible poke on the mage but reduces the blind flank angle.",
+          "Walking into the brush can reveal the assassin sooner, but only by exposing the carry to immediate threat range."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "move",
+              "target": {
+                "x": 29,
+                "y": 55
+              }
+            },
+            "when": "The assassin is missing and support vision is available behind the carry.",
+            "tradeoff": "Blue concedes forward space to verify the next move safely."
+          },
+          {
+            "action": {
+              "type": "contest"
+            },
+            "when": "The assassin has been confirmed elsewhere and the mage is isolated.",
+            "tradeoff": "Blue can pressure the visible target but loses the guard from retreating."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "dodge then support regroup avoids blind collapse",
+            "actions": [
+              {
+                "type": "dodge"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 35,
+                  "y": 69
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 35,
+                  "y": 69
+                }
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 5,
+            "expectedOutcomeContains": "disengaged"
+          },
+          {
+            "name": "brush face-check is punished",
+            "actions": [
+              {
+                "type": "move",
+                "target": {
+                  "x": 60,
+                  "y": 54
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 5,
+            "expectedOutcomeContains": "greater pressure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "vision-uncertainty-1004",
+      "slug": "missing-flank-signal",
+      "title": "Missing Flank Signal",
+      "description": "Blue sees a vulnerable carry in mid, but two red contacts are missing behind the side wall.",
+      "map": "Synthetic Rift",
+      "startTimeSeconds": 1004,
+      "seed": 179424673,
+      "maxTurns": 5,
+      "controlledUnitId": "blue-carry",
+      "reasonTags": [
+        "vision-uncertainty",
+        "flank-signal",
+        "target-bait"
+      ],
+      "signals": {
+        "winProbabilitySwing": 0.71,
+        "eventDensity": 0.83,
+        "entityProximity": 0.18,
+        "resourceAsymmetry": 0.53
+      },
+      "mechanicBriefing": {
+        "mechanics": [
+          {
+            "elementId": "exit-pocket",
+            "name": "Exit Pocket",
+            "description": "The dashed blue pocket is a safe exit zone. The controlled carry earns one escape point by ending a turn inside with no red unit within 18 map units. Leaving it or being threatened resets progress; two consecutive safe turns complete the escape.",
+            "roleInScenario": "The pocket preserves a retreat route if support-side vision does not make the visible carry safe to attack. It turns uncertainty into a clear fallback plan."
+          }
+        ]
+      },
+      "units": [
+        {
+          "id": "blue-carry",
+          "team": "blue",
+          "role": "carry",
+          "policy": "controlled",
+          "position": {
+            "x": 36,
+            "y": 49
+          },
+          "hp": 51,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 24,
+          "moveSpeed": 11,
+          "armor": 12,
+          "visionRange": 33,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "blue-support",
+          "team": "blue",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 25,
+            "y": 61
+          },
+          "hp": 53,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 9,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 40,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": true,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        },
+        {
+          "id": "red-carry",
+          "team": "red",
+          "role": "carry",
+          "policy": "skirmisher",
+          "position": {
+            "x": 58,
+            "y": 48
+          },
+          "hp": 72,
+          "maxHp": 90,
+          "attackRange": 28,
+          "attackDamage": 22,
+          "moveSpeed": 11,
+          "armor": 10,
+          "visionRange": 33,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": true,
+          "alive": true,
+          "class": "marksman",
+          "moveRange": 11
+        },
+        {
+          "id": "red-jungle",
+          "team": "red",
+          "role": "jungler",
+          "policy": "aggressive",
+          "position": {
+            "x": 61,
+            "y": 69
+          },
+          "hp": 99,
+          "maxHp": 125,
+          "attackRange": 14,
+          "attackDamage": 20,
+          "moveSpeed": 10,
+          "armor": 20,
+          "visionRange": 32,
+          "attackCooldown": 2,
+          "cooldownTurns": 0,
+          "visible": false,
+          "alive": true,
+          "class": "fighter",
+          "moveRange": 10
+        },
+        {
+          "id": "red-support",
+          "team": "red",
+          "role": "support",
+          "policy": "support",
+          "position": {
+            "x": 76,
+            "y": 62
+          },
+          "hp": 95,
+          "maxHp": 110,
+          "attackRange": 20,
+          "attackDamage": 8,
+          "moveSpeed": 8,
+          "armor": 18,
+          "visionRange": 36,
+          "attackCooldown": 2,
+          "cooldownTurns": 1,
+          "visible": false,
+          "alive": true,
+          "class": "support",
+          "moveRange": 8
+        }
+      ],
+      "rules": {
+        "initialAdvantage": 0.41,
+        "victory": {
+          "kind": "eliminate-target",
+          "targetUnitId": "red-carry",
+          "description": "Only commit to the visible carry after restoring support-side vision; otherwise preserve the retreat route.",
+          "defeatDescription": "The visible bait survived while the missing flank closed.",
+          "allowEscape": true,
+          "safeZone": {
+            "x": 11,
+            "y": 63
+          },
+          "safeRadius": 10,
+          "escapeTurns": 2
+        },
+        "terrain": [
+          {
+            "id": "side-wall",
+            "label": "Side wall",
+            "kind": "wall",
+            "position": {
+              "x": 55,
+              "y": 66
+            },
+            "radius": 10,
+            "moveMultiplier": 0.7,
+            "blocksVision": true
+          },
+          {
+            "id": "support-brush",
+            "label": "Support-side brush",
+            "kind": "brush",
+            "position": {
+              "x": 36,
+              "y": 63
+            },
+            "radius": 10,
+            "moveMultiplier": 0.84,
+            "blocksVision": true
+          },
+          {
+            "id": "exit-pocket",
+            "label": "Exit pocket",
+            "kind": "safe-zone",
+            "position": {
+              "x": 11,
+              "y": 63
+            },
+            "radius": 10,
+            "moveMultiplier": 1,
+            "blocksVision": false
+          }
+        ],
+        "referencePlan": [
+          {
+            "type": "move",
+            "target": {
+              "x": 35,
+              "y": 61
+            }
+          },
+          {
+            "type": "hold"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "retreat"
+          },
+          {
+            "type": "hold"
+          }
+        ],
+        "referenceReasons": [
+          "Move into support-side vision before deciding whether the visible carry is truly isolated.",
+          "Hold through the flank reveal and keep shield coverage.",
+          "Disengage once the flank information confirms that the visible carry is bait.",
+          "Continue toward the exit as the missing jungler reaches the side wall.",
+          "Stabilize in the exit pocket rather than re-enter the bait lane."
+        ],
+        "referenceContinuations": {
+          "move": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "hold": [
+            {
+              "type": "move",
+              "target": {
+                "x": 35,
+                "y": 61
+              }
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "contest": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "retreat": [
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "dodge": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ],
+          "outplay": [
+            {
+              "type": "hold"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "retreat"
+            },
+            {
+              "type": "hold"
+            }
+          ]
+        },
+        "actionDefaults": {
+          "move": {
+            "type": "move",
+            "target": {
+              "x": 35,
+              "y": 61
+            }
+          },
+          "hold": {
+            "type": "hold"
+          },
+          "contest": {
+            "type": "contest"
+          },
+          "retreat": {
+            "type": "retreat"
+          },
+          "dodge": {
+            "type": "dodge"
+          },
+          "outplay": {
+            "type": "outplay"
+          }
+        }
+      },
+      "authoring": {
+        "category": "vision-uncertainty",
+        "skillLevel": "intermediate",
+        "analystRationale": "A low-health visible carry invites commitment, but two missing contacts make target health an incomplete signal. The line checks the flank with allied vision before choosing damage or exit.",
+        "intendedTradeoffs": [
+          "Vision-side movement delays target damage while improving information and support coverage.",
+          "Immediate focus can remove the carry faster but commits before the missing flank is resolved."
+        ],
+        "plausibleAlternatives": [
+          {
+            "action": {
+              "type": "move",
+              "target": {
+                "x": 35,
+                "y": 61
+              }
+            },
+            "when": "Two red contacts are missing and support can reveal the side wall safely.",
+            "tradeoff": "Blue spends one turn on information rather than target damage."
+          },
+          {
+            "action": {
+              "type": "retreat"
+            },
+            "when": "The jungler appears inside flank distance or the carry gains support shielding.",
+            "tradeoff": "Blue abandons the elimination window to preserve the controlled unit."
+          }
+        ],
+        "acceptanceTests": [
+          {
+            "name": "vision check then exit survives flank",
+            "actions": [
+              {
+                "type": "move",
+                "target": {
+                  "x": 35,
+                  "y": 61
+                }
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "expectedStatus": "won",
+            "expectedTerminalTurn": 5,
+            "expectedOutcomeContains": "disengaged"
+          },
+          {
+            "name": "blind focus is collapsed on",
+            "actions": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              }
+            ],
+            "expectedStatus": "lost",
+            "expectedTerminalTurn": 5,
+            "expectedOutcomeContains": "target survived"
+          }
+        ]
+      }
     }
   ]
 }

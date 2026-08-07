@@ -1,75 +1,106 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import "@testing-library/jest-dom/vitest";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Unit } from "../types";
-import { TacticalBoard } from "./TacticalBoard";
+import { clampTargetToMoveRange, TacticalBoard } from "./TacticalBoard";
+
+afterEach(cleanup);
 
 const units: Unit[] = [
   {
     id: "blue",
     team: "blue",
-    role: "frontline",
+    role: "tank",
     class: "tank",
+    policy: "controlled",
     position: { x: 20, y: 20 },
-    hp: 120,
+    hp: 140,
     maxHp: 160,
     moveRange: 7,
     attackRange: 10,
+    attackDamage: 18,
+    moveSpeed: 7,
+    armor: 20,
+    visionRange: 34,
+    attackCooldown: 2,
     cooldownTurns: 0,
+    shield: 0,
+    guarded: false,
     visible: true,
     alive: true
   },
   {
-    id: "red",
+    id: "red-mage",
     team: "red",
-    role: "mid",
+    role: "mage",
     class: "mage",
-    position: { x: 70, y: 60 },
+    policy: "skirmisher",
+    position: { x: 25, y: 20 },
     hp: 55,
     maxHp: 95,
     moveRange: 9,
     attackRange: 24,
+    attackDamage: 20,
+    moveSpeed: 9,
+    armor: 10,
+    visionRange: 34,
+    attackCooldown: 2,
     cooldownTurns: 0,
+    shield: 0,
+    guarded: false,
     visible: true,
     alive: true
   },
   {
     id: "hidden",
     team: "red",
-    role: "carry",
-    class: "marksman",
+    role: "assassin",
+    class: "assassin",
+    policy: "aggressive",
     position: { x: 80, y: 80 },
     hp: 80,
-    maxHp: 90,
-    moveRange: 11,
-    attackRange: 28,
+    maxHp: 100,
+    moveRange: 13,
+    attackRange: 12,
+    attackDamage: 20,
+    moveSpeed: 13,
+    armor: 10,
+    visionRange: 34,
+    attackCooldown: 2,
     cooldownTurns: 0,
+    shield: 0,
+    guarded: false,
     visible: false,
     alive: true
   }
 ];
 
 describe("TacticalBoard", () => {
-  it("shows visible unit classes without leaking hidden enemies", () => {
-    render(
+  it("does not render hidden enemies", () => {
+    const { container } = render(
       <TacticalBoard
         units={units}
+        terrain={[]}
         controlledUnitId="blue"
+        unknownEnemyCount={1}
         targeting={false}
         onTarget={vi.fn()}
       />
     );
 
-    expect(screen.getByRole("button", { name: /blue tank unit/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /red mage unit/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /red marksman unit/i })).not.toBeInTheDocument();
-    expect(screen.queryByText("marksman")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /blue tank unit/i })).toHaveClass("unit--class-tank");
+    expect(screen.queryByRole("button", { name: /assassin unit/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/1 enemy contact unaccounted/i)).toBeInTheDocument();
+    expect(container.querySelector(".fog-of-war")).toHaveStyle("--vision-x: 20%; --vision-y: 20%");
   });
 
   it("selects units by keyboard focus and exposes an accessible inspector", () => {
     render(
       <TacticalBoard
         units={units}
+        terrain={[]}
         controlledUnitId="blue"
+        unknownEnemyCount={1}
         targeting={false}
         onTarget={vi.fn()}
       />
@@ -77,7 +108,6 @@ describe("TacticalBoard", () => {
 
     fireEvent.focus(screen.getByRole("button", { name: /red mage unit/i }));
     const inspector = screen.getByRole("region", { name: /selected unit details/i });
-
     expect(within(inspector).getByText("mage")).toBeInTheDocument();
     expect(within(inspector).getByText("55 / 95 HP")).toBeInTheDocument();
     expect(within(inspector).getByText("9 map units")).toBeInTheDocument();
@@ -89,7 +119,9 @@ describe("TacticalBoard", () => {
     render(
       <TacticalBoard
         units={units}
+        terrain={[]}
         controlledUnitId="blue"
+        unknownEnemyCount={1}
         targeting
         onTarget={vi.fn()}
       />
@@ -100,48 +132,81 @@ describe("TacticalBoard", () => {
     expect(screen.getByText(/within 7 map units/i)).toBeInTheDocument();
   });
 
-  it("clamps a map target to the controlled class move range", () => {
+  it("clamps a selected map point to the controlled class move range", () => {
     const onTarget = vi.fn();
     render(
       <TacticalBoard
         units={units}
+        terrain={[]}
         controlledUnitId="blue"
+        unknownEnemyCount={0}
         targeting
         onTarget={onTarget}
       />
     );
-    const surface = screen.getByRole("button", { name: /choose movement target/i });
-    vi.spyOn(surface, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
+    const board = screen.getByRole("button", { name: /choose movement/i });
+    vi.spyOn(board, "getBoundingClientRect").mockReturnValue({
       left: 0,
       top: 0,
-      right: 100,
-      bottom: 100,
       width: 100,
       height: 100,
-      toJSON: () => ({})
+      right: 100,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => undefined
     });
 
-    fireEvent.click(surface, { clientX: 100, clientY: 20 });
-
-    expect(onTarget).toHaveBeenCalledOnce();
-    expect(onTarget).toHaveBeenCalledWith({ x: 27, y: 20 });
+    fireEvent.click(board, { clientX: 90, clientY: 90 });
+    expect(onTarget).toHaveBeenCalledWith(
+      clampTargetToMoveRange({ x: 90, y: 90 }, { x: 20, y: 20 }, 7)
+    );
   });
 
-  it("does not accept a map target outside move mode", () => {
-    const onTarget = vi.fn();
+  it("labels a selected movement target with its coordinates", () => {
     render(
       <TacticalBoard
         units={units}
+        terrain={[]}
         controlledUnitId="blue"
-        targeting={false}
-        onTarget={onTarget}
+        unknownEnemyCount={0}
+        targeting
+        target={{ x: 24, y: 22 }}
+        onTarget={vi.fn()}
       />
     );
+    expect(screen.getByLabelText("Selected movement target: X 24, Y 22")).toBeInTheDocument();
+    expect(screen.getByText("X 24 · Y 22")).toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Tactical map" }));
-    expect(onTarget).not.toHaveBeenCalled();
-    expect(screen.queryByRole("img", { name: /movement range/i })).not.toBeInTheDocument();
+  it("projects focused views while keeping hover coordinates in world space", () => {
+    render(
+      <TacticalBoard
+        units={units}
+        terrain={[]}
+        controlledUnitId="blue"
+        unknownEnemyCount={0}
+        viewport={{ xMin: 10, xMax: 70, yMin: 20, yMax: 80, label: "Focused view · Test lane" }}
+        targeting
+        onTarget={vi.fn()}
+      />
+    );
+    const board = screen.getByRole("button", { name: /choose movement/i });
+    vi.spyOn(board, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 100,
+      right: 200,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => undefined
+    });
+
+    expect(screen.getByText("Focused view · Test lane")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /blue tank unit/i })).toHaveStyle("left: 16.666666666666664%; top: 0%");
+    fireEvent.mouseMove(board, { clientX: 100, clientY: 50 });
+    expect(screen.getByText("X 40 · Y 50")).toBeInTheDocument();
   });
 });

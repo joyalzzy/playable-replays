@@ -1,15 +1,28 @@
 # Model and evaluation plan
 
 The runnable prototype needs no model, GPU, API key, or network access. The
-seeded built-in opponent policy remains the default.
+seeded built-in non-player policies remain the default.
+
+The current `advantage` field is a rules-based summary of simulator state, not
+a learned or calibrated probability. It must not be relabelled as win
+probability without a representative labelled dataset and calibration study.
 
 ## Highlight selection
 
-Start with the included weighted baseline and an analyst-labelled validation
-set. Measure precision at the number of moments a viewer would realistically
-see per match, recall of known pivotal events, and calibration of the displayed
-confidence. Add a small gradient-boosted model only after the baseline and label
-quality are understood.
+`ml.telemetry` now provides the deterministic preprocessing baseline: strict
+normalized-frame validation, fully covered sliding windows, derivation of the
+four canonical signals, and overlap suppression. Source-specific authorized
+replay adapters and automatic scenario-fixture generation remain future work.
+The contract and exact calculations are documented in
+[`telemetry-highlights.md`](telemetry-highlights.md).
+
+Evaluate the weighted baseline on whole matches, not independently curated
+clips. Measure precision at the number of moments a viewer would realistically
+see per match, recall of known pivotal events, duplicates after overlap
+suppression, and calibration of any displayed confidence. Tune thresholds and
+event-rate saturation only on a training split, then report held-out results by
+match and patch. Add a small gradient-boosted model only after the baseline,
+label quality, and leakage risks are understood.
 
 ## Counterfactual policy
 
@@ -32,7 +45,7 @@ teammate and opponent behavior. Enabling it also requires stable
 `OPPONENT_MODEL_*` aliases remain available as an all-or-nothing
 environment-name compatibility group; their endpoint must still implement
 position-model schema `1.1`. Once per accepted user turn, the Go API posts
-a snapshot with the session and moment IDs, the next-frame `turn` index, map
+a snapshot with the session and moment IDs, the current-frame `turn` index, map
 bounds, controlled unit ID, and units. The versioned payload is marked as
 privileged authoritative server state. The model returns only desired
 next-frame positions:

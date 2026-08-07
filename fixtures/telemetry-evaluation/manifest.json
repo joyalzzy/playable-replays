@@ -1,0 +1,74 @@
+{
+  "version": "1.0",
+  "detector": {
+    "threshold": 0.65,
+    "windowSeconds": 12,
+    "strideSeconds": 2,
+    "maxOverlapFraction": 0.5,
+    "minimumMatchOverlap": 0.5
+  },
+  "regressionThresholds": {
+    "minimumPrecision": 1.0,
+    "minimumRecall": 1.0,
+    "minimumCategoryAccuracy": 1.0,
+    "minimumTopRankAccuracy": 1.0,
+    "maximumFalsePositiveMatchRate": 0.0
+  },
+  "cases": [
+    {
+      "id": "objective-pit-contest",
+      "description": "Two nearby teams contest an objective during a decisive probability swing.",
+      "telemetry": "objective-contest.json",
+      "expectedHighlights": [
+        {"startSecond": 0, "endSecond": 12, "category": "objective-contest", "primary": false},
+        {"startSecond": 12, "endSecond": 25, "category": "objective-contest", "primary": true}
+      ]
+    },
+    {
+      "id": "team-fight-reversal",
+      "description": "A combat-backed trough recovers into a decisive team-fight reversal.",
+      "telemetry": "team-fight-reversal.json",
+      "expectedHighlights": [
+        {"startSecond": 0, "endSecond": 12, "category": "team-fight-engagement", "primary": true}
+      ]
+    },
+    {
+      "id": "low-health-escape",
+      "description": "A low-health carry moves from immediate danger to sustained safe separation.",
+      "telemetry": "successful-escape.json",
+      "expectedHighlights": [
+        {"startSecond": 0, "endSecond": 12, "category": "escape", "primary": true}
+      ]
+    },
+    {
+      "id": "isolated-positioning-mistake",
+      "description": "A carry remains isolated near two opponents while its only ally is distant.",
+      "telemetry": "positioning-mistake.json",
+      "expectedHighlights": [
+        {"startSecond": 0, "endSecond": 12, "category": "positioning", "primary": true}
+      ]
+    },
+    {
+      "id": "cross-map-resource-trade",
+      "description": "A large health and gold asymmetry drives a strategic resource-trade moment.",
+      "telemetry": "resource-trade.json",
+      "expectedHighlights": [
+        {"startSecond": 0, "endSecond": 12, "category": "resource-trade", "primary": true}
+      ]
+    },
+    {
+      "id": "vision-loss-window",
+      "description": "Repeated normalized vision-loss events mark a decisive uncertainty window.",
+      "telemetry": "vision-uncertainty.json",
+      "expectedHighlights": [
+        {"startSecond": 0, "endSecond": 12, "category": "vision-uncertainty", "primary": true}
+      ]
+    },
+    {
+      "id": "ordinary-laning",
+      "description": "A quiet, balanced, distant lane state contains no analyst-labelled highlight.",
+      "telemetry": "ordinary-no-highlight.json",
+      "expectedHighlights": []
+    }
+  ]
+}

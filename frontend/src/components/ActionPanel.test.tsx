@@ -1,6 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import "@testing-library/jest-dom/vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ActionPanel } from "./ActionPanel";
+
+afterEach(cleanup);
 
 describe("ActionPanel", () => {
   it("requires a target before committing move", () => {
@@ -29,6 +32,22 @@ describe("ActionPanel", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /commit decision/i }));
     expect(commit).toHaveBeenCalledOnce();
+  });
+
+  it("shows the selected movement coordinates before committing", () => {
+    render(
+      <ActionPanel
+        legalActions={["move", "hold"]}
+        selected="move"
+        target={{ x: 42, y: 68 }}
+        disabled={false}
+        onSelect={vi.fn()}
+        onCommit={vi.fn()}
+      />
+    );
+    expect(screen.getByText("Selected movement point")).toBeInTheDocument();
+    expect(screen.getByText("X 42 · Y 68")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Commit move to X 42, Y 68" })).toBeEnabled();
   });
 
   it("offers dodge and outplay with descriptive labels", () => {

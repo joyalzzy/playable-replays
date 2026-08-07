@@ -6,14 +6,184 @@
   "additionalProperties": false,
   "required": ["version", "moments"],
   "properties": {
-    "version": {"const": "1.0"},
+    "version": {"const": "2.1"},
     "moments": {
       "type": "array",
-      "minItems": 1,
-      "items": {"$ref": "#/$defs/moment"}
+      "minItems": 10,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id", "slug", "title", "description", "map", "startTimeSeconds",
+          "seed", "maxTurns", "controlledUnitId", "reasonTags", "signals", "units", "rules", "authoring"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "slug": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "title": {"type": "string", "minLength": 1},
+          "description": {"type": "string", "minLength": 1},
+          "map": {"type": "string", "minLength": 1},
+          "startTimeSeconds": {"type": "integer", "minimum": 0},
+          "seed": {"type": "integer"},
+          "maxTurns": {"type": "integer", "minimum": 1, "maximum": 20},
+          "controlledUnitId": {"type": "string", "minLength": 1},
+          "reasonTags": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "signals": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["winProbabilitySwing", "eventDensity", "entityProximity", "resourceAsymmetry"],
+            "properties": {
+              "winProbabilitySwing": {"type": "number", "minimum": 0, "maximum": 1},
+              "eventDensity": {"type": "number", "minimum": 0, "maximum": 1},
+              "entityProximity": {"type": "number", "minimum": 0, "maximum": 1},
+              "resourceAsymmetry": {"type": "number", "minimum": 0, "maximum": 1}
+            }
+          },
+          "sourceDetection": {"$ref": "#/$defs/sourceDetection"},
+          "mechanicBriefing": {"$ref": "#/$defs/mechanicBriefing"},
+          "units": {"type": "array", "minItems": 2, "maxItems": 64, "items": {"$ref": "#/$defs/unit"}},
+          "rules": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["initialAdvantage", "victory", "terrain", "referencePlan", "referenceReasons", "referenceContinuations", "actionDefaults"],
+            "properties": {
+              "initialAdvantage": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+              "objective": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "label", "position", "radius", "captureTurns"],
+                "properties": {
+                  "id": {"type": "string", "minLength": 1},
+                  "label": {"type": "string", "minLength": 1},
+                  "position": {"$ref": "#/$defs/point"},
+                  "radius": {"type": "number", "exclusiveMinimum": 0},
+                  "captureTurns": {"type": "integer", "minimum": 1}
+                }
+              },
+              "victory": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "description", "defeatDescription", "allowEscape", "safeZone", "safeRadius", "escapeTurns"],
+                "properties": {
+                  "kind": {"type": "string", "enum": ["secure-objective", "eliminate-target", "skirmish"]},
+                  "targetUnitId": {"type": "string"},
+                  "description": {"type": "string", "minLength": 1},
+                  "defeatDescription": {"type": "string", "minLength": 1},
+                  "allowEscape": {"type": "boolean"},
+                  "safeZone": {"$ref": "#/$defs/point"},
+                  "safeRadius": {"type": "number", "exclusiveMinimum": 0},
+                  "escapeTurns": {"type": "integer", "minimum": 1}
+                }
+              },
+              "terrain": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["id", "label", "kind", "position", "radius", "moveMultiplier", "blocksVision"],
+                  "properties": {
+                    "id": {"type": "string", "minLength": 1},
+                    "label": {"type": "string", "minLength": 1},
+                    "kind": {"type": "string", "enum": ["river", "brush", "wall", "safe-zone"]},
+                    "position": {"$ref": "#/$defs/point"},
+                    "radius": {"type": "number", "exclusiveMinimum": 0},
+                    "moveMultiplier": {"type": "number", "exclusiveMinimum": 0},
+                    "blocksVision": {"type": "boolean"}
+                  }
+                }
+              },
+              "referencePlan": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+              "referenceReasons": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+              "referenceContinuations": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["move", "hold", "contest", "retreat", "dodge", "outplay"],
+                "properties": {
+                  "move": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+                  "hold": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+                  "contest": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+                  "retreat": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+                  "dodge": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+                  "outplay": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}}
+                }
+              },
+              "actionDefaults": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["move", "hold", "contest", "retreat", "dodge", "outplay"],
+                "properties": {
+                  "move": {"$ref": "#/$defs/action"},
+                  "hold": {"$ref": "#/$defs/action"},
+                  "contest": {"$ref": "#/$defs/action"},
+                  "retreat": {"$ref": "#/$defs/action"},
+                  "dodge": {"$ref": "#/$defs/action"},
+                  "outplay": {"$ref": "#/$defs/action"}
+                }
+              }
+            }
+          },
+          "authoring": {"$ref": "#/$defs/authoring"}
+        }
+      }
     }
   },
   "$defs": {
+    "mechanicBriefing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mechanics"],
+      "properties": {
+        "mechanics": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["elementId", "name", "description", "roleInScenario"],
+            "properties": {
+              "elementId": {"type": "string", "minLength": 1},
+              "name": {"type": "string", "minLength": 1},
+              "description": {"type": "string", "minLength": 1},
+              "roleInScenario": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    },
+    "sourceDetection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "startSecond", "endSecond", "score", "reasonTags", "signals", "semanticEvidence"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"},
+        "startSecond": {"type": "integer", "minimum": 0},
+        "endSecond": {"type": "integer", "minimum": 1},
+        "score": {"type": "number", "minimum": 0, "maximum": 1},
+        "reasonTags": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "signals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["winProbabilitySwing", "eventDensity", "entityProximity", "resourceAsymmetry"],
+          "properties": {
+            "winProbabilitySwing": {"type": "number", "minimum": 0, "maximum": 1},
+            "eventDensity": {"type": "number", "minimum": 0, "maximum": 1},
+            "entityProximity": {"type": "number", "minimum": 0, "maximum": 1},
+            "resourceAsymmetry": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        },
+        "semanticEvidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["oneVersusManyUnitIds", "successfulEscapeUnitIds", "teamFightReversalSecond"],
+          "properties": {
+            "oneVersusManyUnitIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+            "successfulEscapeUnitIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+            "teamFightReversalSecond": {"type": ["integer", "null"], "minimum": 0}
+          }
+        }
+      }
+    },
     "point": {
       "type": "object",
       "additionalProperties": false,
@@ -23,126 +193,88 @@
         "y": {"type": "number", "minimum": 0, "maximum": 100}
       }
     },
-    "signals": {
+    "action": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "winProbabilitySwing",
-        "eventDensity",
-        "entityProximity",
-        "resourceAsymmetry"
-      ],
+      "required": ["type"],
       "properties": {
-        "winProbabilitySwing": {"type": "number", "minimum": 0, "maximum": 1},
-        "eventDensity": {"type": "number", "minimum": 0, "maximum": 1},
-        "entityProximity": {"type": "number", "minimum": 0, "maximum": 1},
-        "resourceAsymmetry": {"type": "number", "minimum": 0, "maximum": 1}
+        "type": {"type": "string", "enum": ["move", "hold", "contest", "retreat", "dodge", "outplay"]},
+        "target": {"$ref": "#/$defs/point"}
+      }
+    },
+    "authoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "skillLevel", "analystRationale", "intendedTradeoffs", "plausibleAlternatives", "acceptanceTests"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["objective-contest", "team-fight-engagement", "escape", "positioning", "resource-trade", "vision-uncertainty"]
+        },
+        "skillLevel": {"type": "string", "enum": ["beginner", "intermediate", "advanced"]},
+        "analystRationale": {"type": "string", "minLength": 1},
+        "intendedTradeoffs": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "plausibleAlternatives": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action", "when", "tradeoff"],
+            "properties": {
+              "action": {"$ref": "#/$defs/action"},
+              "when": {"type": "string", "minLength": 1},
+              "tradeoff": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "acceptanceTests": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "actions", "expectedStatus", "expectedTerminalTurn", "expectedOutcomeContains"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "actions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+              "expectedStatus": {"type": "string", "enum": ["won", "lost"]},
+              "expectedTerminalTurn": {"type": "integer", "minimum": 1, "maximum": 20},
+              "expectedOutcomeContains": {"type": "string", "minLength": 1}
+            }
+          }
+        }
       }
     },
     "unit": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "team",
-        "role",
-        "class",
-        "position",
-        "hp",
-        "maxHp",
-        "cooldownTurns",
-        "visible",
-        "alive"
-      ],
+      "required": ["id", "team", "role", "class", "policy", "position", "hp", "maxHp", "moveRange", "attackRange", "attackDamage", "moveSpeed", "armor", "visionRange", "attackCooldown", "cooldownTurns", "visible", "alive"],
       "properties": {
         "id": {"type": "string", "minLength": 1},
         "team": {"type": "string", "enum": ["blue", "red"]},
         "role": {"type": "string", "minLength": 1},
-        "class": {
-          "type": "string",
-          "enum": ["tank", "fighter", "marksman", "mage", "support", "assassin"]
-        },
+        "class": {"type": "string", "enum": ["tank", "fighter", "marksman", "mage", "support", "assassin"]},
+        "policy": {"type": "string", "enum": ["controlled", "support", "protector", "aggressive", "skirmisher"]},
         "position": {"$ref": "#/$defs/point"},
-        "hp": {"type": "integer", "minimum": 0, "maximum": 160},
-        "maxHp": {"type": "integer", "enum": [90, 95, 100, 110, 125, 160]},
-        "cooldownTurns": {"type": "integer", "minimum": 0, "maximum": 20},
+        "hp": {"type": "integer", "minimum": 0},
+        "maxHp": {"type": "integer", "minimum": 1},
+        "moveRange": {"type": "number", "enum": [7, 8, 9, 10, 11, 13]},
+        "attackRange": {"type": "number", "exclusiveMinimum": 0},
+        "attackDamage": {"type": "integer", "minimum": 1},
+        "moveSpeed": {"type": "number", "exclusiveMinimum": 0},
+        "armor": {"type": "integer", "minimum": 0},
+        "visionRange": {"type": "number", "exclusiveMinimum": 0},
+        "attackCooldown": {"type": "integer", "minimum": 1},
+        "cooldownTurns": {"type": "integer", "minimum": 0},
+        "shield": {"type": "integer", "minimum": 0},
+        "guarded": {"type": "boolean"},
         "visible": {"type": "boolean"},
         "alive": {"type": "boolean"}
-      },
-      "allOf": [
-        {
-          "if": {"properties": {"class": {"const": "tank"}}, "required": ["class"]},
-          "then": {"properties": {"hp": {"type": "integer", "maximum": 160}, "maxHp": {"type": "integer", "const": 160}}}
-        },
-        {
-          "if": {"properties": {"class": {"const": "fighter"}}, "required": ["class"]},
-          "then": {"properties": {"hp": {"type": "integer", "maximum": 125}, "maxHp": {"type": "integer", "const": 125}}}
-        },
-        {
-          "if": {"properties": {"class": {"const": "marksman"}}, "required": ["class"]},
-          "then": {"properties": {"hp": {"type": "integer", "maximum": 90}, "maxHp": {"type": "integer", "const": 90}}}
-        },
-        {
-          "if": {"properties": {"class": {"const": "mage"}}, "required": ["class"]},
-          "then": {"properties": {"hp": {"type": "integer", "maximum": 95}, "maxHp": {"type": "integer", "const": 95}}}
-        },
-        {
-          "if": {"properties": {"class": {"const": "support"}}, "required": ["class"]},
-          "then": {"properties": {"hp": {"type": "integer", "maximum": 110}, "maxHp": {"type": "integer", "const": 110}}}
-        },
-        {
-          "if": {"properties": {"class": {"const": "assassin"}}, "required": ["class"]},
-          "then": {"properties": {"hp": {"type": "integer", "maximum": 100}, "maxHp": {"type": "integer", "const": 100}}}
-        },
-        {
-          "if": {"properties": {"alive": {"const": false}}, "required": ["alive"]},
-          "then": {"properties": {"hp": {"type": "integer", "const": 0}}}
-        },
-        {
-          "if": {"properties": {"alive": {"const": true}}, "required": ["alive"]},
-          "then": {"properties": {"hp": {"type": "integer", "minimum": 1}}}
-        }
-      ]
-    },
-    "moment": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "id",
-        "slug",
-        "title",
-        "description",
-        "map",
-        "startTimeSeconds",
-        "seed",
-        "maxTurns",
-        "controlledUnitId",
-        "reasonTags",
-        "signals",
-        "units"
-      ],
-      "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "slug": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-        "title": {"type": "string", "minLength": 1},
-        "description": {"type": "string", "minLength": 1},
-        "map": {"type": "string", "minLength": 1},
-        "startTimeSeconds": {"type": "integer", "minimum": 0},
-        "seed": {"type": "integer"},
-        "maxTurns": {"type": "integer", "minimum": 1, "maximum": 20},
-        "controlledUnitId": {"type": "string", "minLength": 1},
-        "reasonTags": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {"type": "string", "minLength": 1}
-        },
-        "signals": {"$ref": "#/$defs/signals"},
-        "units": {
-          "type": "array",
-          "minItems": 2,
-          "items": {"$ref": "#/$defs/unit"}
-        }
       }
     }
   }

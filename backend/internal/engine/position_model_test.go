@@ -30,7 +30,7 @@ func momentWithTeammate() model.Moment {
 	moment.Units[0].Position = model.Point{X: 10, Y: 50}
 	moment.Units[1] = model.Unit{
 		ID: "red-one", Team: "red", Role: "tank", Class: model.ClassTank,
-		Position: model.Point{X: 70, Y: 50}, HP: 120, MaxHP: 160, Alive: true,
+		Position: model.Point{X: 54, Y: 50}, HP: 120, MaxHP: 160, Alive: true,
 	}
 	moment.Units = append(moment.Units, model.Unit{
 		ID: "blue-support", Team: "blue", Role: "support", Class: model.ClassSupport,
@@ -55,18 +55,18 @@ func TestPositionModelMovesTeammateAndOpponentWithinClassLimits(t *testing.T) {
 	if controlled.Position != (model.Point{X: 10, Y: 50}) {
 		t.Fatalf("position model moved the user-controlled unit: %+v", controlled.Position)
 	}
-	if controlled.HP != 75 {
+	if controlled.HP != 70 {
 		t.Fatalf("modeled teammate entered opponent combat logic: controlled HP=%d", controlled.HP)
 	}
 	if got := sessionUnit(t, state, "blue-support").Position; got != (model.Point{X: 28, Y: 50}) {
 		t.Fatalf("support target was not clamped to 8 units: %+v", got)
 	}
-	if got := sessionUnit(t, state, "red-one").Position; got != (model.Point{X: 63, Y: 50}) {
+	if got := sessionUnit(t, engine.session, "red-one").Position; got != (model.Point{X: 47, Y: 50}) {
 		t.Fatalf("tank target was not clamped to 7 units: %+v", got)
 	}
 	if stub.calls != 1 || stub.snapshot.SchemaVersion != "1.1" ||
 		stub.snapshot.StateScope != "authoritative_server_state" || stub.snapshot.Turn != 1 ||
-		len(stub.snapshot.Units) != 3 || stub.snapshot.Units[0].HP != 75 {
+		len(stub.snapshot.Units) != 3 || stub.snapshot.Units[0].HP != 70 {
 		t.Fatalf("unexpected post-action model snapshot: calls=%d snapshot=%+v", stub.calls, stub.snapshot)
 	}
 	if !logContains(state, "eligible non-player units") {
@@ -95,14 +95,15 @@ func TestPositionModelOmissionsUseTeamSpecificFallback(t *testing.T) {
 	stub := &stubModel{suggestions: []PositionSuggestion{{
 		UnitID: "blue-support", Position: model.Point{X: 100, Y: 50},
 	}}}
-	state, err := NewWithPositionModel(moment, "a", stub).Apply(model.Action{Type: "hold"})
+	engine := NewWithPositionModel(moment, "a", stub)
+	state, err := engine.Apply(model.Action{Type: "hold"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := sessionUnit(t, state, "blue-support").Position; got != (model.Point{X: 28, Y: 50}) {
 		t.Fatalf("suggested teammate did not move: %+v", got)
 	}
-	if got := sessionUnit(t, state, "red-one").Position; got != (model.Point{X: 63, Y: 50}) {
+	if got := sessionUnit(t, engine.session, "red-one").Position; got != (model.Point{X: 47, Y: 50}) {
 		t.Fatalf("omitted opponent did not use deterministic chase: %+v", got)
 	}
 
@@ -139,7 +140,7 @@ func TestInvalidModelSuggestionIsAtomic(t *testing.T) {
 				t.Fatalf("unexpected turn errors: %v, %v", baselineErr, modeledErr)
 			}
 			if !reflect.DeepEqual(baseline.Units, modeled.Units) ||
-				baseline.Score != modeled.Score || baseline.WinProbability != modeled.WinProbability {
+				baseline.Advantage != modeled.Advantage || baseline.Status != modeled.Status {
 				t.Fatal("invalid mixed response partially mutated gameplay instead of deterministic fallback")
 			}
 			if !logContains(modeled, "response was unusable") || len(engine.RolloutRecords()) != 0 {

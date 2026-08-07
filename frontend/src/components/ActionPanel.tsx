@@ -1,10 +1,10 @@
 import type { ActionType, Point } from "../types";
 
 const labels: Record<ActionType, { title: string; detail: string }> = {
-  move: { title: "Move", detail: "Reposition toward a chosen point" },
-  hold: { title: "Hold", detail: "Recover slightly and keep formation" },
-  contest: { title: "Contest", detail: "Commit to the nearest visible threat" },
-  retreat: { title: "Retreat", detail: "Disengage toward the safe edge" },
+  move: { title: "Move", detail: "Reposition using movement speed and terrain" },
+  hold: { title: "Hold", detail: "Brace for damage and recover cooldowns" },
+  contest: { title: "Contest", detail: "Close on the nearest visible threat and attack in range" },
+  retreat: { title: "Retreat", detail: "Disengage toward the authored safe zone" },
   dodge: { title: "Dodge", detail: "Evade an incoming skillshot with a defensive sidestep" },
   outplay: { title: "Outplay", detail: "Attempt a high-risk mechanical counterplay" }
 };
@@ -43,13 +43,23 @@ export function ActionPanel({
           </button>
         ))}
       </div>
+      {needsTarget && target && (
+        <div className="coordinate-selection" role="status">
+          <span>Selected movement point</span>
+          <strong>X {target.x} · Y {target.y}</strong>
+        </div>
+      )}
       <button
         className="commit"
         type="button"
         onClick={onCommit}
         disabled={disabled || (needsTarget && !target)}
       >
-        {needsTarget && !target ? "Choose a point on the map" : "Commit decision"}
+        {needsTarget
+          ? target
+            ? `Commit move to X ${target.x}, Y ${target.y}`
+            : "Choose a point on the map"
+          : "Commit decision"}
       </button>
     </section>
   );
