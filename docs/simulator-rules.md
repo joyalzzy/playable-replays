@@ -3,127 +3,183 @@
 ## Credibility boundary
 
 The simulator is a deterministic tactical teaching model. It does not recreate
-a proprietary game engine and does not claim that a rollout would have occurred
-in a real match. Credibility comes from explicit, inspectable rules and causal
-feedback rather than from false precision.
+a proprietary game engine and does not claim that a rollout would have happened
+in the T1–Bilibili Gaming 2024 Worlds Final. Source evidence motivates the three
+teaching decisions; all `0..100` map coordinates are authored normalized
+approximations informed by reviewed minimap frames, not replay telemetry or
+replay-exact positions.
 
-## Authored fixture data
+Scenario advantage is a rules-based state indicator, not a calibrated win
+probability. Reference and best-case lines are simulator comparisons, not proof
+of optimal real-match play or player intent.
 
-Fixture version 2.1 defines:
+## Full map and classes
 
-- Per-unit class, health, armor, attack range, attack damage, per-frame movement
-  range, vision, cooldown, and policy.
-- Terrain position, radius, movement multiplier, and vision blocking.
-- Optional objective position, radius, and required control turns.
-- A primary victory rule, optional target unit, safe zone, and escape duration.
-- A turn-by-turn reference plan with a plain-language reason, plus a coherent
-  continuation for each possible opening action.
-- A valid default for each possible first action, including a target for Move.
-- Analyst-authored category, skill level, rationale, tradeoffs, plausible
-  alternatives, and deterministic win/loss acceptance cases.
+The authoritative map is inclusive `0..100` in both axes. The frontend renders
+the full map returned by the server, never a scenario-focused crop. Terrain is
+modeled as circular zones with movement and vision properties; there is no
+navmesh or collision system.
 
-The loader rejects fixtures that omit these requirements. The dedicated fixture
-validator also executes every authored acceptance case against the authoritative
-engine. See [`scenario-authoring.md`](scenario-authoring.md).
+Every session includes exactly six canonical server-supplied turrets: blue and
+red top, middle, and bottom. Each has `hp`, `maxHp`, and `alive` state. In the
+current model, turrets are visual landmarks only: they do not attack, block
+movement, or receive damage.
 
-## Turn resolution
+| Class | Maximum health | Move range | Attack range |
+| --- | ---: | ---: | ---: |
+| Tank | 160 | 7 | 10 |
+| Fighter | 125 | 10 | 14 |
+| Marksman | 90 | 11 | 28 |
+| Mage | 95 | 9 | 24 |
+| Support | 110 | 8 | 20 |
+| Assassin | 100 | 13 | 12 |
 
-Each legal command resolves in the following stable order:
+The engine overwrites fixture/model-derived class stats with these profiles.
+Move targets specify intent; actual displacement remains capped by the
+server-owned class range and the terrain multiplier at the starting position.
 
-1. Expire the previous turn's guard and shield; tick cooldowns.
-2. Resolve the user's high-level command.
-3. Recalculate team vision and log newly revealed contacts.
-4. Request and atomically validate optional model position suggestions.
-5. Resolve allied model movement and support, protection, or aggression policy.
-6. Recalculate vision.
-7. Resolve enemy model movement, support, protection, aggression, or skirmishing policy.
-8. Record model/fallback policy status and recalculate vision without exposing hidden coordinates.
-9. Update objective control and escape progress.
-10. Recalculate scenario advantage from current state.
-11. Evaluate explicit terminal conditions, reveal the authored reference action,
-    and build the debrief when the scenario ends.
+## Tactical commands
 
-## Commands
+`Session.legalActions` contains exactly four values:
 
-- **Move:** travels toward the selected point, clamped to the unit's class
-  movement range and the terrain multiplier at its starting position.
-- **Hold:** adds a small shield and reduces incoming damage for the turn. It does
-  not invent health regeneration.
-- **Contest:** closes on the nearest visible enemy and attacks only when the
-  target is within authored range. With no visible target, an objective scenario
-  advances toward the objective.
-- **Retreat:** moves toward the authored safe zone at disengage speed and applies
-  the turn's defensive guard.
-- **Dodge:** performs a class-limited sidestep and evades the next eligible
-  incoming skillshot that turn; the log records an evade only when one occurs.
-- **Outplay:** attacks the nearest visible in-range target when the ability is
-  ready, then applies guard. Otherwise it logs why the attempt was unavailable.
+- **Move:** travel toward the selected map point. Move requires an in-bounds
+  target and is capped by class movement and terrain.
+- **Hold:** gain four shield and guard for this turn. It does not regenerate
+  health.
+- **Contest:** focus the visible authored elimination target, otherwise close
+  on the nearest visible enemy and attack in range. If no enemy is visible in
+  an objective scenario, advance toward the objective.
+- **Retreat:** move toward the authored safe zone at disengage speed and apply
+  guard.
 
-## Combat
+Dodge is deliberately not in this list. No fifth tactical command is supported.
 
-Damage begins with the attacker's authored value plus a seeded variation of
-minus two to plus two. Armor uses `damage × 100 / (100 + armor)`. Guard reduces
-post-armor damage by 35 percent. Shields absorb damage before health. Attacks set
-the unit's authored cooldown, and every health change is recorded in the causal
-trace.
+## Pending marksman projectiles
 
-## Unit policies
+A marksman attack creates a `Projectile` rather than dealing immediate damage.
+The projectile records its source/target unit IDs, launch position, fixed visual
+target point, team, and damage. Its damage is half the target's maximum health,
+rounded up. The marksman's normal cooldown begins when it fires.
 
-- **Support:** shields a nearby damaged or exposed ally; otherwise follows.
-- **Protector:** intercepts visible threats near the controlled unit.
-- **Aggressive:** prioritizes reachable blue targets, with extra pressure on the
-  controlled unit when visible.
-- **Skirmisher:** attacks at range and creates distance when an opponent gets too
-  close.
+The projectile remains in `Session.projectiles` after the turn that launched
+it. At the beginning of the next accepted tactical turn, before the user's new
+command, every still-pending projectile resolves against its target unit and is
+removed. Moving normally does not cancel a targeted projectile; use the
+eligible Dodge reaction. A dead/missing target causes the projectile to expire.
 
-These are intentionally compact, inspectable policies—not learned player models.
+For hidden red marksmen, public state and logs redact the source unit ID/name as
+needed, while still exposing the incoming threat and its target path.
 
-## Visibility
+## Separate two-charge Dodge reaction
 
-Blue team vision is the union of living allied vision ranges. Brush and wall
-terrain can conceal a target beyond close range. Hidden red units are omitted
-from the public unit array; the response exposes only the number of unknown
-contacts. If a concealed unit damages an ally, the trace identifies it as an
-unseen threat until vision reveals it.
+Every session starts with `dodgeCharges: 2`. `dodgeAvailable` is true only while
+the session is active, a charge remains, the controlled unit is alive, and a
+red projectile currently targets that unit.
 
-## Scenario advantage
+`POST /api/v1/sessions/{id}/dodge` then:
 
-Advantage is derived from the authored initial state plus changes in combined
-team health, surviving-unit ratios, objective progress, pressure on an authored
-target, and escape progress. Terminal outcomes bound the indicator toward the
-winning side. It is a state summary, not a calibrated probability.
+1. validates availability;
+2. removes the first eligible incoming projectile;
+3. moves the controlled unit to an automatically selected, class-limited
+   sidestep point;
+4. consumes one charge and logs the evade; and
+5. returns the updated `Session`.
 
-## Reference rollouts
+Dodge does **not** increment `turn`, reset defense, tick cooldowns, invoke the
+bot model, resolve other projectiles, advance objectives/escape state, or enter
+the tactical decision tree. Calling it without an eligible projectile/charge
+returns `422 dodge_unavailable` and leaves gameplay state unchanged.
 
-The first reference action is hidden until the user commits. When the scenario
-ends, the simulator replays Move, Hold, Contest, Retreat, Dodge, and Outplay
-from the same seed, then follows the opening-specific authored continuation.
-The response includes each result, ending advantage, outcome reason, duration,
-and key causal events.
+## Tactical-turn resolution
 
-## Calculated best allied line
+After complete action validation, one tactical turn resolves in this order:
 
-After a scenario ends, the engine exhaustively searches all six modeled commands
-at every remaining turn from the initial state. `Move` uses the scenario's
-authored default destination, so the search is exhaustive over modeled commands
-but not over every possible map coordinate.
+1. Clear the previous turn's guard/shield and tick unit cooldowns.
+2. Increment `turn`.
+3. Resolve and remove all projectiles pending from the previous turn.
+4. If the controlled unit survives, resolve its Move/Hold/Contest/Retreat.
+5. Recalculate blue-team vision and log newly revealed contacts.
+6. If configured, request and atomically validate one model action for every
+   live non-controlled unit; otherwise choose deterministic actions.
+7. Resolve allies, recalculate vision, resolve enemies, record model/fallback
+   status, and recalculate vision again.
+8. Update objective control and escape progress.
+9. Recalculate scenario advantage.
+10. Evaluate terminal conditions and reveal the authored reference for that
+    turn.
+11. Update Dodge availability and, for a terminal state, build the debrief.
 
-Complete paths are ranked for the allied team by outcome, rules-based advantage,
-allied remaining health, opponent remaining health, and resolution time. The
-result includes the selected action at each turn, immediate causal events, the
-strongest continuation available after every alternative command, and an
-explanation of why the chosen command ranked highest.
+If a pending projectile eliminates the controlled unit at step 3, later action
+and bot resolution are skipped; outcome/reference/debrief state still updates.
 
-The interface labels this as a simulated best case. It is not a guarantee about
-a real match or a claim that every ability, item, execution, or hidden-information
-branch was searched.
+## Bot actions and fallback
+
+The optional schema `2.0` model supplies high-level Move/Hold/Contest/Retreat
+actions for every live non-controlled allied and enemy unit. Go validates the
+full response atomically and resolves it under the same class, combat,
+visibility, and state rules. The model never controls the user's unit and
+cannot issue Dodge.
+
+No configured model, or any model/transport/validation failure, activates the
+deterministic policy for that turn. `botControl.source` reports `pending`,
+`external-model`, or `deterministic-fallback`; accepted external results also
+include operator-configured model name/version.
+
+Built-in unit policies remain intentionally compact. An authored elimination
+target holds its exposed state; another unit below 35 percent health retreats;
+support/protector units hold; a blue bot with no visible enemy moves toward the
+controlled unit; otherwise the bot contests. Contest closes on the
+engine-selected visible enemy (with aggressive red bots strongly prioritizing
+the controlled unit) and attacks when range/cooldown allows. When the
+controlled unit Holds with shield available in an elimination scenario, an
+aggressive blue bot synchronizes onto the visible authored target; this is the
+timing mechanic behind the positioning lesson.
+
+These policies and model actions are bot behavior, not imitations of a named
+professional player.
+
+## Non-projectile combat
+
+Non-marksman damage begins with authored attack damage plus seeded variation
+from minus two to plus two. Armor applies `damage × 100 / (100 + armor)`. Guard
+reduces post-armor damage by 35 percent. Shields absorb damage before health.
+Attacks set the authored cooldown; every health change is recorded in the
+causal log.
+
+Blue vision is the union of living allied vision ranges. Brush/wall terrain can
+conceal red units beyond close range. Hidden red units are omitted from the
+public unit array, and the session exposes visible and unknown counts instead.
+
+## Objective, escape, advantage, and outcome
+
+Objective control advances from living units inside the authored radius;
+escape progress advances only under authored safe-zone rules. Advantage combines
+the authored initial state with team health, surviving-unit ratios, objective
+progress, pressure on an authored target, and escape progress, then clamps to a
+bounded display range. Explicit fixture victory/defeat rules determine terminal
+status.
+
+## Reference outcomes and best case
+
+The current turn's authored reference is hidden until the learner commits.
+When a scenario ends, deterministic reference rollouts compare the four legal
+opening commands using authored continuations. The calculated best allied line
+exhaustively searches all four commands at every remaining turn; Move uses the
+scenario's authored default target rather than every possible coordinate.
+
+Reference simulation invokes the same separate Dodge reaction automatically
+when an incoming projectile is eligible and a charge remains. Thus projectile
+handling is represented without making Dodge a fifth search branch. Paths rank
+by terminal outcome, rules-based advantage, allied health, opponent health, and
+resolution time, and expose causal events and alternatives in the debrief.
 
 ## Known limits
 
-- Circular terrain zones approximate geometry; there is no navmesh or collision
-  system.
-- Policies reason over high-level positions and do not model abilities, items,
-  animation timing, or publisher-specific mechanics.
-- The advantage weights are authored and uncalibrated.
-- Reference rollouts compare deterministic scenario policies, not real player
-  behavior.
+- The geometry is normalized and authored; it is not measured replay state.
+- Turrets are landmarks, and there is no navmesh, collision, minions, items,
+  animation timing, publisher-specific ability kit, or full fog-of-war system.
+- Projectiles are one-turn targeted teaching mechanics, not physical collision
+  simulation.
+- Advantage weights and scenario rules are authored and uncalibrated.
+- Model output can vary; deterministic fallback and reference lines remain the
+  stable comparison baseline.

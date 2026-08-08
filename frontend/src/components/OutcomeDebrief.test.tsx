@@ -66,6 +66,11 @@ const terminalSession: Session = {
   },
   legalActions: ["move", "hold", "contest", "retreat"],
   units: [],
+  turrets: [],
+  projectiles: [],
+  dodgeCharges: 2,
+  dodgeAvailable: false,
+  botControl: { source: "external-model", modelName: "test-policy", modelVersion: "1" },
   log: [],
   debrief: ["Scenario advantage is not a calibrated win probability."]
 };

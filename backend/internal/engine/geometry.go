@@ -11,6 +11,19 @@ const (
 	MapMax = 100.0
 )
 
+var fullMapTurrets = []model.Turret{
+	{ID: "blue-top-turret", Team: "blue", Lane: "top", Position: model.Point{X: 14, Y: 60}, HP: 3000, MaxHP: 3000, Alive: true},
+	{ID: "blue-middle-turret", Team: "blue", Lane: "middle", Position: model.Point{X: 32, Y: 68}, HP: 3000, MaxHP: 3000, Alive: true},
+	{ID: "blue-bottom-turret", Team: "blue", Lane: "bottom", Position: model.Point{X: 28, Y: 88}, HP: 3000, MaxHP: 3000, Alive: true},
+	{ID: "red-top-turret", Team: "red", Lane: "top", Position: model.Point{X: 72, Y: 12}, HP: 3000, MaxHP: 3000, Alive: true},
+	{ID: "red-middle-turret", Team: "red", Lane: "middle", Position: model.Point{X: 68, Y: 32}, HP: 3000, MaxHP: 3000, Alive: true},
+	{ID: "red-bottom-turret", Team: "red", Lane: "bottom", Position: model.Point{X: 89, Y: 39}, HP: 3000, MaxHP: 3000, Alive: true},
+}
+
+func canonicalTurrets() []model.Turret {
+	return append([]model.Turret(nil), fullMapTurrets...)
+}
+
 func distance(a, b model.Point) float64 {
 	return math.Hypot(a.X-b.X, a.Y-b.Y)
 }

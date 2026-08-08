@@ -1,9 +1,0 @@
-{
-  "version": "1.0",
-  "frames": [
-    {"second":0,"winProbability":0.1,"events":["objective","objective","objective","objective","objective","objective","objective","objective","objective"],"units":[{"id":"blue-carry","team":"blue","position":{"x":45,"y":50},"hp":100,"maxHp":100,"gold":1000,"alive":true},{"id":"red-jungle","team":"red","position":{"x":55,"y":50},"hp":100,"maxHp":100,"gold":1000,"alive":true}]},
-    {"second":12,"winProbability":0.8,"events":["objective","objective","objective","objective","objective","objective","objective","objective","objective"],"units":[{"id":"blue-carry","team":"blue","position":{"x":45,"y":50},"hp":80,"maxHp":100,"gold":1100,"alive":true},{"id":"red-jungle","team":"red","position":{"x":55,"y":50},"hp":70,"maxHp":100,"gold":1050,"alive":true}]},
-    {"second":13,"winProbability":0.1,"events":["objective","objective","objective","objective","objective","objective","objective","objective","objective"],"units":[{"id":"blue-carry","team":"blue","position":{"x":45,"y":50},"hp":50,"maxHp":100,"gold":1110,"alive":true},{"id":"red-jungle","team":"red","position":{"x":55,"y":50},"hp":90,"maxHp":100,"gold":1060,"alive":true}]},
-    {"second":25,"winProbability":0.95,"events":["objective","objective","objective","objective","objective","objective","objective","objective","objective"],"units":[{"id":"blue-carry","team":"blue","position":{"x":45,"y":50},"hp":85,"maxHp":100,"gold":1300,"alive":true},{"id":"red-jungle","team":"red","position":{"x":55,"y":50},"hp":35,"maxHp":100,"gold":1100,"alive":true}]}
-  ]
-}

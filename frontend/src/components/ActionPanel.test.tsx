@@ -50,18 +50,22 @@ describe("ActionPanel", () => {
     expect(screen.getByRole("button", { name: "Commit move to X 42, Y 68" })).toBeEnabled();
   });
 
-  it("offers dodge and outplay with descriptive labels", () => {
+  it("offers exactly the four tactical commands", () => {
     render(
       <ActionPanel
-        legalActions={["dodge", "outplay"]}
-        selected="dodge"
+        legalActions={["move", "hold", "contest", "retreat"]}
+        selected="hold"
         disabled={false}
         onSelect={vi.fn()}
         onCommit={vi.fn()}
       />
     );
 
-    expect(screen.getByRole("button", { name: /dodge.*incoming skillshot/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /outplay.*high-risk mechanical/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /move.*reposition/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /hold.*brace/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /contest.*nearest visible threat/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retreat.*safe zone/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /dodge/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /outplay/i })).not.toBeInTheDocument();
   });
 });

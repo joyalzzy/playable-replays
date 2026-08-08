@@ -23,6 +23,8 @@ describe("ReplayHelp", () => {
     expect(screen.getByText("Hold")).toBeInTheDocument();
     expect(screen.getByText("Contest")).toBeInTheDocument();
     expect(screen.getByText("Retreat")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Separate projectile response" })).toBeInTheDocument();
+    expect(screen.getByText("Dodge · two charges")).toBeInTheDocument();
   });
 
   it("closes with Escape and returns focus to the help button", () => {
@@ -65,7 +67,9 @@ describe("ReplayHelp", () => {
       "River",
       "Move target",
       "Team base",
-      "Base gate"
+      "Base gate",
+      "Lane turret",
+      "Marksman projectile"
     ];
 
     for (const entry of legendEntries) {

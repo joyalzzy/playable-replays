@@ -18,7 +18,7 @@ func (e *Engine) validateAction(action model.Action) error {
 	if action.Target == nil {
 		return nil
 	}
-	if action.Type != "move" && action.Type != "dodge" {
+	if action.Type != "move" {
 		return fmt.Errorf("%w: %s does not accept a target", ErrIllegalAction, action.Type)
 	}
 	if !pointFinite(*action.Target) {

@@ -3,10 +3,8 @@ import type { ActionType, Point } from "../types";
 const labels: Record<ActionType, { title: string; detail: string }> = {
   move: { title: "Move", detail: "Reposition using movement speed and terrain" },
   hold: { title: "Hold", detail: "Brace for damage and recover cooldowns" },
-  contest: { title: "Contest", detail: "Close on the nearest visible threat and attack in range" },
-  retreat: { title: "Retreat", detail: "Disengage toward the authored safe zone" },
-  dodge: { title: "Dodge", detail: "Evade an incoming skillshot with a defensive sidestep" },
-  outplay: { title: "Outplay", detail: "Attempt a high-risk mechanical counterplay" }
+  contest: { title: "Contest", detail: "Focus the priority target, or close on the nearest visible threat" },
+  retreat: { title: "Retreat", detail: "Disengage toward the authored safe zone" }
 };
 
 type Props = {

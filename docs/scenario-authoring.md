@@ -1,94 +1,130 @@
 # Scenario authoring workflow
 
-The authored library contains 12 synthetic tactical scenarios. It is deliberately
-bounded to 10–20 entries so analysts can review every scenario while the team
-collects enough variety to study replay selection, ranking, and retention.
+The version `3.0` fixture library contains three focused scenarios and accepts
+only one to three entries. This is an intentionally reviewable teaching set,
+not a telemetry-generated catalog.
 
-## Coverage
+| Scenario | Category | Skill level | Source |
+| --- | --- | --- | --- |
+| `resource-trade-932` | Resource trade | Beginner | T1–BLG game 1, 15:32 |
+| `positioning-1295` | Positioning | Intermediate | T1–BLG game 3, 21:35 |
+| `teamfight-reversal-1727` | Team-fight engagement | Advanced | T1–BLG game 5, 28:47 |
 
-| Category | Beginner | Intermediate | Advanced | Total |
-| --- | ---: | ---: | ---: | ---: |
-| Objective contest | 1 | 0 | 1 | 2 |
-| Team-fight engagement | 1 | 1 | 0 | 2 |
-| Escape | 1 | 0 | 1 | 2 |
-| Positioning | 1 | 0 | 1 | 2 |
-| Resource trade | 0 | 1 | 1 | 2 |
-| Vision uncertainty | 1 | 1 | 0 | 2 |
-| **Total** | **5** | **3** | **4** | **12** |
+The Game 3 teaching frame follows the bundle's QA recommendation at 21:35. It
+is an intentional ten-second rewind from source moment 05's 21:45 core window,
+used to expose the pre-commit setup rather than silently shifting provenance.
 
-Difficulty describes how many tactical signals the learner must combine. It is
-not a matchmaking rating or a claim about a player's ability.
+Difficulty describes the number of tactical signals a learner must combine. It
+is not a matchmaking rating or an assessment of a named player's ability.
 
-## Required evidence
+## Evidence and coordinate disclosure
 
-Fixture version `2.1` requires every scenario to include:
+Every scenario requires `replayEvidence` containing the supplied bundle ID and
+SHA-256, source-moment ID, game, decision time, VOD time, judgment, assessment,
+coaching correction, caption evidence IDs, external evidence IDs, and
+`coordinateMethod`.
 
-- one category and one skill level;
-- an analyst rationale explaining the teaching decision;
-- at least two intended tradeoffs;
-- at least two plausible alternative actions, each with the condition that
-  makes it reasonable and its cost;
+`coordinateMethod` must explicitly say that positions are approximations. The
+source bundle includes reviewed minimap frames, captions, and event timing, but
+does not provide replay-exact positional telemetry. Therefore **all normalized
+`0..100` unit, terrain, objective, turret, safe-zone, and movement-target
+coordinates are analyst-authored approximations, not measured replay
+telemetry**. Never imply otherwise in fixtures, UI, docs, or review notes.
+
+Keep observation, interpretation, and teaching claims separate:
+
+- evidence IDs identify the reviewed source;
+- `assessment` summarizes the analyst's judgment of the source decision;
+- `coachingCorrection` states the teaching adjustment; and
+- simulator outcomes show only what this authored ruleset produces.
+
+## Required fixture content
+
+Each scenario must include:
+
+- a stable ID/slug, title, description, seed, map, reason tags, and `1..20`
+  tactical turns;
+- one category, one skill level, an analyst rationale, at least two intended
+  tradeoffs, and at least two distinct plausible alternatives;
+- exactly five blue and five red units, with one live blue controlled unit and
+  exactly one marksman per team;
+- class-valid health, movement, attack range, combat values, cooldowns,
+  visibility, and a supported policy for every unit;
+- explicit victory/defeat rules, optional objective/escape rules, terrain, and
+  any required pre-play mechanic briefing;
 - a reference action and reason for every turn;
-- a default Move destination and complete continuations for all six commands;
-- at least two executable acceptance cases, including one modeled win and one
-  modeled loss.
+- an action default and a `maxTurns - 1` continuation for each of the four
+  tactical commands: `move`, `hold`, `contest`, and `retreat`; and
+- at least two executable acceptance cases covering both `won` and `lost`.
 
-If a scenario introduces a named mechanic that is unique to that replay, add a
-`mechanicBriefing` entry for every such objective or terrain element. Each entry
-must link to its `elementId` and separately explain what the mechanic does and
-its role in this scenario. The replay client presents this briefing before the
-command area and keeps map targeting and all commands locked until the learner
-checks the acknowledgement.
+Only Move accepts a target. Dodge is not part of `actions`, `actionDefaults`,
+reference continuations, plausible action alternatives, or the tactical action
+enum. An acceptance case may list up to two one-based turn numbers in
+`dodgeBeforeTurns`; the validator invokes the separate Dodge reaction before
+that tactical turn.
 
-Acceptance cases assert the terminal status, terminal turn, and a stable phrase
-from the outcome reason. They verify the authored simulator behavior; they do
-not prove that the line is optimal in a real match.
+The engine, not the fixture, supplies the canonical six turrets. A scenario may
+author terrain/objectives and full-map unit placement, but it must not create a
+different turret count or use turret placement as replay-exact evidence.
+
+## Mechanic briefing
+
+When a scenario uses a scenario-specific named element such as `baron-pit`, add
+a `mechanicBriefing` entry that references that element ID and separately
+explains what it does and why it matters here. The client keeps actions and map
+targeting locked until the learner acknowledges the briefing.
 
 ## Authoring loop
 
-1. Copy the closest existing scenario in `fixtures/moments.json`, or convert a
-   detector record into an auditable draft with the workflow in
-   [`telemetry-scenario-drafts.md`](telemetry-scenario-drafts.md).
-2. Give it a stable event-and-window ID, unique slug and seed, and synthetic
-   units and telemetry signals.
-3. Write the learning rationale and tradeoffs before tuning combat values.
-4. Author the reference plan, alternatives, victory condition, terrain, and
-   hidden-information boundary. Add the pre-play mechanic briefing when the
-   replay uses a scenario-specific map element.
-5. Add a credible success line and a credible failure line under
-   `authoring.acceptanceTests`.
-6. Run the validator from `backend/`:
+1. Start from the closest current entry in `fixtures/moments.json`; keep the
+   top-level pack at no more than three scenarios.
+2. Select and record source evidence before tuning mechanics. Preserve the
+   bundle hash and cite exact caption/external evidence IDs.
+3. Write the teaching rationale, tradeoffs, plausible alternatives, and
+   coordinate-approximation disclosure.
+4. Author a complete 5v5 state on the `0..100` full map using class profiles and
+   the controlled/non-player policy boundary.
+5. Define terrain, victory conditions, optional objective/escape state, the
+   four-command reference plan, reasons, defaults, and continuations.
+6. Add a credible success and failure acceptance line. Add Dodge turn numbers
+   only where a pending projectile is actually available.
+7. Validate from `backend/`:
 
    ```bash
    go run ./cmd/validate-fixtures -path ../fixtures/moments.json
    ```
 
-7. Run `go test ./...`, the frontend checks, and `git diff --check` before
-   review. Inspect the scenario in the browser at `?moment=<slug>`.
+8. Run `go test ./...`, frontend checks, and `git diff --check`, then inspect the
+   scenario through `?moment=<slug>` on the full map.
 
-The validator rejects unknown JSON fields, invalid coordinates or combat state,
-missing categories or skill levels, duplicate IDs or slugs, incomplete reference
-paths, malformed alternatives, and packs outside the 10–20 scenario boundary.
-It then replays every acceptance case with the authoritative deterministic Go
-engine and prints the category and skill coverage matrix.
+The Go loader rejects unknown JSON fields, any pack outside `1..3`, duplicate
+IDs/slugs, incomplete replay evidence, coordinate disclosure without the word
+“approx”, invalid 5v5/class state, malformed rules, missing four-command paths,
+and invalid acceptance cases. The dedicated validator also executes every
+acceptance line with the deterministic authoritative engine.
 
 ## Acceptance-test shape
 
 ```json
 {
-  "name": "support-side reposition wins exchange",
+  "name": "sidestep then preserve the winning line",
   "actions": [
-    {"type": "move", "target": {"x": 24, "y": 56}},
     {"type": "hold"},
+    {"type": "move", "target": {"x": 24, "y": 56}},
     {"type": "contest"},
     {"type": "hold"}
   ],
+  "dodgeBeforeTurns": [2],
   "expectedStatus": "won",
   "expectedTerminalTurn": 4,
   "expectedOutcomeContains": "stronger tactical state"
 }
 ```
 
-Keep assertions about causal simulator outcomes. Do not encode analyst identity,
-proprietary match data, player identity, or claims that the reference line is
-the only correct real-match decision.
+`dodgeBeforeTurns: [2]` means “invoke the Dodge endpoint-equivalent reaction
+after turn 1 created a projectile and immediately before submitting turn 2.” It
+does not add a turn or a fifth command.
+
+Acceptance cases establish stable simulator behavior. They do not prove the
+line was uniquely correct in the historical match, identify player intent, or
+calibrate a real-world win probability.

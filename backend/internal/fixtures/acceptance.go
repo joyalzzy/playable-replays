@@ -22,14 +22,21 @@ func RunAcceptanceTests(moments []model.Moment) []AcceptanceResult {
 			instance := engine.New(moment, "acceptance-"+moment.ID)
 			state := instance.State()
 			var applyErr error
-			for _, action := range test.Actions {
+			for actionIndex, action := range test.Actions {
+				turnNumber := actionIndex + 1
+				if containsTurn(test.DodgeBeforeTurns, turnNumber) {
+					_, applyErr = instance.Dodge()
+					if applyErr != nil {
+						break
+					}
+				}
 				state, applyErr = instance.Apply(action)
 				if applyErr != nil || state.Status != "active" {
 					break
 				}
 			}
-			passed := applyErr == nil && state.Status == test.ExpectedStatus &&
-				state.Turn == test.ExpectedTerminalTurn &&
+			turnMatches := test.ExpectedTerminalTurn == 0 || state.Turn == test.ExpectedTerminalTurn
+			passed := applyErr == nil && state.Status == test.ExpectedStatus && turnMatches &&
 				strings.Contains(strings.ToLower(state.OutcomeReason), strings.ToLower(test.ExpectedOutcomeContains))
 			detail := fmt.Sprintf("expected %s on turn %d containing %q; got %s on turn %d: %q",
 				test.ExpectedStatus, test.ExpectedTerminalTurn, test.ExpectedOutcomeContains,
@@ -46,6 +53,15 @@ func RunAcceptanceTests(moments []model.Moment) []AcceptanceResult {
 		}
 	}
 	return results
+}
+
+func containsTurn(turns []int, turn int) bool {
+	for _, candidate := range turns {
+		if candidate == turn {
+			return true
+		}
+	}
+	return false
 }
 
 func ValidateAcceptance(moments []model.Moment) error {

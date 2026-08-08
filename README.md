@@ -1,161 +1,162 @@
 # Playable Replays
 
-A deterministic, web-based esports replay prototype. It turns synthetic MOBA
-telemetry into short tactical scenarios where a user can replay a pivotal
-decision, compare their choice with a reference policy, and share a stable
-scenario URL.
+Playable Replays is a Garena AI Build Challenge 2026 prototype: a shareable
+web tactical board built around three teaching scenarios from the T1–Bilibili
+Gaming 2024 Worlds Final. Choose a high-level command, inspect the authoritative
+simulation, react to incoming marksman projectiles with a separate two-charge
+Dodge control, and compare the result with an authored decision tree.
 
-The prototype deliberately does **not** claim to recreate a proprietary game
-engine or predict what would certainly have happened in a real match. Outcomes
-come from a small, deterministic simulator and are labelled as counterfactual
-estimates.
+This is a compact counterfactual teaching model—not a proprietary game-engine
+recreation, a replay-telemetry viewer, or proof of what a professional player
+intended. Outcomes are deterministic simulator results. The full-map unit,
+terrain, objective, and turret coordinates are **authored normalized
+approximations informed by reviewed minimap frames; they are not replay
+telemetry and are not replay-exact historical positions**.
 
 ## What is included
 
-- React + strict TypeScript tactical board
-- Go HTTP API and authoritative deterministic simulator with authored scenario rules
-- Twelve synthetic, versioned scenarios spanning six tactical categories and three skill levels
-- Fixture authoring validator with analyst rationale, tradeoffs, alternatives, and executable acceptance cases
-- Offline Python telemetry windowing and highlight scoring using interpretable signals
-- Analyst-labelled synthetic detector evaluation with precision, recall, category, and ranking gates
-- Local normalized-telemetry collector, bounded live ingestion API, incremental detector, and identity-free visual timeline
-- Restart-safe summary/draft storage with retention and deletion controls; raw telemetry and collector tokens remain memory-only
-- Final-candidate to version 2.1 draft conversion with an enforced analyst publication gate
-- Six unit classes with distinct health, movement, and attack profiles
-- Click-to-inspect unit details and movement/attack range indicators
-- `dodge` and `outplay` decisions alongside the original tactical actions
-- Optional HTTP connector for model-suggested teammate and opponent positions
-- OpenAPI contract and JSON schemas
-- Unit, API, frontend, and preprocessing tests
-- Docker Compose and GitHub Actions
+- Three versioned, replay-derived scenarios: one beginner, one intermediate,
+  and one advanced.
+- A React and strict TypeScript full-map board with movable player inspection,
+  class/range indicators, six server-supplied turrets, projectile paths, a
+  timeline, causal logs, and an outcome decision tree.
+- Four tactical turn actions only: `move`, `hold`, `contest`, and `retreat`.
+- A separate Dodge reaction with two charges. Dodge removes an eligible pending
+  projectile and repositions the controlled unit without advancing the turn.
+- A Go HTTP API and authoritative simulator for movement, combat, fog, class
+  limits, projectile resolution, objectives, outcomes, and reference search.
+- A Python model daemon that makes a real OpenAI Responses API call for every
+  live non-controlled unit's advisory action. Invalid or unavailable model
+  output falls back to deterministic Go policies.
+- OpenAPI and JSON Schema contracts, executable fixture acceptance cases,
+  frontend/backend/model-daemon tests, Docker Compose, and GitHub Actions.
+
+There is no live telemetry ingestion, telemetry dashboard, local telemetry
+storage, or runtime scenario-generation workflow.
+
+## Scenarios
+
+| Scenario | Source moment | Teaching focus |
+| --- | --- | --- |
+| Bank the Cross-map Trade | Game 1, 15:32 | Preserve a completed objective trade instead of donating the follow-up fight. |
+| Wait for the Damage Dealer | Game 3, 21:35 | Delay the engage until the marksman can contribute damage. |
+| Re-engage the Split 3v4 | Game 5, 28:47 | Judge local target access and effective participants instead of headline player count. |
+
+For Game 3, the bundle's QA recommendation intentionally rewinds the teaching
+frame to 21:35, ten seconds before source moment 05's 21:45 core window, so the
+setup is visible before the learner commits.
+
+Difficulty labels describe how many tactical signals the learner combines;
+they are not ratings of the named players.
 
 ## Quick start
 
-Requirements: Go 1.26.5+, Node.js 22+, and Python 3.11+.
+Requirements: Go 1.26.5+, Node.js 22+, and Python 3.12+.
+
+Run all local checks:
 
 ```bash
 make test
-make dev-api
 ```
 
-In another terminal:
+Run the deterministic fallback experience in two terminals:
+
+```bash
+make dev-api
+```
 
 ```bash
 make dev-web
 ```
 
-Open <http://localhost:5173>. The Vite development server proxies `/api` to
-the Go API at `http://localhost:8080`.
+Open <http://localhost:5173>. Vite proxies `/api` and `/healthz` to the Go API
+at `http://127.0.0.1:8080`.
 
-Alternatively:
+### Run with the real model bridge
+
+Start the model daemon with an operator-owned OpenAI API key:
 
 ```bash
-docker compose up --build
+OPENAI_API_KEY='your-key' make dev-model
 ```
 
-The web app is then available at <http://localhost:5173>.
-
-## Repository layout
-
-| Path | Purpose |
-| --- | --- |
-| `backend/` | Go API, simulator, fixture loading, and tests |
-| `frontend/` | React tactical board and component tests |
-| `contracts/` | OpenAPI and JSON schema contracts |
-| `fixtures/` | Synthetic replay moments |
-| `ml/` | Offline highlight scoring and tests |
-| `docs/` | Architecture, limitations, and roadmap |
-
-## Core design rule
-
-The browser requests a legal high-level action. The Go simulator validates and
-resolves that action using a scenario seed. An optional model may suggest where
-live non-player units—including the player's teammates and opponents—should try
-to move in the next frame, but its output is only a target. The simulator keeps
-the user-controlled unit outside model control, validates every proposal
-atomically, applies class movement limits and map bounds, and remains solely
-responsible for physics, damage, cooldowns, hidden state, and victory conditions.
-
-## Unit classes
-
-Every fixture unit has an explicit class. The class controls maximum health,
-per-frame movement, and attack radius; the API exposes `moveRange` and
-`attackRange` so the board can explain those limits rather than hiding them.
-Tanks are the toughest and slowest class, while marksmen trade health for range.
-
-| Class | Maximum health | Move range | Attack range |
-| --- | ---: | ---: | ---: |
-| Tank | 160 | 7 | 10 |
-| Fighter | 125 | 10 | 14 |
-| Marksman | 90 | 11 | 28 |
-| Mage | 95 | 9 | 24 |
-| Support | 110 | 8 | 20 |
-| Assassin | 100 | 13 | 12 |
-
-Ranges are map units per frame.
-
-## Optional position-model connector
-
-No model, API key, or network service is required by default. Without a
-connector, teammates and opponents use their seeded built-in policies.
-
-To test an HTTP position model, configure its endpoint and stable identity for
-the API process:
+Then configure the Go API to call it:
 
 ```bash
-POSITION_MODEL_URL=http://127.0.0.1:9000/v1/positions \
-POSITION_MODEL_NAME=trajectory-policy \
-POSITION_MODEL_VERSION=2026.08.05 \
+BOT_MODEL_URL=http://127.0.0.1:9000/v1/actions \
+BOT_MODEL_NAME=openai-npc-actions \
+BOT_MODEL_VERSION=gpt-5.6 \
 make dev-api
 ```
 
-For Docker Compose, copy `.env.example` to `.env`, set the URL to an endpoint
-reachable from the `api` container, set both identity values, and run
-`docker compose up --build`. Once per turn the API posts the version `1.1`
-session snapshot, accepts desired next-frame positions for live units other than
-the player-controlled unit, and records accepted suggestions with that identity
-in server-side session memory. Missing identity fails closed at startup; invalid
-data, timeouts, and connection failures reject the full response and use the
-deterministic fallback. Omitted teammates stay put, while omitted opponents use
-the seeded chase policy. A model can never directly mutate simulator state.
+Start the web app with `make dev-web`. The API key belongs only in the daemon
+environment; never put it in the browser, fixtures, source, or a committed
+`.env` file. If you override `OPENAI_MODEL`, update `BOT_MODEL_VERSION` to the
+same deployed model identifier or another accurate rollout identifier.
 
-Existing deployments may use the deprecated `OPPONENT_MODEL_URL`,
-`OPPONENT_MODEL_NAME`, and `OPPONENT_MODEL_VERSION` aliases as one complete
-group. These aliases preserve only the environment-variable names: the endpoint
-must implement the same version `1.1` position-model protocol. Do not mix the
-deprecated and preferred variable names. See
-[`contracts/openapi.yaml`](contracts/openapi.yaml) for the exact webhook shapes.
-
-## Simulator rules
-
-Every fixture now declares its combat statistics, terrain, visibility, objective or escape state,
-victory and defeat conditions, safe zone, unit policies, and an authored reference plan. Turns
-produce causal events for movement, shielding, attacks, damage, eliminations, vision changes,
-objective control, escape progress, and terminal outcomes.
-
-The displayed **scenario advantage** is derived from remaining health, surviving units, objective
-control, target pressure, and escape progress. It is deliberately not presented as a calibrated
-win probability. At the end of a scenario, the API exposes deterministic rollouts for each legal
-first action so the user can compare openings without claiming that any rollout is a historical
-match result.
-
-The terminal debrief can also reveal a calculated best allied line. Each turn is
-selectable and shows the chosen command, its causal events, and how the strongest
-continuation after every alternative command compared.
-
-See [`docs/simulator-rules.md`](docs/simulator-rules.md) for the exact resolution order and limits.
-See [`docs/scenario-authoring.md`](docs/scenario-authoring.md) to add or validate a scenario.
-See [`docs/telemetry-scenario-drafts.md`](docs/telemetry-scenario-drafts.md) to
-convert detector NDJSON into an analyst-reviewed scenario draft and preview it
-without overwriting the authored library.
-See [`docs/live-telemetry.md`](docs/live-telemetry.md) to replay a normalized
-local match into the live detector and review its guarded drafts.
-
-Validate the complete authored pack from `backend/`:
+Docker Compose starts all three services and configures the server-to-server
+bridge:
 
 ```bash
-go run ./cmd/validate-fixtures -path ../fixtures/moments.json
+cp .env.example .env
+# Set OPENAI_API_KEY in .env for real model-backed bot turns.
+docker compose up --build
 ```
+
+Without a key, the daemon deliberately returns a non-success response and the
+Go engine uses its deterministic fallback, so the local stack remains playable.
+
+## Runtime architecture
+
+The browser sends one validated tactical action to Go. At each accepted turn,
+Go may send a schema `2.0` privileged snapshot to the model daemon. The daemon
+uses strict Structured Outputs to request one legal action for every live unit
+except the user-controlled unit. Go rejects the entire response if any unit or
+action is missing, duplicated, unknown, malformed, illegal, or out of bounds.
+Accepted Move targets are still constrained by server-owned class movement
+limits, and Go alone resolves damage, visibility, projectiles, objectives, and
+terminal state.
+
+`Session.botControl.source` explains the active path:
+
+- `pending`: a model is configured but no turn has completed yet;
+- `external-model`: a complete model response was accepted, with model name and
+  version; or
+- `deterministic-fallback`: no model is configured or the configured call was
+  unavailable or unusable.
+
+See [docs/architecture.md](docs/architecture.md) and
+[docs/model-plan.md](docs/model-plan.md) for the trust and failure boundaries.
+
+## Gameplay contract
+
+All coordinates use a normalized inclusive `0..100` full map. Every session
+contains five blue and five red units, exactly one marksman per team, and
+exactly six canonical turrets—one per team in each lane. Turrets are currently
+map landmarks; the server supplies their health/state, but they do not execute
+combat logic.
+
+Marksman attacks create a visible pending projectile aimed at a unit and worth
+half that target's maximum health, rounded up. It remains pending until the
+next tactical turn starts. If the controlled unit is the target, the separate
+Dodge control may consume one of two charges to evade it immediately without
+advancing the tactical turn. Otherwise the projectile resolves before the next
+user command.
+
+The four tactical commands are:
+
+- `move`: travel toward a chosen full-map point, capped by class range;
+- `hold`: gain a small shield and guard for the current turn;
+- `contest`: focus the visible authored target, otherwise close on the nearest
+  visible enemy, or advance on an objective when no target is visible; and
+- `retreat`: move toward the authored safe zone with defensive guard.
+
+The ending decision tree and best-case line search only these four commands.
+Reference simulation automatically uses the same two-charge Dodge reaction
+when a projectile is eligible; Dodge is never a fifth tactical action.
+
+See [docs/simulator-rules.md](docs/simulator-rules.md) for resolution order and
+[docs/scenario-authoring.md](docs/scenario-authoring.md) for fixture rules.
 
 ## API
 
@@ -165,63 +166,49 @@ GET  /api/v1/moments
 POST /api/v1/sessions
 GET  /api/v1/sessions/{id}
 POST /api/v1/sessions/{id}/turns
+POST /api/v1/sessions/{id}/dodge
 POST /api/v1/sessions/{id}/reset
-GET  /api/v1/telemetry/matches
-POST /api/v1/telemetry/matches
-DELETE /api/v1/telemetry/matches
-GET  /api/v1/telemetry/matches/{id}
-DELETE /api/v1/telemetry/matches/{id}
-GET  /api/v1/telemetry/matches/{id}/timeline
-POST /api/v1/telemetry/matches/{id}/frames
-POST /api/v1/telemetry/matches/{id}/finish
-GET  /api/v1/telemetry/matches/{id}/events
-POST /api/v1/telemetry/matches/{id}/candidates/{candidateId}/draft
-GET  /api/v1/telemetry/matches/{id}/candidates/{candidateId}/draft
-PUT  /api/v1/telemetry/matches/{id}/candidates/{candidateId}/draft
-POST /api/v1/telemetry/matches/{id}/candidates/{candidateId}/draft/validate
-POST /api/v1/telemetry/matches/{id}/candidates/{candidateId}/draft/preview
-POST /api/v1/telemetry/matches/{id}/candidates/{candidateId}/draft/review-pack
-GET  /api/v1/local-storage
-PUT  /api/v1/local-storage/retention
 ```
 
-See [`contracts/openapi.yaml`](contracts/openapi.yaml) for request and response
-shapes.
+The model daemon exposes `GET /healthz` and `POST /v1/actions`. The browser must
+never call the model daemon directly. See [contracts/openapi.yaml](contracts/openapi.yaml)
+and [model-daemon/README.md](model-daemon/README.md) for exact payloads.
 
-## Data and safety
+## Repository layout
 
-All included data is synthetic and contains no player identity or proprietary
-telemetry. The local API writes only finalized identity-free summaries and
-analyst drafts to `.local-data/`, with a seven-day default retention policy.
-Raw frames, source unit IDs, movement traces, and collector tokens are never
-persisted. Production ingestion still requires explicit authorization, data
-minimization, and game-publisher review before a source adapter is built. The
-optional connector receives a server-side unit snapshot, so only an
-operator-controlled URL should be configured; production model calls also
-require encrypted transport, egress restrictions, and retention controls.
+| Path | Purpose |
+| --- | --- |
+| `backend/` | Go API, authoritative simulator, fixture loading, and tests |
+| `frontend/` | React full-map tactical board and component/API tests |
+| `model-daemon/` | Bounded Python bridge from schema `2.0` bot snapshots to the OpenAI Responses API |
+| `contracts/` | Public OpenAPI contract and fixture JSON Schema |
+| `fixtures/moments.json` | Version `3.0` pack containing the three authored scenarios |
+| `docs/` | Architecture, model, simulator, and authoring decisions |
 
-Normalized authorized or synthetic telemetry can be ranked offline with:
+Validate the authored pack from `backend/`:
 
 ```bash
-python3 -m ml.telemetry path/to/normalized-telemetry.json
+go run ./cmd/validate-fixtures -path ../fixtures/moments.json
 ```
 
-See [`docs/telemetry-highlights.md`](docs/telemetry-highlights.md) for the strict
-input contract, signal calculations, overlap suppression, and accuracy limits.
+## Source attribution and disclosure
 
-Run the checked-in detector regression pack and print its analyst-readable
-report with:
+This prototype was prepared for the **Garena AI Build Challenge 2026 — Case
+Brief**. Its three scenarios derive from the supplied evidence bundle
+`playable-replays-t1-blg-2024`, SHA-256
+`07a8b2732dfb62e4d416e011bd4f5e0317a4bf38e84963d0030c14104cc07d1f`.
+The bundle identifies its media source as Caedrel's edited upload of the T1 vs
+Bilibili Gaming 2024 Worlds Final, not a 2026 match:
+[YouTube VOD](https://www.youtube.com/watch?v=xiKg7qfaPAI). It cross-references
+Games of Legends match timelines `62816`–`62820`, the
+[Riot Games Worlds 2024 Primer](https://lolesports.com/en-PH/news/worlds-2024-primer),
+and secondary analysis from Sheep Esports and Team Liquid/SAP.
 
-```bash
-python3 -m ml.evaluate.detector
-```
-
-See [`docs/detector-evaluation.md`](docs/detector-evaluation.md) for the labels,
-matching rules, current baseline, and production-accuracy limits.
-
-With the API and web app running, replay the identity-free demo locally:
-
-```bash
-cd backend
-go run ./cmd/telemetry-collector --input ../fixtures/telemetry-demo.json --rate 4
-```
+Fixtures retain the bundle ID/hash, source-moment ID, game and decision time,
+caption evidence IDs, external evidence IDs, analyst assessment, and coaching
+correction. Those anchors support the teaching premise; they do not turn the
+simulator layout into measured replay state. **Every map coordinate and spatial
+arrangement in this project is an authored normalized approximation, not
+extracted replay telemetry.** Names and match references are contextual source
+attribution and do not imply endorsement by the teams, players, publishers,
+event organizers, or source authors.

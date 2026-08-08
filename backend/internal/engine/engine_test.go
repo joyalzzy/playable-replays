@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"math"
 	"reflect"
 	"strings"
@@ -106,17 +107,34 @@ func TestMechanicBriefingIsIncludedInPublicSessionState(t *testing.T) {
 	}
 }
 
-func TestContestProducesCausalDamageLog(t *testing.T) {
-	state, err := New(testMoment(), "a").Apply(model.Action{Type: "contest"})
+func TestMarksmanProjectilePersistsUntilNextTacticalTurn(t *testing.T) {
+	e := New(testMoment(), "a")
+	state, err := e.Apply(model.Action{Type: "contest"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, entry := range state.Log {
-		if entry.Kind == "damage" && entry.Value > 0 && strings.Contains(entry.Message, "HP") {
-			return
-		}
+	if got := sessionUnit(t, state, "red-one").HP; got != 80 {
+		t.Fatalf("pending projectile dealt damage immediately: red HP=%d", got)
 	}
-	t.Fatalf("expected a causal damage event, got %+v", state.Log)
+	if len(state.Projectiles) != 1 || state.Projectiles[0].Team != "blue" ||
+		state.Projectiles[0].SourceUnitID != "blue-carry" || state.Projectiles[0].TargetUnitID != "red-one" ||
+		state.Projectiles[0].Damage != 63 {
+		t.Fatalf("expected a public half-health marksman projectile, got %+v", state.Projectiles)
+	}
+	if !logContains(state, "potential damage") {
+		t.Fatalf("projectile launch was not explained: %+v", state.Log)
+	}
+
+	state, err = e.Apply(model.Action{Type: "hold"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(state.Projectiles) != 0 || sessionUnit(t, state, "red-one").HP != 17 {
+		t.Fatalf("projectile did not resolve at the next turn start: %+v", state)
+	}
+	if !logContains(state, "projectile hit") {
+		t.Fatalf("projectile impact was not explained: %+v", state.Log)
+	}
 }
 
 func TestObjectiveHasExplicitVictoryCondition(t *testing.T) {
@@ -239,43 +257,186 @@ func TestClassMovementLimitsTankAndAssassin(t *testing.T) {
 	}
 }
 
-func TestDodgeLogsEvadedSkillshot(t *testing.T) {
-	moment := testMoment()
-	moment.Units[1].Position = model.Point{X: 38, Y: 50}
-	state, err := New(moment, "a").Apply(model.Action{Type: "dodge"})
-	if err != nil {
-		t.Fatal(err)
+func TestFullMapHasThreeTurretsPerSide(t *testing.T) {
+	e := New(testMoment(), "a")
+	state := e.State()
+	if len(state.Turrets) != 6 {
+		t.Fatalf("expected six full-map turrets, got %+v", state.Turrets)
 	}
-	if !logContains(state, "dodged red fighter's skillshot") {
-		t.Fatalf("expected dodge log, got %+v", state.Log)
+	counts := map[string]int{}
+	lanes := map[string]map[string]bool{"blue": {}, "red": {}}
+	for _, turret := range state.Turrets {
+		counts[turret.Team]++
+		lanes[turret.Team][turret.Lane] = true
+		if turret.ID == "" || turret.HP != 3000 || turret.MaxHP != 3000 || !turret.Alive || !pointInBounds(turret.Position) {
+			t.Fatalf("invalid canonical turret: %+v", turret)
+		}
 	}
-	if sessionUnit(t, state, "blue-carry").HP != 70 {
-		t.Fatal("a successfully dodged skillshot dealt damage")
+	for _, team := range []string{"blue", "red"} {
+		if counts[team] != 3 || !lanes[team]["top"] || !lanes[team]["middle"] || !lanes[team]["bottom"] {
+			t.Fatalf("expected top/middle/bottom turrets for %s, got counts=%v lanes=%v", team, counts, lanes)
+		}
+	}
+	state.Turrets[0].HP = 0
+	if e.State().Turrets[0].HP != 3000 {
+		t.Fatal("public turret state was not returned defensively")
 	}
 }
 
-func TestOutplayLogsSuccessAndFailureTruthfully(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		moment := testMoment()
-		moment.Units[1].Position = model.Point{X: 38, Y: 50}
-		state, err := New(moment, "a").Apply(model.Action{Type: "outplay"})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !logContains(state, "outplayed red fighter") || sessionUnit(t, state, "red-one").HP >= 80 {
-			t.Fatalf("expected successful outplay, got log=%+v", state.Log)
-		}
-	})
+func TestDodgeEvadesTwoIncomingProjectilesWithoutAdvancingTurn(t *testing.T) {
+	moment := testMoment()
+	moment.Units[1] = model.Unit{
+		ID: "red-one", Team: "red", Role: "marksman", Class: model.ClassMarksman, Policy: "aggressive",
+		Position: model.Point{X: 48, Y: 50}, HP: 90, MaxHP: 90,
+		AttackRange: 28, AttackDamage: 20, MoveRange: 11, MoveSpeed: 11,
+		Armor: 12, VisionRange: 34, AttackCooldown: 1, Alive: true,
+	}
+	e := New(moment, "a")
+	state, err := e.Apply(model.Action{Type: "hold"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Turn != 1 || len(state.Projectiles) != 1 || !state.DodgeAvailable || state.DodgeCharges != 2 {
+		t.Fatalf("expected one incoming projectile and two charges: %+v", state)
+	}
 
-	t.Run("unavailable", func(t *testing.T) {
-		moment := testMoment()
-		moment.Units[1].Position = model.Point{X: 90, Y: 50}
-		state, err := New(moment, "a").Apply(model.Action{Type: "outplay"})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !logContains(state, "outplay was unavailable") {
-			t.Fatalf("failed outplay was reported incorrectly: %+v", state.Log)
-		}
+	state, err = e.Dodge()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Turn != 1 || len(state.Projectiles) != 0 || state.DodgeAvailable || state.DodgeCharges != 1 ||
+		sessionUnit(t, state, "blue-carry").HP != 70 {
+		t.Fatalf("first Dodge did not consume only the incoming projectile and one charge: %+v", state)
+	}
+	if !logContains(state, "1 Dodge charge remain") {
+		t.Fatalf("first Dodge was not explained: %+v", state.Log)
+	}
+
+	state, err = e.Apply(model.Action{Type: "hold"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Turn != 2 || len(state.Projectiles) != 1 || !state.DodgeAvailable {
+		t.Fatalf("expected the marksman to fire again after its one-turn cooldown: %+v", state)
+	}
+	state, err = e.Dodge()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Turn != 2 || len(state.Projectiles) != 0 || state.DodgeAvailable || state.DodgeCharges != 0 ||
+		sessionUnit(t, state, "blue-carry").HP != 70 {
+		t.Fatalf("second Dodge did not consume the final charge: %+v", state)
+	}
+
+	before := state
+	after, err := e.Dodge()
+	if !errors.Is(err, ErrDodgeUnavailable) {
+		t.Fatalf("expected exhausted Dodge to be unavailable, got %v", err)
+	}
+	if !reflect.DeepEqual(before, after) {
+		t.Fatal("unavailable Dodge mutated state")
+	}
+}
+
+func TestDodgeRefreshesFogAfterReactionMovement(t *testing.T) {
+	moment := testMoment()
+	moment.Units[1] = model.Unit{
+		ID: "red-marksman", Team: "red", Role: "marksman", Class: model.ClassMarksman, Policy: "aggressive",
+		Position: model.Point{X: 48, Y: 50}, HP: 90, MaxHP: 90,
+		AttackRange: 28, AttackDamage: 20, MoveRange: 11, MoveSpeed: 11,
+		Armor: 12, VisionRange: 34, AttackCooldown: 2, Alive: true,
+	}
+	moment.Units = append(moment.Units, model.Unit{
+		ID: "red-hidden", Team: "red", Role: "support", Class: model.ClassSupport, Policy: "support",
+		Position: model.Point{X: 30, Y: 93}, HP: 110, MaxHP: 110,
+		AttackRange: 20, AttackDamage: 10, MoveRange: 8, MoveSpeed: 8,
+		Armor: 15, VisionRange: 30, AttackCooldown: 2, Alive: true,
 	})
+	e := New(moment, "a")
+	state, err := e.Apply(model.Action{Type: "hold"})
+	if err != nil || !state.DodgeAvailable || state.UnknownEnemyCount != 1 {
+		t.Fatalf("expected a dodge window with one hidden enemy: err=%v state=%+v", err, state)
+	}
+	state, err = e.Dodge()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.UnknownEnemyCount != 0 || state.VisibleEnemyCount != 2 || len(state.Units) != 3 {
+		t.Fatalf("Dodge movement did not refresh public fog state: %+v", state)
+	}
+}
+
+func TestHiddenProjectileSourceStaysRedactedOnImpact(t *testing.T) {
+	moment := testMoment()
+	moment.Units[0].HP = 40
+	moment.Units[0].VisionRange = 10
+	moment.Units[1] = model.Unit{
+		ID: "red-hidden-marksman", Team: "red", Role: "marksman", Class: model.ClassMarksman, Policy: "aggressive",
+		Position: model.Point{X: 48, Y: 50}, HP: 90, MaxHP: 90,
+		AttackRange: 28, AttackDamage: 20, MoveRange: 11, MoveSpeed: 11,
+		Armor: 12, VisionRange: 34, AttackCooldown: 2, Alive: true,
+	}
+	e := New(moment, "a")
+	state, err := e.Apply(model.Action{Type: "hold"})
+	if err != nil || len(state.Projectiles) != 1 || state.Projectiles[0].SourceUnitID != "" {
+		t.Fatalf("expected a source-redacted incoming projectile: err=%v state=%+v", err, state)
+	}
+	state, err = e.Apply(model.Action{Type: "hold"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundElimination := false
+	for _, entry := range state.Log {
+		if (entry.Kind == "projectile" || entry.Kind == "elimination") &&
+			entry.ActorID == "red-hidden-marksman" {
+			t.Fatalf("hidden marksman ID leaked through projectile resolution: %+v", entry)
+		}
+		foundElimination = foundElimination || entry.Kind == "elimination"
+	}
+	if !foundElimination || state.Status != "lost" {
+		t.Fatalf("expected the source-redacted projectile to exercise elimination: %+v", state)
+	}
+}
+
+func TestHoldSynchronizesAggressiveAllyOnAuthoredTarget(t *testing.T) {
+	moment := testMoment()
+	moment.Rules.Victory.Kind = "eliminate-target"
+	moment.Rules.Victory.TargetUnitID = "red-one"
+	moment.Units = append(moment.Units,
+		model.Unit{
+			ID: "blue-marksman", Team: "blue", Role: "marksman", Class: model.ClassMarksman, Policy: "aggressive",
+			Position: model.Point{X: 40, Y: 50}, HP: 90, MaxHP: 90, AttackDamage: 20,
+			Armor: 12, VisionRange: 34, AttackCooldown: 2, Alive: true,
+		},
+		model.Unit{
+			ID: "red-decoy", Team: "red", Role: "fighter", Class: model.ClassFighter, Policy: "protector",
+			Position: model.Point{X: 42, Y: 50}, HP: 125, MaxHP: 125, AttackDamage: 16,
+			Armor: 15, VisionRange: 32, AttackCooldown: 2, Alive: true,
+		},
+	)
+
+	state, err := New(moment, "a").Apply(model.Action{Type: "hold"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(state.Projectiles) != 1 || state.Projectiles[0].SourceUnitID != "blue-marksman" ||
+		state.Projectiles[0].TargetUnitID != "red-one" {
+		t.Fatalf("Hold did not synchronize the aggressive ally onto the authored target: %+v", state.Projectiles)
+	}
+}
+
+func TestLegacyDodgeAndOutplayAreNotTacticalActions(t *testing.T) {
+	for _, actionType := range []string{"dodge", "outplay"} {
+		t.Run(actionType, func(t *testing.T) {
+			e := New(testMoment(), "a")
+			before := e.State()
+			after, err := e.Apply(model.Action{Type: actionType})
+			if !errors.Is(err, ErrIllegalAction) {
+				t.Fatalf("expected %q to be rejected, got %v", actionType, err)
+			}
+			if !reflect.DeepEqual(before, after) {
+				t.Fatalf("rejected %q action mutated state", actionType)
+			}
+		})
+	}
 }

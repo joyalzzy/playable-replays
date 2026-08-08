@@ -9,14 +9,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/joyalzzy/playable-replays/backend/internal/highlight"
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
 )
 
 const (
-	fixtureVersion    = "2.1"
-	minimumPackSize   = 10
-	maximumPackSize   = 20
+	fixtureVersion    = "3.0"
+	minimumPackSize   = 1
+	maximumPackSize   = 3
 	minimumTradeoffs  = 2
 	minimumAlternates = 2
 	minimumTests      = 2
@@ -34,7 +33,7 @@ var (
 		"vision-uncertainty",
 	}
 	skillLevels               = []string{"beginner", "intermediate", "advanced"}
-	actionTypes               = []string{"move", "hold", "contest", "retreat", "dodge", "outplay"}
+	actionTypes               = []string{"move", "hold", "contest", "retreat"}
 	canonicalTerrainLandmarks = map[string]model.Point{
 		"base-gate":   {X: 16, Y: 82},
 		"tower-zone":  {X: 30, Y: 69},
@@ -43,18 +42,9 @@ var (
 		"exit-zone":   {X: 12, Y: 78},
 		"river":       {X: 50, Y: 52},
 	}
-	canonicalObjectiveLandmarks = map[string]model.Point{
-		"river-core": {X: 50, Y: 52},
-	}
+	canonicalObjectiveLandmarks = map[string]model.Point{}
 	scenarioSpecificMechanicIDs = map[string]bool{
-		"river-core":   true,
-		"outer-shrine": true,
-		"shrine-ring":  true,
-		"wave-line":    true,
-		"red-buff":     true,
-		"reset-zone":   true,
-		"lane-pocket":  true,
-		"exit-pocket":  true,
+		"baron-pit": true,
 	}
 )
 
@@ -94,8 +84,6 @@ func ValidateLibrary(moments []model.Moment) error {
 	}
 	seenIDs := make(map[string]bool, len(moments))
 	seenSlugs := make(map[string]bool, len(moments))
-	categoryCoverage := make(map[string]int, len(categories))
-	skillCoverage := make(map[string]int, len(skillLevels))
 	for i := range moments {
 		moment := &moments[i]
 		if seenIDs[moment.ID] {
@@ -108,18 +96,6 @@ func ValidateLibrary(moments []model.Moment) error {
 		seenSlugs[moment.Slug] = true
 		if err := ValidateMoment(*moment); err != nil {
 			return err
-		}
-		categoryCoverage[moment.Authoring.Category]++
-		skillCoverage[moment.Authoring.SkillLevel]++
-	}
-	for _, category := range categories {
-		if categoryCoverage[category] == 0 {
-			return fmt.Errorf("fixture pack does not cover category %q", category)
-		}
-	}
-	for _, level := range skillLevels {
-		if skillCoverage[level] == 0 {
-			return fmt.Errorf("fixture pack does not cover skill level %q", level)
 		}
 	}
 	return nil
@@ -143,10 +119,8 @@ func ValidateMoment(moment model.Moment) error {
 	if !normalizedSignals(moment.Signals) {
 		return fmt.Errorf("moment %q has signals outside 0..1", moment.ID)
 	}
-	if moment.SourceDetection != nil {
-		if err := validateSourceDetection(moment); err != nil {
-			return err
-		}
+	if err := validateReplayEvidence(moment); err != nil {
+		return err
 	}
 	if moment.Rules.InitialAdvantage <= 0 || moment.Rules.InitialAdvantage >= 1 {
 		return fmt.Errorf("moment %q has initial advantage outside 0..1", moment.ID)
@@ -154,6 +128,8 @@ func ValidateMoment(moment model.Moment) error {
 
 	controlledFound := false
 	teams := map[string]bool{}
+	teamCounts := map[string]int{}
+	marksmen := map[string]int{}
 	unitIDs := make(map[string]bool, len(moment.Units))
 	unitTeams := make(map[string]string, len(moment.Units))
 	for _, unit := range moment.Units {
@@ -163,6 +139,10 @@ func ValidateMoment(moment model.Moment) error {
 		unitIDs[unit.ID] = true
 		unitTeams[unit.ID] = unit.Team
 		teams[unit.Team] = true
+		teamCounts[unit.Team]++
+		if unit.Class == model.ClassMarksman {
+			marksmen[unit.Team]++
+		}
 		controlledFound = controlledFound || unit.ID == moment.ControlledUnitID && unit.Team == "blue" && unit.Policy == "controlled" && unit.Alive
 		profile, classValid := model.Profile(unit.Class)
 		if !classValid || unit.MaxHP != profile.MaxHP || unit.MoveRange != profile.MoveRange ||
@@ -181,6 +161,12 @@ func ValidateMoment(moment model.Moment) error {
 	}
 	if !teams["blue"] || !teams["red"] {
 		return fmt.Errorf("moment %q must contain both teams", moment.ID)
+	}
+	if teamCounts["blue"] != 5 || teamCounts["red"] != 5 {
+		return fmt.Errorf("moment %q must contain a full five-player roster for each team", moment.ID)
+	}
+	if marksmen["blue"] != 1 || marksmen["red"] != 1 {
+		return fmt.Errorf("moment %q must contain exactly one marksman per team", moment.ID)
 	}
 
 	victory := moment.Rules.Victory
@@ -298,57 +284,18 @@ func validateMechanicBriefing(moment model.Moment, scenarioElementIDs map[string
 	return nil
 }
 
-func validateSourceDetection(moment model.Moment) error {
-	source := moment.SourceDetection
-	if source.SchemaVersion != "1.0" || source.StartSecond < 0 || source.EndSecond <= source.StartSecond ||
-		!inUnitRange(source.Score) || len(source.ReasonTags) == 0 || !normalizedSignals(source.Signals) {
-		return fmt.Errorf("moment %q has invalid source detection metadata", moment.ID)
-	}
-	if source.StartSecond != moment.StartTimeSeconds {
-		return fmt.Errorf("moment %q start time does not match source detection", moment.ID)
-	}
-	if source.Signals != moment.Signals {
-		return fmt.Errorf("moment %q signals do not match source detection", moment.ID)
-	}
-	expectedScore := highlight.RoundedScore(source.Signals)
-	if source.Score != expectedScore {
-		return fmt.Errorf("moment %q source detection score %.4f does not match signals %.4f", moment.ID, source.Score, expectedScore)
-	}
-	for _, tag := range source.ReasonTags {
-		if strings.TrimSpace(tag) == "" || !contains(moment.ReasonTags, tag) {
-			return fmt.Errorf("moment %q does not preserve source reason tag %q", moment.ID, tag)
-		}
-	}
-	if err := validateEvidenceIDs(source.SemanticEvidence.OneVersusManyUnitIDs); err != nil {
-		return fmt.Errorf("moment %q has invalid one-versus-many evidence: %w", moment.ID, err)
-	}
-	if err := validateEvidenceIDs(source.SemanticEvidence.SuccessfulEscapeUnitIDs); err != nil {
-		return fmt.Errorf("moment %q has invalid successful-escape evidence: %w", moment.ID, err)
-	}
-	if second := source.SemanticEvidence.TeamFightReversalSecond; second != nil && (*second < source.StartSecond || *second > source.EndSecond) {
-		return fmt.Errorf("moment %q has a reversal timestamp outside the source window", moment.ID)
+func validateReplayEvidence(moment model.Moment) error {
+	evidence := moment.ReplayEvidence
+	if evidence == nil || strings.TrimSpace(evidence.BundleID) == "" || len(evidence.BundleSHA256) != 64 ||
+		strings.TrimSpace(evidence.SourceMomentID) == "" || evidence.Game < 1 ||
+		strings.TrimSpace(evidence.DecisionTime) == "" || evidence.SourceVODSeconds < 0 ||
+		strings.TrimSpace(evidence.Judgment) == "" || strings.TrimSpace(evidence.Assessment) == "" ||
+		strings.TrimSpace(evidence.CoachingCorrection) == "" || len(evidence.CaptionEvidence) == 0 ||
+		len(evidence.ExternalEvidence) == 0 ||
+		!strings.Contains(strings.ToLower(evidence.CoordinateMethod), "approx") {
+		return fmt.Errorf("moment %q has incomplete replay-bundle evidence or does not label coordinates as approximations", moment.ID)
 	}
 	return nil
-}
-
-func validateEvidenceIDs(ids []string) error {
-	seen := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		if strings.TrimSpace(id) == "" || seen[id] {
-			return fmt.Errorf("unit IDs must be non-empty and unique")
-		}
-		seen[id] = true
-	}
-	return nil
-}
-
-func contains(values []string, candidate string) bool {
-	for _, value := range values {
-		if value == candidate {
-			return true
-		}
-	}
-	return false
 }
 
 func validateAuthoring(moment model.Moment) error {
@@ -384,12 +331,23 @@ func validateAuthoring(moment model.Moment) error {
 	expectedStatuses := map[string]bool{}
 	for _, test := range authoring.AcceptanceTests {
 		if strings.TrimSpace(test.Name) == "" || testNames[test.Name] || !oneOf(test.ExpectedStatus, "won", "lost") ||
-			test.ExpectedTerminalTurn < 1 || test.ExpectedTerminalTurn > moment.MaxTurns ||
-			len(test.Actions) != test.ExpectedTerminalTurn || strings.TrimSpace(test.ExpectedOutcomeContains) == "" {
+			test.ExpectedTerminalTurn < 0 || test.ExpectedTerminalTurn > moment.MaxTurns ||
+			len(test.Actions) < 1 || len(test.Actions) > moment.MaxTurns ||
+			(test.ExpectedTerminalTurn > 0 && len(test.Actions) != test.ExpectedTerminalTurn) || strings.TrimSpace(test.ExpectedOutcomeContains) == "" {
 			return fmt.Errorf("moment %q has invalid acceptance test %q", moment.ID, test.Name)
 		}
 		testNames[test.Name] = true
 		expectedStatuses[test.ExpectedStatus] = true
+		if len(test.DodgeBeforeTurns) > 2 {
+			return fmt.Errorf("moment %q acceptance test %q uses more than two Dodge reactions", moment.ID, test.Name)
+		}
+		dodgeTurns := map[int]bool{}
+		for _, turn := range test.DodgeBeforeTurns {
+			if turn < 1 || turn > len(test.Actions) || dodgeTurns[turn] {
+				return fmt.Errorf("moment %q acceptance test %q has an invalid Dodge turn", moment.ID, test.Name)
+			}
+			dodgeTurns[turn] = true
+		}
 		for _, action := range test.Actions {
 			if err := validateAction(action); err != nil {
 				return fmt.Errorf("moment %q acceptance test %q: %w", moment.ID, test.Name, err)

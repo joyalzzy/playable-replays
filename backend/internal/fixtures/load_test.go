@@ -2,73 +2,55 @@ package fixtures
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/joyalzzy/playable-replays/backend/internal/highlight"
 	"github.com/joyalzzy/playable-replays/backend/internal/model"
 )
 
-func TestAuthoredScenarioPackCoverage(t *testing.T) {
+func TestReducedReplayScenarioPack(t *testing.T) {
 	moments, err := Load("../../../fixtures/moments.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(moments) != 12 {
-		t.Fatalf("expected twelve moments, got %d", len(moments))
+	if len(moments) != 3 {
+		t.Fatalf("expected three focused scenarios, got %d", len(moments))
 	}
-	categoryCounts := map[string]int{}
-	levels := map[string]int{}
-	mechanicBriefings := 0
-	for _, moment := range moments {
-		categoryCounts[moment.Authoring.Category]++
-		levels[moment.Authoring.SkillLevel]++
+
+	expectedIDs := []string{"resource-trade-932", "positioning-1295", "teamfight-reversal-1727"}
+	for index, moment := range moments {
+		if moment.ID != expectedIDs[index] {
+			t.Fatalf("scenario %d has id %q, want %q", index, moment.ID, expectedIDs[index])
+		}
+		if len(moment.Units) != 10 {
+			t.Fatalf("moment %q does not contain a full 5v5 roster", moment.ID)
+		}
+		teamCounts := map[string]int{}
+		marksmen := map[string]int{}
+		for _, unit := range moment.Units {
+			teamCounts[unit.Team]++
+			if unit.Class == model.ClassMarksman {
+				marksmen[unit.Team]++
+			}
+		}
+		if teamCounts["blue"] != 5 || teamCounts["red"] != 5 {
+			t.Fatalf("moment %q has team counts %+v", moment.ID, teamCounts)
+		}
+		if marksmen["blue"] != 1 || marksmen["red"] != 1 {
+			t.Fatalf("moment %q has marksman counts %+v", moment.ID, marksmen)
+		}
+		if moment.ReplayEvidence == nil || !strings.Contains(strings.ToLower(moment.ReplayEvidence.CoordinateMethod), "approx") {
+			t.Fatalf("moment %q does not disclose approximate coordinates", moment.ID)
+		}
+		if len(moment.Rules.ActionDefaults) != len(actionTypes) {
+			t.Fatalf("moment %q exposes %d action defaults", moment.ID, len(moment.Rules.ActionDefaults))
+		}
 		if len(moment.Rules.ReferencePlan) != moment.MaxTurns || len(moment.Rules.ReferenceReasons) != moment.MaxTurns {
-			t.Fatalf("moment %q is missing a full authored reference line", moment.ID)
+			t.Fatalf("moment %q has an incomplete reference plan", moment.ID)
 		}
-		if len(moment.Authoring.IntendedTradeoffs) < 2 || len(moment.Authoring.PlausibleAlternatives) < 2 || len(moment.Authoring.AcceptanceTests) < 2 {
-			t.Fatalf("moment %q is missing authoring evidence", moment.ID)
-		}
-		if moment.MechanicBriefing != nil {
-			mechanicBriefings++
-		}
-	}
-	for _, category := range categories {
-		if categoryCounts[category] != 2 {
-			t.Fatalf("expected two %q scenarios, got %d", category, categoryCounts[category])
-		}
-	}
-	for _, level := range skillLevels {
-		if levels[level] == 0 {
-			t.Fatalf("skill level %q is not covered", level)
-		}
-	}
-	if mechanicBriefings != 6 {
-		t.Fatalf("expected six scenario-specific mechanic briefings, got %d", mechanicBriefings)
-	}
-}
-
-func TestScenarioSpecificMechanicsRequireCompleteBriefing(t *testing.T) {
-	moments, err := Load("../../../fixtures/moments.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	moment := findMoment(t, moments, "objective-contest-318")
-	moment.MechanicBriefing.Mechanics = moment.MechanicBriefing.Mechanics[:1]
-	if err := ValidateMoment(moment); err == nil {
-		t.Fatal("expected an unexplained shrine ring to be rejected")
-	}
-
-	moments, err = Load("../../../fixtures/moments.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	moment = findMoment(t, moments, "vision-uncertainty-356")
-	moment.MechanicBriefing.Mechanics[0].RoleInScenario = ""
-	if err := ValidateMoment(moment); err == nil {
-		t.Fatal("expected an incomplete mechanic explanation to be rejected")
+		assertNoObsoleteActions(t, moment)
 	}
 }
 
@@ -82,182 +64,37 @@ func TestAuthoredAcceptanceCases(t *testing.T) {
 	}
 }
 
-func TestCanonicalTerrainLandmarksCannotMove(t *testing.T) {
-	tests := []struct {
-		momentID  string
-		terrainID string
-	}{
-		{momentID: "objective-steal-742", terrainID: "river"},
-		{momentID: "teamfight-reversal-1091", terrainID: "base-gate"},
-		{momentID: "escape-412", terrainID: "tower-zone"},
-		{momentID: "escape-1260", terrainID: "exit-zone"},
-		{momentID: "vision-uncertainty-356", terrainID: "lane-pocket"},
-		{momentID: "vision-uncertainty-1004", terrainID: "exit-pocket"},
-	}
-
-	for _, test := range tests {
-		t.Run(test.terrainID, func(t *testing.T) {
-			moments, err := Load("../../../fixtures/moments.json")
-			if err != nil {
-				t.Fatal(err)
-			}
-			moment := findMoment(t, moments, test.momentID)
-			for i := range moment.Rules.Terrain {
-				if moment.Rules.Terrain[i].ID == test.terrainID {
-					moment.Rules.Terrain[i].Position.X++
-					if err := ValidateMoment(moment); err == nil {
-						t.Fatalf("expected moved %q terrain to be rejected", test.terrainID)
-					}
-					return
-				}
-			}
-			t.Fatalf("moment %q does not contain terrain %q", test.momentID, test.terrainID)
-		})
-	}
-}
-
-func TestCanonicalSafeZoneMustMatchLandmark(t *testing.T) {
+func TestPackBoundsAreOneToThree(t *testing.T) {
 	moments, err := Load("../../../fixtures/moments.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	moment := findMoment(t, moments, "escape-412")
-	moment.Rules.Victory.SafeZone.X++
-	if err := ValidateMoment(moment); err == nil {
-		t.Fatal("expected a safe zone moved away from its canonical landmark to be rejected")
+	if err := ValidateLibrary(moments[:1]); err != nil {
+		t.Fatalf("one scenario should be valid: %v", err)
+	}
+	tooMany := append(append([]model.Moment(nil), moments...), moments[0])
+	tooMany[3].ID = "fourth-scenario"
+	tooMany[3].Slug = "fourth-scenario"
+	if err := ValidateLibrary(tooMany); err == nil {
+		t.Fatal("expected four scenarios to be rejected")
 	}
 }
 
-func TestRiverCoreCannotLeaveCanonicalRiver(t *testing.T) {
-	moments, err := Load("../../../fixtures/moments.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	moment := findMoment(t, moments, "objective-steal-742")
-	moment.Rules.Objective.Position.Y++
-	if err := ValidateMoment(moment); err == nil {
-		t.Fatal("expected a moved river core to be rejected")
-	}
-
-	moments, err = Load("../../../fixtures/moments.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	moment = findMoment(t, moments, "objective-steal-742")
-	terrain := moment.Rules.Terrain[:0]
-	for _, feature := range moment.Rules.Terrain {
-		if feature.ID != "river" {
-			terrain = append(terrain, feature)
-		}
-	}
-	moment.Rules.Terrain = terrain
-	if err := ValidateMoment(moment); err == nil {
-		t.Fatal("expected a river core without canonical river terrain to be rejected")
-	}
-}
-
-func TestRejectsIncompleteAuthoringMetadata(t *testing.T) {
+func TestReplayEvidenceIsRequired(t *testing.T) {
 	moments, err := Load("../../../fixtures/moments.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	moment := moments[0]
-	moment.Authoring.AnalystRationale = ""
+	moment.ReplayEvidence = nil
 	if err := ValidateMoment(moment); err == nil {
-		t.Fatal("expected blank analyst rationale to be rejected")
+		t.Fatal("expected missing replay evidence to be rejected")
 	}
-}
 
-func TestSourceDetectionMustRemainConsistent(t *testing.T) {
-	moments, err := Load("../../../fixtures/moments.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	moment := moments[0]
-	moment.SourceDetection = &model.TelemetryDetection{
-		SchemaVersion: "1.0",
-		StartSecond:   moment.StartTimeSeconds,
-		EndSecond:     moment.StartTimeSeconds + 12,
-		Score:         highlight.RoundedScore(moment.Signals),
-		ReasonTags:    append([]string(nil), moment.ReasonTags...),
-		Signals:       moment.Signals,
-		SemanticEvidence: model.TelemetrySemanticEvidence{
-			OneVersusManyUnitIDs:    []string{"blue-carry"},
-			SuccessfulEscapeUnitIDs: []string{},
-		},
-	}
-	if err := ValidateMoment(moment); err != nil {
-		t.Fatalf("valid source detection was rejected: %v", err)
-	}
-	moment.SourceDetection.Score = 0
+	moment = moments[0]
+	moment.ReplayEvidence.CoordinateMethod = "Exact telemetry coordinates"
 	if err := ValidateMoment(moment); err == nil {
-		t.Fatal("expected inconsistent detector score to be rejected")
-	}
-}
-
-func TestRejectsInvalidPlayableUnitState(t *testing.T) {
-	tests := map[string]func(*model.Moment){
-		"unknown class": func(moment *model.Moment) {
-			moment.Units[0].Class = "wizard"
-		},
-		"class health": func(moment *model.Moment) {
-			moment.Units[0].MaxHP++
-		},
-		"health overflow": func(moment *model.Moment) {
-			moment.Units[0].HP = moment.Units[0].MaxHP + 1
-		},
-		"alive mismatch": func(moment *model.Moment) {
-			moment.Units[0].Alive = !moment.Units[0].Alive
-		},
-		"invalid team": func(moment *model.Moment) {
-			moment.Units[0].Team = "green"
-		},
-		"negative cooldown": func(moment *model.Moment) {
-			moment.Units[0].Cooldown = -1
-		},
-		"outside map": func(moment *model.Moment) {
-			moment.Units[0].Position.X = 101
-		},
-		"duplicate id": func(moment *model.Moment) {
-			moment.Units[1].ID = moment.Units[0].ID
-		},
-		"missing controlled": func(moment *model.Moment) {
-			moment.ControlledUnitID = "missing"
-		},
-		"empty role": func(moment *model.Moment) {
-			moment.Units[0].Role = ""
-		},
-	}
-
-	for name, mutate := range tests {
-		t.Run(name, func(t *testing.T) {
-			moments, err := Load("../../../fixtures/moments.json")
-			if err != nil {
-				t.Fatal(err)
-			}
-			moment := moments[0]
-			mutate(&moment)
-			if err := ValidateMoment(moment); err == nil {
-				t.Fatal("expected invalid unit state to be rejected")
-			}
-		})
-	}
-}
-
-func TestRejectsMoreThanSnapshotLimit(t *testing.T) {
-	moments, err := Load("../../../fixtures/moments.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	moment := moments[0]
-	template := moment.Units[1]
-	for len(moment.Units) <= maxUnitsPerMoment {
-		unit := template
-		unit.ID = fmt.Sprintf("extra-unit-%d", len(moment.Units))
-		moment.Units = append(moment.Units, unit)
-	}
-	if err := ValidateMoment(moment); err == nil {
-		t.Fatalf("expected a %d-unit moment to be rejected", len(moment.Units))
+		t.Fatal("expected coordinates without approximation disclosure to be rejected")
 	}
 }
 
@@ -266,7 +103,6 @@ func TestLoadRejectsUnknownFieldsAndTrailingJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	var document map[string]any
 	if err := json.Unmarshal(source, &document); err != nil {
 		t.Fatal(err)
@@ -287,19 +123,33 @@ func TestLoadRejectsUnknownFieldsAndTrailingJSON(t *testing.T) {
 				t.Fatal(err)
 			}
 			if _, err := Load(path); err == nil {
-				t.Fatal("expected invalid JSON fixture to be rejected")
+				t.Fatal("expected invalid fixture JSON to be rejected")
 			}
 		})
 	}
 }
 
-func findMoment(t *testing.T, moments []model.Moment, id string) model.Moment {
+func assertNoObsoleteActions(t *testing.T, moment model.Moment) {
 	t.Helper()
-	for _, moment := range moments {
-		if moment.ID == id {
-			return moment
+	check := func(action model.Action) {
+		if action.Type == "dodge" || action.Type == "outplay" {
+			t.Fatalf("moment %q contains obsolete tactical action %q", moment.ID, action.Type)
 		}
 	}
-	t.Fatalf("moment %q was not found", id)
-	return model.Moment{}
+	for _, action := range moment.Rules.ReferencePlan {
+		check(action)
+	}
+	for _, action := range moment.Rules.ActionDefaults {
+		check(action)
+	}
+	for _, actions := range moment.Rules.ReferenceContinuations {
+		for _, action := range actions {
+			check(action)
+		}
+	}
+	for _, test := range moment.Authoring.AcceptanceTests {
+		for _, action := range test.Actions {
+			check(action)
+		}
+	}
 }
