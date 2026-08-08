@@ -170,7 +170,7 @@ export default function App() {
   if ((busy || error) && moments.length === 0) {
     return (
       <main className="shell shell--center">
-        <div className="brand">PLAYABLE / REPLAYS</div>
+        <div className="brand">PLAYABLE REPLAYS</div>
         <p>{error ?? "Loading pivotal moment…"}</p>
       </main>
     );
@@ -194,7 +194,7 @@ export default function App() {
   if (!session || !moment) {
     return (
       <main className="shell shell--center">
-        <div className="brand">PLAYABLE / REPLAYS</div>
+        <div className="brand">PLAYABLE REPLAYS</div>
         <p>{error ?? "Preparing tutorial…"}</p>
       </main>
     );
@@ -204,7 +204,7 @@ export default function App() {
     <main className="shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">PLAYABLE / REPLAYS</p>
+          <p className="eyebrow">PLAYABLE REPLAYS</p>
           <h1>{moment.title}</h1>
         </div>
         <div className="topbar__controls">
