@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	fixturePath := env("FIXTURE_PATH", "../fixtures/moments.json")
 	moments, err := fixtures.Load(fixturePath)
 	if err != nil {
