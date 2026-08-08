@@ -59,6 +59,7 @@ func TestSessionGameplayContractRoundTripsThroughJSON(t *testing.T) {
 			ID: "projectile-1", Team: "red", SourceUnitID: "red-marksman", TargetUnitID: "blue-carry",
 			Position: Point{X: 60, Y: 40}, Target: Point{X: 30, Y: 50}, Damage: 45,
 		}},
+		ProjectileCharges: 2, ProjectileAvailable: true,
 		DodgeCharges: 2, DodgeAvailable: true,
 		BotControl: BotControlState{Source: "external-model", ModelName: "action-policy", ModelVersion: "2"},
 	}
@@ -70,7 +71,7 @@ func TestSessionGameplayContractRoundTripsThroughJSON(t *testing.T) {
 	if err := json.Unmarshal(encoded, &fields); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"turrets", "projectiles", "dodgeCharges", "dodgeAvailable", "botControl"} {
+	for _, name := range []string{"turrets", "projectiles", "projectileCharges", "projectileAvailable", "dodgeCharges", "dodgeAvailable", "botControl"} {
 		if _, ok := fields[name]; !ok {
 			t.Fatalf("session JSON omitted %q: %s", name, encoded)
 		}
@@ -81,6 +82,7 @@ func TestSessionGameplayContractRoundTripsThroughJSON(t *testing.T) {
 	}
 	if len(decoded.Turrets) != 1 || decoded.Turrets[0].Lane != "top" ||
 		len(decoded.Projectiles) != 1 || decoded.Projectiles[0].Damage != 45 ||
+		decoded.ProjectileCharges != 2 || !decoded.ProjectileAvailable ||
 		decoded.DodgeCharges != 2 || !decoded.DodgeAvailable ||
 		decoded.BotControl.Source != "external-model" || decoded.BotControl.ModelName != "action-policy" {
 		t.Fatalf("session gameplay fields changed during JSON round trip: %+v", decoded)

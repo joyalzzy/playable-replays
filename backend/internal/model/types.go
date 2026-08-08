@@ -241,7 +241,13 @@ type Action struct {
 }
 
 type TurnRequest struct {
-	Action Action `json:"action"`
+	Action       Action `json:"action"`
+	TargetUnitID string `json:"targetUnitId,omitempty"`
+}
+
+type FireProjectileRequest struct {
+	SourceUnitID string `json:"sourceUnitId"`
+	TargetUnitID string `json:"targetUnitId"`
 }
 
 type LogEntry struct {
@@ -351,6 +357,8 @@ type Session struct {
 	Terrain             []TerrainFeature   `json:"terrain"`
 	Turrets             []Turret           `json:"turrets"`
 	Projectiles         []Projectile       `json:"projectiles"`
+	ProjectileCharges   int                `json:"projectileCharges"`
+	ProjectileAvailable bool               `json:"projectileAvailable"`
 	DodgeCharges        int                `json:"dodgeCharges"`
 	DodgeAvailable      bool               `json:"dodgeAvailable"`
 	BotControl          BotControlState    `json:"botControl"`

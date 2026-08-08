@@ -14,6 +14,7 @@ import (
 
 var ErrIllegalAction = errors.New("illegal action")
 var ErrDodgeUnavailable = errors.New("dodge unavailable")
+var ErrProjectileUnavailable = errors.New("projectile unavailable")
 
 var actionTypes = []string{"move", "hold", "contest", "retreat"}
 
@@ -67,6 +68,7 @@ func (e *Engine) Reset(sessionID string) model.Session {
 		Terrain:             slices.Clone(e.moment.Rules.Terrain),
 		Turrets:             canonicalTurrets(),
 		Projectiles:         []model.Projectile{},
+		ProjectileCharges:   2,
 		DodgeCharges:        2,
 		BotControl:          model.BotControlState{Source: botSource},
 		LegalActions:        slices.Clone(actionTypes),
@@ -81,6 +83,7 @@ func (e *Engine) Reset(sessionID string) model.Session {
 	}
 	e.applyFog(false)
 	e.updateDodgeAvailability()
+	e.updateProjectileAvailability()
 	e.recomputeAdvantage()
 	return e.State()
 }
@@ -139,6 +142,10 @@ func (e *Engine) Apply(action model.Action) (model.Session, error) {
 }
 
 func (e *Engine) ApplyContext(ctx context.Context, action model.Action) (model.Session, error) {
+	return e.ApplyTargetedContext(ctx, action, "")
+}
+
+func (e *Engine) ApplyTargetedContext(ctx context.Context, action model.Action, targetUnitID string) (model.Session, error) {
 	if e.session.Status != "active" {
 		return e.State(), fmt.Errorf("%w: session is complete", ErrIllegalAction)
 	}
@@ -146,7 +153,7 @@ func (e *Engine) ApplyContext(ctx context.Context, action model.Action) (model.S
 	if controlled == nil || !controlled.Alive {
 		return e.State(), fmt.Errorf("%w: controlled unit is unavailable", ErrIllegalAction)
 	}
-	if err := e.validateAction(action); err != nil {
+	if err := e.validatePlayerAction(action, targetUnitID); err != nil {
 		return e.State(), err
 	}
 	if ctx == nil {
@@ -161,12 +168,13 @@ func (e *Engine) ApplyContext(ctx context.Context, action model.Action) (model.S
 		e.evaluateOutcome()
 		e.revealReferenceForTurn()
 		e.updateDodgeAvailability()
+		e.updateProjectileAvailability()
 		if e.session.Status != "active" {
 			e.session.Debrief = e.buildDebrief()
 		}
 		return e.State(), nil
 	}
-	e.resolveUser(controlled, action)
+	e.resolveUser(controlled, action, targetUnitID)
 	e.applyFog(true)
 	botActions, modelUsed, fallback := e.modelActions(ctx)
 	e.resolveAllies(controlled, botActions, modelUsed)
@@ -180,6 +188,7 @@ func (e *Engine) ApplyContext(ctx context.Context, action model.Action) (model.S
 	e.evaluateOutcome()
 	e.revealReferenceForTurn()
 	e.updateDodgeAvailability()
+	e.updateProjectileAvailability()
 	if e.session.Status != "active" {
 		e.session.Debrief = e.buildDebrief()
 	}
@@ -197,7 +206,7 @@ func (e *Engine) beginTurn() {
 	}
 }
 
-func (e *Engine) resolveUser(unit *model.Unit, action model.Action) {
+func (e *Engine) resolveUser(unit *model.Unit, action model.Action, targetUnitID string) {
 	switch action.Type {
 	case "move":
 		e.moveUnit(unit, *action.Target, 1, "user", "reposition")
@@ -207,6 +216,16 @@ func (e *Engine) resolveUser(unit *model.Unit, action model.Action) {
 		e.addLog("user", "defense", "hold", unit.ID, unit.ID, 4,
 			fmt.Sprintf("%s held formation, gaining 4 shield and reducing incoming damage this turn.", unitName(*unit)))
 	case "contest":
+		if targetUnitID != "" {
+			target := e.unit(targetUnitID)
+			if target == nil || !target.Alive {
+				e.addLog("user", "position", "contest", unit.ID, targetUnitID, 0,
+					fmt.Sprintf("%s's selected target was no longer available when the attack resolved.", unitName(*unit)))
+				return
+			}
+			e.performAttack(unit, target, "user", "contest")
+			return
+		}
 		target := e.controlledContestTarget(*unit)
 		if target == nil {
 			if objective := e.moment.Rules.Objective; objective != nil {
@@ -417,6 +436,50 @@ func (e *Engine) fireProjectile(attacker, target *model.Unit, actor string) bool
 	return true
 }
 
+// FireProjectile spends one of the player's two projectile charges and queues
+// a shot from a live blue marksman. It is a reaction and does not advance the
+// tactical turn, model, objective, or reference search.
+func (e *Engine) FireProjectile(sourceUnitID, targetUnitID string) (model.Session, error) {
+	if e.session.Status != "active" || e.session.ProjectileCharges <= 0 {
+		return e.State(), ErrProjectileUnavailable
+	}
+	source := e.unit(sourceUnitID)
+	target := e.unit(targetUnitID)
+	if !e.canFirePlayerProjectile(source, target) {
+		return e.State(), ErrProjectileUnavailable
+	}
+	if !e.fireProjectile(source, target, "user") {
+		return e.State(), ErrProjectileUnavailable
+	}
+	e.session.ProjectileCharges--
+	e.updateDodgeAvailability()
+	e.updateProjectileAvailability()
+	return e.State(), nil
+}
+
+func (e *Engine) canFirePlayerProjectile(source, target *model.Unit) bool {
+	return source != nil && target != nil && source.Team == "blue" &&
+		source.Class == model.ClassMarksman && source.Alive && source.Cooldown == 0 &&
+		target.Team == "red" && target.Alive && target.Visible &&
+		distance(source.Position, target.Position) <= source.AttackRange
+}
+
+func (e *Engine) updateProjectileAvailability() {
+	e.session.ProjectileAvailable = false
+	if e.session.Status != "active" || e.session.ProjectileCharges <= 0 {
+		return
+	}
+	for sourceIndex := range e.session.Units {
+		source := &e.session.Units[sourceIndex]
+		for targetIndex := range e.session.Units {
+			if e.canFirePlayerProjectile(source, &e.session.Units[targetIndex]) {
+				e.session.ProjectileAvailable = true
+				return
+			}
+		}
+	}
+}
+
 func (e *Engine) resolveProjectiles() {
 	pending := append([]model.Projectile(nil), e.session.Projectiles...)
 	e.session.Projectiles = e.session.Projectiles[:0]
@@ -482,6 +545,7 @@ func (e *Engine) Dodge() (model.Session, error) {
 			unitName(*controlled), e.session.DodgeCharges, plural(e.session.DodgeCharges)))
 	e.applyFog(true)
 	e.updateDodgeAvailability()
+	e.updateProjectileAvailability()
 	return e.State(), nil
 }
 

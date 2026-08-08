@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"math"
 	"reflect"
@@ -134,6 +135,116 @@ func TestMarksmanProjectilePersistsUntilNextTacticalTurn(t *testing.T) {
 	}
 	if !logContains(state, "projectile hit") {
 		t.Fatalf("projectile impact was not explained: %+v", state.Log)
+	}
+}
+
+func TestTargetedContestAttacksSelectedEnemyInRange(t *testing.T) {
+	moment := testMoment()
+	moment.Units = append(moment.Units, model.Unit{
+		ID: "red-nearer", Team: "red", Role: "support", Class: model.ClassSupport, Policy: "support",
+		Position: model.Point{X: 38, Y: 50}, HP: 110, MaxHP: 110, Alive: true,
+	})
+	e := New(moment, "a")
+	state, err := e.ApplyTargetedContext(context.Background(), model.Action{Type: "contest"}, "red-one")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(state.Projectiles) != 1 || state.Projectiles[0].SourceUnitID != "blue-carry" ||
+		state.Projectiles[0].TargetUnitID != "red-one" {
+		t.Fatalf("targeted contest did not attack the selected enemy: %+v", state.Projectiles)
+	}
+}
+
+func TestInvalidTargetedContestLeavesStateUnchanged(t *testing.T) {
+	tests := map[string]func(*model.Moment) string{
+		"allied target":  func(moment *model.Moment) string { return "blue-carry" },
+		"unknown target": func(moment *model.Moment) string { return "missing" },
+		"hidden target": func(moment *model.Moment) string {
+			moment.Units[1].Position = model.Point{X: 99, Y: 99}
+			return "red-one"
+		},
+		"defeated target": func(moment *model.Moment) string {
+			moment.Units[1].HP = 0
+			moment.Units[1].Alive = false
+			return "red-one"
+		},
+		"outside attack range": func(moment *model.Moment) string {
+			moment.Units[0].VisionRange = 100
+			moment.Units[1].Position = model.Point{X: 70, Y: 50}
+			return "red-one"
+		},
+	}
+	for name, configure := range tests {
+		t.Run(name, func(t *testing.T) {
+			moment := testMoment()
+			targetUnitID := configure(&moment)
+			e := New(moment, "a")
+			before := e.State()
+			after, err := e.ApplyTargetedContext(context.Background(), model.Action{Type: "contest"}, targetUnitID)
+			if !errors.Is(err, ErrIllegalAction) {
+				t.Fatalf("expected illegal action, got %v", err)
+			}
+			if !reflect.DeepEqual(before, after) {
+				t.Fatal("invalid targeted contest mutated state")
+			}
+		})
+	}
+}
+
+func TestPlayerProjectileUsesTwoChargesWithoutAdvancingTurn(t *testing.T) {
+	moment := testMoment()
+	moment.Units[1].HP = 125
+	e := New(moment, "a")
+	initial := e.State()
+	if initial.ProjectileCharges != 2 || !initial.ProjectileAvailable {
+		t.Fatalf("expected two ready projectile charges: %+v", initial)
+	}
+	state, err := e.FireProjectile("blue-carry", "red-one")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Turn != 0 || state.ProjectileCharges != 1 || state.ProjectileAvailable || len(state.Projectiles) != 1 ||
+		state.Projectiles[0].SourceUnitID != "blue-carry" || state.Projectiles[0].TargetUnitID != "red-one" {
+		t.Fatalf("first player projectile was not queued as a bounded reaction: %+v", state)
+	}
+
+	if _, err = e.Apply(model.Action{Type: "hold"}); err != nil {
+		t.Fatal(err)
+	}
+	if state, err = e.Apply(model.Action{Type: "hold"}); err != nil {
+		t.Fatal(err)
+	}
+	if !state.ProjectileAvailable {
+		t.Fatalf("marksman should be ready to spend the second charge: %+v", state)
+	}
+	state, err = e.FireProjectile("blue-carry", "red-one")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Turn != 2 || state.ProjectileCharges != 0 || state.ProjectileAvailable || len(state.Projectiles) != 1 {
+		t.Fatalf("second projectile did not exhaust the player charges: %+v", state)
+	}
+	before := state
+	after, err := e.FireProjectile("blue-carry", "red-one")
+	if !errors.Is(err, ErrProjectileUnavailable) || !reflect.DeepEqual(before, after) {
+		t.Fatalf("exhausted projectile fire should fail without mutation: err=%v state=%+v", err, after)
+	}
+}
+
+func TestNonMarksmanPlayerCanDirectMarksmanTeammate(t *testing.T) {
+	moment := testMoment()
+	moment.Units[0] = model.Unit{
+		ID: "blue-carry", Team: "blue", Role: "fighter", Class: model.ClassFighter, Policy: "controlled",
+		Position: model.Point{X: 30, Y: 50}, HP: 125, MaxHP: 125, Alive: true,
+	}
+	moment.Units = append(moment.Units, model.Unit{
+		ID: "blue-marksman", Team: "blue", Role: "marksman", Class: model.ClassMarksman, Policy: "aggressive",
+		Position: model.Point{X: 32, Y: 50}, HP: 90, MaxHP: 90, Alive: true,
+	})
+	e := New(moment, "a")
+	state, err := e.FireProjectile("blue-marksman", "red-one")
+	if err != nil || len(state.Projectiles) != 1 || state.Projectiles[0].SourceUnitID != "blue-marksman" {
+		t.Fatalf("marksman teammate did not fire for a non-marksman player: err=%v state=%+v", err, state)
 	}
 }
 
