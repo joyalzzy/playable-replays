@@ -44,7 +44,7 @@ export function BeginnerGuide({ onBack, onStartTutorial }: BeginnerGuideProps) {
     <main className="beginner-guide">
       <header className="beginner-guide__topbar">
         <div>
-          <p className="eyebrow">PLAYABLE / REPLAYS</p>
+          <p className="eyebrow">PLAYABLE REPLAYS</p>
           <span>Beginner field guide</span>
         </div>
         <button className="menu-return" type="button" onClick={onBack}>Back to main menu</button>
