@@ -9,10 +9,11 @@ function ModeIcon({ kind }: ModeIconProps) {
   if (kind === "tutorial") {
     return (
       <svg className="mode-icon" viewBox="0 0 120 120" aria-hidden="true">
-        <path d="M23 30 58 19l39 13v59L61 102 23 89Z" />
-        <path d="m23 30 38 13 36-11M61 43v59" />
-        <path className="mode-icon__accent" d="m48 58 25 14-25 14Z" />
-        <circle cx="84" cy="48" r="5" />
+        <path d="M35 42h50c9 0 15 7 18 18l5 19c3 12-9 21-19 14L76 83H44L31 93c-10 7-22-2-19-14l5-19c3-11 9-18 18-18Z" />
+        <path d="M35 61h20M45 51v20" />
+        <circle className="mode-icon__accent" cx="78" cy="57" r="5" />
+        <circle className="mode-icon__accent" cx="90" cy="68" r="5" />
+        <path d="M48 42c2-10 8-15 17-15h8" />
       </svg>
     );
   }
