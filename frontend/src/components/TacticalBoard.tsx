@@ -1,5 +1,4 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent } from "react";
-import { roleMarks } from "../replaySymbols";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import type { ObjectiveState, Point, Projectile, TerrainFeature, Turret, Unit } from "../types";
 
 const laneIDs = ["top-lane", "middle-lane", "bottom-lane"] as const;
@@ -13,6 +12,19 @@ function projectileAngle(projectile: Projectile) {
   const deltaX = projectile.target.x - projectile.position.x;
   const deltaY = projectile.target.y - projectile.position.y;
   return Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+}
+
+// The supplied sprites point toward the upper-right (-45 degrees in screen
+// coordinates), so add 45 degrees to align the arrow with a movement vector.
+export function movementFacingAngle(team: Unit["team"], previous?: Point, current?: Point) {
+  if (previous && current) {
+    const deltaX = current.x - previous.x;
+    const deltaY = current.y - previous.y;
+    if (Math.hypot(deltaX, deltaY) > 0.001) {
+      return Math.atan2(deltaY, deltaX) * 180 / Math.PI + 45;
+    }
+  }
+  return team === "blue" ? 0 : 180;
 }
 
 type Props = {
@@ -97,6 +109,8 @@ export function TacticalBoard({
 }: Props) {
   const [hoverPoint, setHoverPoint] = useState<Point>();
   const [selectedUnitId, setSelectedUnitId] = useState(controlledUnitId);
+  const previousPositions = useRef(new Map<string, Point>());
+  const facingAngles = useRef(new Map<string, number>());
   const visibleUnits = units.filter((unit) => unit.visible && unit.alive);
   const controlledUnit = visibleUnits.find((unit) => unit.id === controlledUnitId);
   const selectedUnit = visibleUnits.find((unit) => unit.id === selectedUnitId) ?? controlledUnit;
@@ -288,6 +302,16 @@ export function TacticalBoard({
       )}
       {visibleUnits.map((unit) => {
         const selected = unit.id === selectedUnit?.id;
+        const previousPosition = previousPositions.current.get(unit.id);
+        const moved = previousPosition && Math.hypot(
+          unit.position.x - previousPosition.x,
+          unit.position.y - previousPosition.y
+        ) > 0.001;
+        const facing = moved
+          ? movementFacingAngle(unit.team, previousPosition, unit.position)
+          : (facingAngles.current.get(unit.id) ?? movementFacingAngle(unit.team));
+        previousPositions.current.set(unit.id, { ...unit.position });
+        facingAngles.current.set(unit.id, facing);
         return (
           <button
             key={unit.id}
@@ -300,7 +324,11 @@ export function TacticalBoard({
               unit.guarded ? "unit--guarded" : "",
               selected ? "unit--selected" : ""
             ].filter(Boolean).join(" ")}
-            style={{ left: `${projectPoint(unit.position).x}%`, top: `${projectPoint(unit.position).y}%` }}
+            style={{
+              left: `${projectPoint(unit.position).x}%`,
+              top: `${projectPoint(unit.position).y}%`,
+              "--unit-facing": `${facing}deg`
+            } as CSSProperties}
             title={`${unit.class} ${unit.role}: ${unit.hp}/${unit.maxHp} HP · ${unit.moveRange} movement · ${unit.attackRange} attack range`}
             type="button"
             aria-label={`${unit.team} ${unit.class} unit, ${unit.hp} of ${unit.maxHp} health${unit.id === controlledUnitId ? ", controlled" : ""}`}
@@ -308,9 +336,7 @@ export function TacticalBoard({
             onClick={() => setSelectedUnitId(unit.id)}
             onFocus={() => setSelectedUnitId(unit.id)}
           >
-            <span className="unit__portrait" aria-hidden="true">
-              <span className="unit__role">{roleMarks[unit.role] ?? unit.role.slice(0, 2).toUpperCase()}</span>
-            </span>
+            <span className="unit__sprite" aria-hidden="true" />
             <span className="unit__team-dot" aria-hidden="true" />
             {unit.shield > 0 && <span className="unit__shield">+{unit.shield}</span>}
             <span className="unit__health">

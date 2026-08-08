@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Projectile, Turret, Unit } from "../types";
-import { clampTargetToMoveRange, TacticalBoard } from "./TacticalBoard";
+import { clampTargetToMoveRange, movementFacingAngle, TacticalBoard } from "./TacticalBoard";
 
 afterEach(cleanup);
 
@@ -95,6 +95,13 @@ const projectiles: Projectile[] = [{
 }];
 
 describe("TacticalBoard", () => {
+  it("aligns supplied player arrows with team and movement direction", () => {
+    expect(movementFacingAngle("blue")).toBe(0);
+    expect(movementFacingAngle("red")).toBe(180);
+    expect(movementFacingAngle("blue", { x: 10, y: 10 }, { x: 20, y: 10 })).toBe(45);
+    expect(movementFacingAngle("red", { x: 20, y: 20 }, { x: 20, y: 10 })).toBe(-45);
+  });
+
   it("does not render hidden enemies", () => {
     const { container } = render(
       <TacticalBoard

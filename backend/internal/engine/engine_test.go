@@ -34,6 +34,22 @@ func testMoment() model.Moment {
 	}
 }
 
+func TestCanonicalTurretsMatchMapMarkers(t *testing.T) {
+	turrets := canonicalTurrets()
+	if len(turrets) != 6 {
+		t.Fatalf("expected six canonical turrets, got %d", len(turrets))
+	}
+	expected := []model.Point{
+		{X: 8.5, Y: 59}, {X: 29, Y: 70.5}, {X: 40.7, Y: 91.5},
+		{X: 59.7, Y: 7.5}, {X: 71.4, Y: 28.3}, {X: 92, Y: 40},
+	}
+	for index, turret := range turrets {
+		if turret.Position != expected[index] {
+			t.Fatalf("%s is at %+v, want %+v", turret.ID, turret.Position, expected[index])
+		}
+	}
+}
+
 func sessionUnit(t *testing.T, state model.Session, id string) model.Unit {
 	t.Helper()
 	for _, unit := range state.Units {

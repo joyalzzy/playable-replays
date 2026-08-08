@@ -1,0 +1,4530 @@
+{
+  "version": "1.0",
+  "pools": {
+    "resource-trade-932": [
+      {
+        "id": "dataset-resource-trade-932-1-250",
+        "slug": "dataset-resource-trade-932-1-250",
+        "title": "Dataset Formation 1 · 4:10",
+        "description": "An anonymized replay-packet formation adapted to the authoritative tactical simulator.",
+        "map": "Dataset-derived formation · synthetic simulator rules",
+        "startTimeSeconds": 250,
+        "seed": 122200000,
+        "maxTurns": 4,
+        "controlledUnitId": "blue-4",
+        "reasonTags": [
+          "decoded-replay-packets",
+          "anonymized-formation",
+          "counterfactual-estimate"
+        ],
+        "signals": {
+          "winProbabilitySwing": 0.72,
+          "eventDensity": 0.75,
+          "entityProximity": 0.28,
+          "resourceAsymmetry": 0.65
+        },
+        "units": [
+          {
+            "id": "blue-1",
+            "team": "blue",
+            "role": "Anonymized blue unit 1",
+            "class": "fighter",
+            "policy": "protector",
+            "position": {
+              "x": 34.5,
+              "y": 41.49
+            },
+            "hp": 112,
+            "maxHp": 125,
+            "moveRange": 10,
+            "attackRange": 14,
+            "attackDamage": 23,
+            "moveSpeed": 10,
+            "armor": 28,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-2",
+            "team": "blue",
+            "role": "Anonymized blue unit 2",
+            "class": "assassin",
+            "policy": "protector",
+            "position": {
+              "x": 52.92,
+              "y": 52.57
+            },
+            "hp": 82,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 25,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-3",
+            "team": "blue",
+            "role": "Anonymized blue unit 3",
+            "class": "mage",
+            "policy": "protector",
+            "position": {
+              "x": 27.0,
+              "y": 47.33
+            },
+            "hp": 80,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-4",
+            "team": "blue",
+            "role": "Anonymized blue unit 4",
+            "class": "marksman",
+            "policy": "controlled",
+            "position": {
+              "x": 41.48,
+              "y": 36.0
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-5",
+            "team": "blue",
+            "role": "Anonymized blue unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 30.86,
+              "y": 34.5
+            },
+            "hp": 96,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-1",
+            "team": "red",
+            "role": "Anonymized red unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 52.07,
+              "y": 19.26
+            },
+            "hp": 145,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-2",
+            "team": "red",
+            "role": "Anonymized red unit 2",
+            "class": "assassin",
+            "policy": "protector",
+            "position": {
+              "x": 41.63,
+              "y": 26.25
+            },
+            "hp": 92,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 25,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 2,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-3",
+            "team": "red",
+            "role": "Anonymized red unit 3",
+            "class": "mage",
+            "policy": "protector",
+            "position": {
+              "x": 46.15,
+              "y": 29.25
+            },
+            "hp": 88,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 2,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-4",
+            "team": "red",
+            "role": "Anonymized red unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 49.26,
+              "y": 32.25
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-5",
+            "team": "red",
+            "role": "Anonymized red unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 45.44,
+              "y": 29.25
+            },
+            "hp": 105,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          }
+        ],
+        "rules": {
+          "initialAdvantage": 0.32,
+          "victory": {
+            "kind": "skirmish",
+            "description": "Disengage to the blue base gate before BLG converts the traded objectives into a fight.",
+            "defeatDescription": "The controlled marksman was eliminated before completing the disengage.",
+            "allowEscape": true,
+            "safeZone": {
+              "x": 16,
+              "y": 82
+            },
+            "safeRadius": 10,
+            "escapeTurns": 1
+          },
+          "terrain": [
+            {
+              "id": "river",
+              "label": "River",
+              "kind": "river",
+              "position": {
+                "x": 50,
+                "y": 52
+              },
+              "radius": 12,
+              "moveMultiplier": 0.9,
+              "blocksVision": false
+            },
+            {
+              "id": "base-gate",
+              "label": "Blue base gate",
+              "kind": "safe-zone",
+              "position": {
+                "x": 16,
+                "y": 82
+              },
+              "radius": 10,
+              "moveMultiplier": 1,
+              "blocksVision": false
+            }
+          ],
+          "referencePlan": [
+            {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            }
+          ],
+          "referenceReasons": [
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative."
+          ],
+          "referenceContinuations": {
+            "move": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "hold": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "contest": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "retreat": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ]
+          },
+          "actionDefaults": {
+            "move": {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            },
+            "hold": {
+              "type": "hold"
+            },
+            "contest": {
+              "type": "contest"
+            },
+            "retreat": {
+              "type": "retreat"
+            }
+          }
+        },
+        "authoring": {
+          "category": "resource-trade",
+          "skillLevel": "beginner",
+          "analystRationale": "Replay packets supply an anonymized formation and action prior; all combat rules and outcomes remain synthetic counterfactual estimates.",
+          "intendedTradeoffs": [
+            "Retreat gives up a low-probability contest but preserves the completed cross-map value.",
+            "Contest offers immediate pressure but exposes a fragile marksman to BLG's grouped collapse."
+          ],
+          "plausibleAlternatives": [
+            {
+              "action": {
+                "type": "hold"
+              },
+              "when": "If the retreat route is briefly blocked.",
+              "tradeoff": "Guard reduces basic damage but does not stop marksman projectiles."
+            },
+            {
+              "action": {
+                "type": "move",
+                "target": {
+                  "x": 34,
+                  "y": 58
+                }
+              },
+              "when": "If a shorter lateral route opens.",
+              "tradeoff": "Manual movement can reposition but does not automatically enter the safe zone."
+            }
+          ],
+          "acceptanceTests": [
+            {
+              "name": "bank-the-trade",
+              "actions": [
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "hold"
+                }
+              ],
+              "dodgeBeforeTurns": [
+                2
+              ],
+              "expectedStatus": "won",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "disengaged"
+            },
+            {
+              "name": "overstay-and-fall",
+              "actions": [
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "hold"
+                }
+              ],
+              "dodgeBeforeTurns": [],
+              "expectedStatus": "lost",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "eliminated"
+            }
+          ]
+        },
+        "datasetEvidence": {
+          "repoId": "maknee/league-of-legends-decoded-replay-packets",
+          "patch": "12_22",
+          "sourceFile": "batch_001.jsonl.gz",
+          "sourceSha256": "a0fdcb5fc12182fbdb8be0ce8c56c4490e5bd03abc7ccfeb82fe5c1346e3edbe",
+          "matchIndex": 0,
+          "windowStartSeconds": 250,
+          "coordinateMethod": "25% normalized packet positions blended with 75% authored template positions; approximate and not replay-exact.",
+          "anonymized": true,
+          "rulesSourceMomentId": "resource-trade-932"
+        }
+      },
+      {
+        "id": "dataset-resource-trade-932-2-400",
+        "slug": "dataset-resource-trade-932-2-400",
+        "title": "Dataset Formation 2 · 6:40",
+        "description": "An anonymized replay-packet formation adapted to the authoritative tactical simulator.",
+        "map": "Dataset-derived formation · synthetic simulator rules",
+        "startTimeSeconds": 400,
+        "seed": 122200101,
+        "maxTurns": 4,
+        "controlledUnitId": "blue-4",
+        "reasonTags": [
+          "decoded-replay-packets",
+          "anonymized-formation",
+          "counterfactual-estimate"
+        ],
+        "signals": {
+          "winProbabilitySwing": 0.72,
+          "eventDensity": 0.75,
+          "entityProximity": 0.28,
+          "resourceAsymmetry": 0.65
+        },
+        "units": [
+          {
+            "id": "blue-1",
+            "team": "blue",
+            "role": "Anonymized blue unit 1",
+            "class": "fighter",
+            "policy": "protector",
+            "position": {
+              "x": 36.61,
+              "y": 32.25
+            },
+            "hp": 112,
+            "maxHp": 125,
+            "moveRange": 10,
+            "attackRange": 14,
+            "attackDamage": 23,
+            "moveSpeed": 10,
+            "armor": 28,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-2",
+            "team": "blue",
+            "role": "Anonymized blue unit 2",
+            "class": "assassin",
+            "policy": "protector",
+            "position": {
+              "x": 52.67,
+              "y": 50.25
+            },
+            "hp": 82,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 25,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-3",
+            "team": "blue",
+            "role": "Anonymized blue unit 3",
+            "class": "mage",
+            "policy": "protector",
+            "position": {
+              "x": 28.37,
+              "y": 38.25
+            },
+            "hp": 80,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-4",
+            "team": "blue",
+            "role": "Anonymized blue unit 4",
+            "class": "marksman",
+            "policy": "controlled",
+            "position": {
+              "x": 41.2,
+              "y": 36.0
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-5",
+            "team": "blue",
+            "role": "Anonymized blue unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 37.77,
+              "y": 34.5
+            },
+            "hp": 96,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-1",
+            "team": "red",
+            "role": "Anonymized red unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 52.36,
+              "y": 18.0
+            },
+            "hp": 145,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-2",
+            "team": "red",
+            "role": "Anonymized red unit 2",
+            "class": "assassin",
+            "policy": "protector",
+            "position": {
+              "x": 32.25,
+              "y": 34.49
+            },
+            "hp": 92,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 25,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 2,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-3",
+            "team": "red",
+            "role": "Anonymized red unit 3",
+            "class": "mage",
+            "policy": "protector",
+            "position": {
+              "x": 53.44,
+              "y": 29.25
+            },
+            "hp": 88,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 2,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-4",
+            "team": "red",
+            "role": "Anonymized red unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 39.75,
+              "y": 38.42
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-5",
+            "team": "red",
+            "role": "Anonymized red unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 38.25,
+              "y": 38.16
+            },
+            "hp": 105,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          }
+        ],
+        "rules": {
+          "initialAdvantage": 0.32,
+          "victory": {
+            "kind": "skirmish",
+            "description": "Disengage to the blue base gate before BLG converts the traded objectives into a fight.",
+            "defeatDescription": "The controlled marksman was eliminated before completing the disengage.",
+            "allowEscape": true,
+            "safeZone": {
+              "x": 16,
+              "y": 82
+            },
+            "safeRadius": 10,
+            "escapeTurns": 1
+          },
+          "terrain": [
+            {
+              "id": "river",
+              "label": "River",
+              "kind": "river",
+              "position": {
+                "x": 50,
+                "y": 52
+              },
+              "radius": 12,
+              "moveMultiplier": 0.9,
+              "blocksVision": false
+            },
+            {
+              "id": "base-gate",
+              "label": "Blue base gate",
+              "kind": "safe-zone",
+              "position": {
+                "x": 16,
+                "y": 82
+              },
+              "radius": 10,
+              "moveMultiplier": 1,
+              "blocksVision": false
+            }
+          ],
+          "referencePlan": [
+            {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            }
+          ],
+          "referenceReasons": [
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative."
+          ],
+          "referenceContinuations": {
+            "move": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "hold": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "contest": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "retreat": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ]
+          },
+          "actionDefaults": {
+            "move": {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            },
+            "hold": {
+              "type": "hold"
+            },
+            "contest": {
+              "type": "contest"
+            },
+            "retreat": {
+              "type": "retreat"
+            }
+          }
+        },
+        "authoring": {
+          "category": "resource-trade",
+          "skillLevel": "beginner",
+          "analystRationale": "Replay packets supply an anonymized formation and action prior; all combat rules and outcomes remain synthetic counterfactual estimates.",
+          "intendedTradeoffs": [
+            "Retreat gives up a low-probability contest but preserves the completed cross-map value.",
+            "Contest offers immediate pressure but exposes a fragile marksman to BLG's grouped collapse."
+          ],
+          "plausibleAlternatives": [
+            {
+              "action": {
+                "type": "hold"
+              },
+              "when": "If the retreat route is briefly blocked.",
+              "tradeoff": "Guard reduces basic damage but does not stop marksman projectiles."
+            },
+            {
+              "action": {
+                "type": "move",
+                "target": {
+                  "x": 34,
+                  "y": 58
+                }
+              },
+              "when": "If a shorter lateral route opens.",
+              "tradeoff": "Manual movement can reposition but does not automatically enter the safe zone."
+            }
+          ],
+          "acceptanceTests": [
+            {
+              "name": "bank-the-trade",
+              "actions": [
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "hold"
+                }
+              ],
+              "dodgeBeforeTurns": [
+                2
+              ],
+              "expectedStatus": "won",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "disengaged"
+            },
+            {
+              "name": "overstay-and-fall",
+              "actions": [
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "hold"
+                }
+              ],
+              "dodgeBeforeTurns": [],
+              "expectedStatus": "lost",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "eliminated"
+            }
+          ]
+        },
+        "datasetEvidence": {
+          "repoId": "maknee/league-of-legends-decoded-replay-packets",
+          "patch": "12_22",
+          "sourceFile": "batch_001.jsonl.gz",
+          "sourceSha256": "a0fdcb5fc12182fbdb8be0ce8c56c4490e5bd03abc7ccfeb82fe5c1346e3edbe",
+          "matchIndex": 1,
+          "windowStartSeconds": 400,
+          "coordinateMethod": "25% normalized packet positions blended with 75% authored template positions; approximate and not replay-exact.",
+          "anonymized": true,
+          "rulesSourceMomentId": "resource-trade-932"
+        }
+      },
+      {
+        "id": "dataset-resource-trade-932-3-160",
+        "slug": "dataset-resource-trade-932-3-160",
+        "title": "Dataset Formation 3 · 2:40",
+        "description": "An anonymized replay-packet formation adapted to the authoritative tactical simulator.",
+        "map": "Dataset-derived formation · synthetic simulator rules",
+        "startTimeSeconds": 160,
+        "seed": 122200202,
+        "maxTurns": 4,
+        "controlledUnitId": "blue-4",
+        "reasonTags": [
+          "decoded-replay-packets",
+          "anonymized-formation",
+          "counterfactual-estimate"
+        ],
+        "signals": {
+          "winProbabilitySwing": 0.72,
+          "eventDensity": 0.75,
+          "entityProximity": 0.28,
+          "resourceAsymmetry": 0.65
+        },
+        "units": [
+          {
+            "id": "blue-1",
+            "team": "blue",
+            "role": "Anonymized blue unit 1",
+            "class": "fighter",
+            "policy": "protector",
+            "position": {
+              "x": 43.94,
+              "y": 32.25
+            },
+            "hp": 112,
+            "maxHp": 125,
+            "moveRange": 10,
+            "attackRange": 14,
+            "attackDamage": 23,
+            "moveSpeed": 10,
+            "armor": 28,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-2",
+            "team": "blue",
+            "role": "Anonymized blue unit 2",
+            "class": "assassin",
+            "policy": "protector",
+            "position": {
+              "x": 51.0,
+              "y": 57.54
+            },
+            "hp": 82,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 25,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-3",
+            "team": "blue",
+            "role": "Anonymized blue unit 3",
+            "class": "mage",
+            "policy": "protector",
+            "position": {
+              "x": 27.0,
+              "y": 46.62
+            },
+            "hp": 80,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-4",
+            "team": "blue",
+            "role": "Anonymized blue unit 4",
+            "class": "marksman",
+            "policy": "controlled",
+            "position": {
+              "x": 33.0,
+              "y": 44.37
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-5",
+            "team": "blue",
+            "role": "Anonymized blue unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 30.75,
+              "y": 34.5
+            },
+            "hp": 96,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-1",
+            "team": "red",
+            "role": "Anonymized red unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 50.67,
+              "y": 18.18
+            },
+            "hp": 145,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-2",
+            "team": "red",
+            "role": "Anonymized red unit 2",
+            "class": "assassin",
+            "policy": "protector",
+            "position": {
+              "x": 32.25,
+              "y": 26.25
+            },
+            "hp": 92,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 25,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 2,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-3",
+            "team": "red",
+            "role": "Anonymized red unit 3",
+            "class": "mage",
+            "policy": "protector",
+            "position": {
+              "x": 42.75,
+              "y": 37.07
+            },
+            "hp": 88,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 2,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-4",
+            "team": "red",
+            "role": "Anonymized red unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 47.9,
+              "y": 32.25
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-5",
+            "team": "red",
+            "role": "Anonymized red unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 38.44,
+              "y": 29.25
+            },
+            "hp": 105,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          }
+        ],
+        "rules": {
+          "initialAdvantage": 0.32,
+          "victory": {
+            "kind": "skirmish",
+            "description": "Disengage to the blue base gate before BLG converts the traded objectives into a fight.",
+            "defeatDescription": "The controlled marksman was eliminated before completing the disengage.",
+            "allowEscape": true,
+            "safeZone": {
+              "x": 16,
+              "y": 82
+            },
+            "safeRadius": 10,
+            "escapeTurns": 1
+          },
+          "terrain": [
+            {
+              "id": "river",
+              "label": "River",
+              "kind": "river",
+              "position": {
+                "x": 50,
+                "y": 52
+              },
+              "radius": 12,
+              "moveMultiplier": 0.9,
+              "blocksVision": false
+            },
+            {
+              "id": "base-gate",
+              "label": "Blue base gate",
+              "kind": "safe-zone",
+              "position": {
+                "x": 16,
+                "y": 82
+              },
+              "radius": 10,
+              "moveMultiplier": 1,
+              "blocksVision": false
+            }
+          ],
+          "referencePlan": [
+            {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            }
+          ],
+          "referenceReasons": [
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative."
+          ],
+          "referenceContinuations": {
+            "move": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "hold": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "contest": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "retreat": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ]
+          },
+          "actionDefaults": {
+            "move": {
+              "type": "move",
+              "target": {
+                "x": 34,
+                "y": 58
+              }
+            },
+            "hold": {
+              "type": "hold"
+            },
+            "contest": {
+              "type": "contest"
+            },
+            "retreat": {
+              "type": "retreat"
+            }
+          }
+        },
+        "authoring": {
+          "category": "resource-trade",
+          "skillLevel": "beginner",
+          "analystRationale": "Replay packets supply an anonymized formation and action prior; all combat rules and outcomes remain synthetic counterfactual estimates.",
+          "intendedTradeoffs": [
+            "Retreat gives up a low-probability contest but preserves the completed cross-map value.",
+            "Contest offers immediate pressure but exposes a fragile marksman to BLG's grouped collapse."
+          ],
+          "plausibleAlternatives": [
+            {
+              "action": {
+                "type": "hold"
+              },
+              "when": "If the retreat route is briefly blocked.",
+              "tradeoff": "Guard reduces basic damage but does not stop marksman projectiles."
+            },
+            {
+              "action": {
+                "type": "move",
+                "target": {
+                  "x": 34,
+                  "y": 58
+                }
+              },
+              "when": "If a shorter lateral route opens.",
+              "tradeoff": "Manual movement can reposition but does not automatically enter the safe zone."
+            }
+          ],
+          "acceptanceTests": [
+            {
+              "name": "bank-the-trade",
+              "actions": [
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "hold"
+                }
+              ],
+              "dodgeBeforeTurns": [
+                2
+              ],
+              "expectedStatus": "won",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "disengaged"
+            },
+            {
+              "name": "overstay-and-fall",
+              "actions": [
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "hold"
+                }
+              ],
+              "dodgeBeforeTurns": [],
+              "expectedStatus": "lost",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "eliminated"
+            }
+          ]
+        },
+        "datasetEvidence": {
+          "repoId": "maknee/league-of-legends-decoded-replay-packets",
+          "patch": "12_22",
+          "sourceFile": "batch_001.jsonl.gz",
+          "sourceSha256": "a0fdcb5fc12182fbdb8be0ce8c56c4490e5bd03abc7ccfeb82fe5c1346e3edbe",
+          "matchIndex": 2,
+          "windowStartSeconds": 160,
+          "coordinateMethod": "25% normalized packet positions blended with 75% authored template positions; approximate and not replay-exact.",
+          "anonymized": true,
+          "rulesSourceMomentId": "resource-trade-932"
+        }
+      }
+    ],
+    "positioning-1295": [
+      {
+        "id": "dataset-positioning-1295-4-140",
+        "slug": "dataset-positioning-1295-4-140",
+        "title": "Dataset Formation 4 · 2:20",
+        "description": "An anonymized replay-packet formation adapted to the authoritative tactical simulator.",
+        "map": "Dataset-derived formation · synthetic simulator rules",
+        "startTimeSeconds": 140,
+        "seed": 122200300,
+        "maxTurns": 5,
+        "controlledUnitId": "blue-3",
+        "reasonTags": [
+          "decoded-replay-packets",
+          "anonymized-formation",
+          "counterfactual-estimate"
+        ],
+        "signals": {
+          "winProbabilitySwing": 0.82,
+          "eventDensity": 0.78,
+          "entityProximity": 0.22,
+          "resourceAsymmetry": 0.7
+        },
+        "units": [
+          {
+            "id": "blue-1",
+            "team": "blue",
+            "role": "Anonymized blue unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 32.66,
+              "y": 27.31
+            },
+            "hp": 148,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-2",
+            "team": "blue",
+            "role": "Anonymized blue unit 2",
+            "class": "fighter",
+            "policy": "protector",
+            "position": {
+              "x": 40.74,
+              "y": 30.0
+            },
+            "hp": 108,
+            "maxHp": 125,
+            "moveRange": 10,
+            "attackRange": 14,
+            "attackDamage": 23,
+            "moveSpeed": 10,
+            "armor": 28,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-3",
+            "team": "blue",
+            "role": "Anonymized blue unit 3",
+            "class": "mage",
+            "policy": "controlled",
+            "position": {
+              "x": 29.25,
+              "y": 27.75
+            },
+            "hp": 95,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 2,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-4",
+            "team": "blue",
+            "role": "Anonymized blue unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 68.27,
+              "y": 51.75
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-5",
+            "team": "blue",
+            "role": "Anonymized blue unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 26.25,
+              "y": 32.25
+            },
+            "hp": 100,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-1",
+            "team": "red",
+            "role": "Anonymized red unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 39.77,
+              "y": 27.16
+            },
+            "hp": 152,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-2",
+            "team": "red",
+            "role": "Anonymized red unit 2",
+            "class": "assassin",
+            "policy": "aggressive",
+            "position": {
+              "x": 37.5,
+              "y": 32.25
+            },
+            "hp": 90,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 34,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 1,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-3",
+            "team": "red",
+            "role": "Anonymized red unit 3",
+            "class": "mage",
+            "policy": "protector",
+            "position": {
+              "x": 50.61,
+              "y": 28.5
+            },
+            "hp": 95,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-4",
+            "team": "red",
+            "role": "Anonymized red unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 41.25,
+              "y": 39.24
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-5",
+            "team": "red",
+            "role": "Anonymized red unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 39.75,
+              "y": 38.81
+            },
+            "hp": 105,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          }
+        ],
+        "rules": {
+          "initialAdvantage": 0.43,
+          "victory": {
+            "kind": "eliminate-target",
+            "targetUnitId": "red-3",
+            "description": "Delay the all-in until the allied marksman enters range, then eliminate the exposed mid laner.",
+            "defeatDescription": "The engage was forced before the primary damage dealer could contribute.",
+            "allowEscape": false,
+            "safeZone": {
+              "x": 16,
+              "y": 82
+            },
+            "safeRadius": 8,
+            "escapeTurns": 2
+          },
+          "terrain": [
+            {
+              "id": "river",
+              "label": "River",
+              "kind": "river",
+              "position": {
+                "x": 50,
+                "y": 52
+              },
+              "radius": 12,
+              "moveMultiplier": 0.9,
+              "blocksVision": false
+            },
+            {
+              "id": "top-brush",
+              "label": "Top-side brush",
+              "kind": "brush",
+              "position": {
+                "x": 49,
+                "y": 34
+              },
+              "radius": 8,
+              "moveMultiplier": 0.9,
+              "blocksVision": true
+            }
+          ],
+          "referencePlan": [
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            }
+          ],
+          "referenceReasons": [
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative."
+          ],
+          "referenceContinuations": {
+            "move": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "hold": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "contest": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "retreat": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ]
+          },
+          "actionDefaults": {
+            "move": {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            "hold": {
+              "type": "hold"
+            },
+            "contest": {
+              "type": "contest"
+            },
+            "retreat": {
+              "type": "retreat"
+            }
+          }
+        },
+        "authoring": {
+          "category": "positioning",
+          "skillLevel": "intermediate",
+          "analystRationale": "Replay packets supply an anonymized formation and action prior; all combat rules and outcomes remain synthetic counterfactual estimates.",
+          "intendedTradeoffs": [
+            "Holding yields tempo but keeps the engage synchronized with ranged damage.",
+            "Contesting immediately can start damage sooner but exposes the engager before the carry arrives."
+          ],
+          "plausibleAlternatives": [
+            {
+              "action": {
+                "type": "retreat"
+              },
+              "when": "If the carry cannot arrive before enemy reinforcements.",
+              "tradeoff": "Preserves lives but gives up the isolated target."
+            },
+            {
+              "action": {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              "when": "If a safer staging pocket is available.",
+              "tradeoff": "Improves geometry without committing damage this frame."
+            }
+          ],
+          "acceptanceTests": [
+            {
+              "name": "wait-for-carry",
+              "actions": [
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "contest"
+                }
+              ],
+              "dodgeBeforeTurns": [
+                2,
+                4
+              ],
+              "expectedStatus": "won",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "isolated"
+            },
+            {
+              "name": "force-too-early",
+              "actions": [
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "contest"
+                }
+              ],
+              "dodgeBeforeTurns": [],
+              "expectedStatus": "lost",
+              "expectedTerminalTurn": 2,
+              "expectedOutcomeContains": "primary damage dealer"
+            }
+          ]
+        },
+        "datasetEvidence": {
+          "repoId": "maknee/league-of-legends-decoded-replay-packets",
+          "patch": "12_22",
+          "sourceFile": "batch_001.jsonl.gz",
+          "sourceSha256": "a0fdcb5fc12182fbdb8be0ce8c56c4490e5bd03abc7ccfeb82fe5c1346e3edbe",
+          "matchIndex": 3,
+          "windowStartSeconds": 140,
+          "coordinateMethod": "25% normalized packet positions blended with 75% authored template positions; approximate and not replay-exact.",
+          "anonymized": true,
+          "rulesSourceMomentId": "positioning-1295"
+        }
+      },
+      {
+        "id": "dataset-positioning-1295-5-130",
+        "slug": "dataset-positioning-1295-5-130",
+        "title": "Dataset Formation 5 · 2:10",
+        "description": "An anonymized replay-packet formation adapted to the authoritative tactical simulator.",
+        "map": "Dataset-derived formation · synthetic simulator rules",
+        "startTimeSeconds": 130,
+        "seed": 122200401,
+        "maxTurns": 5,
+        "controlledUnitId": "blue-3",
+        "reasonTags": [
+          "decoded-replay-packets",
+          "anonymized-formation",
+          "counterfactual-estimate"
+        ],
+        "signals": {
+          "winProbabilitySwing": 0.82,
+          "eventDensity": 0.78,
+          "entityProximity": 0.22,
+          "resourceAsymmetry": 0.7
+        },
+        "units": [
+          {
+            "id": "blue-1",
+            "team": "blue",
+            "role": "Anonymized blue unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 34.35,
+              "y": 24.75
+            },
+            "hp": 148,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-2",
+            "team": "blue",
+            "role": "Anonymized blue unit 2",
+            "class": "fighter",
+            "policy": "protector",
+            "position": {
+              "x": 30.75,
+              "y": 30.0
+            },
+            "hp": 108,
+            "maxHp": 125,
+            "moveRange": 10,
+            "attackRange": 14,
+            "attackDamage": 23,
+            "moveSpeed": 10,
+            "armor": 28,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-3",
+            "team": "blue",
+            "role": "Anonymized blue unit 3",
+            "class": "mage",
+            "policy": "controlled",
+            "position": {
+              "x": 29.87,
+              "y": 31.38
+            },
+            "hp": 95,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 2,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-4",
+            "team": "blue",
+            "role": "Anonymized blue unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 57.0,
+              "y": 51.75
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-5",
+            "team": "blue",
+            "role": "Anonymized blue unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 26.25,
+              "y": 32.25
+            },
+            "hp": 100,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-1",
+            "team": "red",
+            "role": "Anonymized red unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 46.27,
+              "y": 26.25
+            },
+            "hp": 152,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-2",
+            "team": "red",
+            "role": "Anonymized red unit 2",
+            "class": "assassin",
+            "policy": "aggressive",
+            "position": {
+              "x": 45.36,
+              "y": 32.25
+            },
+            "hp": 90,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 34,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 1,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-3",
+            "team": "red",
+            "role": "Anonymized red unit 3",
+            "class": "mage",
+            "policy": "protector",
+            "position": {
+              "x": 51.61,
+              "y": 28.5
+            },
+            "hp": 95,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-4",
+            "team": "red",
+            "role": "Anonymized red unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 43.05,
+              "y": 36.75
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-5",
+            "team": "red",
+            "role": "Anonymized red unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 41.55,
+              "y": 33.75
+            },
+            "hp": 105,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          }
+        ],
+        "rules": {
+          "initialAdvantage": 0.43,
+          "victory": {
+            "kind": "eliminate-target",
+            "targetUnitId": "red-3",
+            "description": "Delay the all-in until the allied marksman enters range, then eliminate the exposed mid laner.",
+            "defeatDescription": "The engage was forced before the primary damage dealer could contribute.",
+            "allowEscape": false,
+            "safeZone": {
+              "x": 16,
+              "y": 82
+            },
+            "safeRadius": 8,
+            "escapeTurns": 2
+          },
+          "terrain": [
+            {
+              "id": "river",
+              "label": "River",
+              "kind": "river",
+              "position": {
+                "x": 50,
+                "y": 52
+              },
+              "radius": 12,
+              "moveMultiplier": 0.9,
+              "blocksVision": false
+            },
+            {
+              "id": "top-brush",
+              "label": "Top-side brush",
+              "kind": "brush",
+              "position": {
+                "x": 49,
+                "y": 34
+              },
+              "radius": 8,
+              "moveMultiplier": 0.9,
+              "blocksVision": true
+            }
+          ],
+          "referencePlan": [
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            }
+          ],
+          "referenceReasons": [
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative."
+          ],
+          "referenceContinuations": {
+            "move": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "hold": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "contest": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "retreat": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ]
+          },
+          "actionDefaults": {
+            "move": {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            "hold": {
+              "type": "hold"
+            },
+            "contest": {
+              "type": "contest"
+            },
+            "retreat": {
+              "type": "retreat"
+            }
+          }
+        },
+        "authoring": {
+          "category": "positioning",
+          "skillLevel": "intermediate",
+          "analystRationale": "Replay packets supply an anonymized formation and action prior; all combat rules and outcomes remain synthetic counterfactual estimates.",
+          "intendedTradeoffs": [
+            "Holding yields tempo but keeps the engage synchronized with ranged damage.",
+            "Contesting immediately can start damage sooner but exposes the engager before the carry arrives."
+          ],
+          "plausibleAlternatives": [
+            {
+              "action": {
+                "type": "retreat"
+              },
+              "when": "If the carry cannot arrive before enemy reinforcements.",
+              "tradeoff": "Preserves lives but gives up the isolated target."
+            },
+            {
+              "action": {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              "when": "If a safer staging pocket is available.",
+              "tradeoff": "Improves geometry without committing damage this frame."
+            }
+          ],
+          "acceptanceTests": [
+            {
+              "name": "wait-for-carry",
+              "actions": [
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "contest"
+                }
+              ],
+              "dodgeBeforeTurns": [
+                2,
+                4
+              ],
+              "expectedStatus": "won",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "isolated"
+            },
+            {
+              "name": "force-too-early",
+              "actions": [
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "contest"
+                }
+              ],
+              "dodgeBeforeTurns": [],
+              "expectedStatus": "lost",
+              "expectedTerminalTurn": 2,
+              "expectedOutcomeContains": "primary damage dealer"
+            }
+          ]
+        },
+        "datasetEvidence": {
+          "repoId": "maknee/league-of-legends-decoded-replay-packets",
+          "patch": "12_22",
+          "sourceFile": "batch_001.jsonl.gz",
+          "sourceSha256": "a0fdcb5fc12182fbdb8be0ce8c56c4490e5bd03abc7ccfeb82fe5c1346e3edbe",
+          "matchIndex": 4,
+          "windowStartSeconds": 130,
+          "coordinateMethod": "25% normalized packet positions blended with 75% authored template positions; approximate and not replay-exact.",
+          "anonymized": true,
+          "rulesSourceMomentId": "positioning-1295"
+        }
+      },
+      {
+        "id": "dataset-positioning-1295-6-780",
+        "slug": "dataset-positioning-1295-6-780",
+        "title": "Dataset Formation 6 · 13:00",
+        "description": "An anonymized replay-packet formation adapted to the authoritative tactical simulator.",
+        "map": "Dataset-derived formation · synthetic simulator rules",
+        "startTimeSeconds": 780,
+        "seed": 122200502,
+        "maxTurns": 5,
+        "controlledUnitId": "blue-3",
+        "reasonTags": [
+          "decoded-replay-packets",
+          "anonymized-formation",
+          "counterfactual-estimate"
+        ],
+        "signals": {
+          "winProbabilitySwing": 0.82,
+          "eventDensity": 0.78,
+          "entityProximity": 0.22,
+          "resourceAsymmetry": 0.7
+        },
+        "units": [
+          {
+            "id": "blue-1",
+            "team": "blue",
+            "role": "Anonymized blue unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 28.26,
+              "y": 28.49
+            },
+            "hp": 148,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-2",
+            "team": "blue",
+            "role": "Anonymized blue unit 2",
+            "class": "fighter",
+            "policy": "protector",
+            "position": {
+              "x": 30.75,
+              "y": 37.98
+            },
+            "hp": 108,
+            "maxHp": 125,
+            "moveRange": 10,
+            "attackRange": 14,
+            "attackDamage": 23,
+            "moveSpeed": 10,
+            "armor": 28,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-3",
+            "team": "blue",
+            "role": "Anonymized blue unit 3",
+            "class": "mage",
+            "policy": "controlled",
+            "position": {
+              "x": 29.25,
+              "y": 27.75
+            },
+            "hp": 95,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 2,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-4",
+            "team": "blue",
+            "role": "Anonymized blue unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 57.0,
+              "y": 51.75
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-5",
+            "team": "blue",
+            "role": "Anonymized blue unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 26.25,
+              "y": 40.0
+            },
+            "hp": 100,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-1",
+            "team": "red",
+            "role": "Anonymized red unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 39.0,
+              "y": 26.25
+            },
+            "hp": 152,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-2",
+            "team": "red",
+            "role": "Anonymized red unit 2",
+            "class": "assassin",
+            "policy": "aggressive",
+            "position": {
+              "x": 38.29,
+              "y": 36.0
+            },
+            "hp": 90,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 34,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 1,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-3",
+            "team": "red",
+            "role": "Anonymized red unit 3",
+            "class": "mage",
+            "policy": "protector",
+            "position": {
+              "x": 50.25,
+              "y": 28.5
+            },
+            "hp": 95,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-4",
+            "team": "red",
+            "role": "Anonymized red unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 41.25,
+              "y": 42.25
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-5",
+            "team": "red",
+            "role": "Anonymized red unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 39.75,
+              "y": 40.41
+            },
+            "hp": 105,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          }
+        ],
+        "rules": {
+          "initialAdvantage": 0.43,
+          "victory": {
+            "kind": "eliminate-target",
+            "targetUnitId": "red-3",
+            "description": "Delay the all-in until the allied marksman enters range, then eliminate the exposed mid laner.",
+            "defeatDescription": "The engage was forced before the primary damage dealer could contribute.",
+            "allowEscape": false,
+            "safeZone": {
+              "x": 16,
+              "y": 82
+            },
+            "safeRadius": 8,
+            "escapeTurns": 2
+          },
+          "terrain": [
+            {
+              "id": "river",
+              "label": "River",
+              "kind": "river",
+              "position": {
+                "x": 50,
+                "y": 52
+              },
+              "radius": 12,
+              "moveMultiplier": 0.9,
+              "blocksVision": false
+            },
+            {
+              "id": "top-brush",
+              "label": "Top-side brush",
+              "kind": "brush",
+              "position": {
+                "x": 49,
+                "y": 34
+              },
+              "radius": 8,
+              "moveMultiplier": 0.9,
+              "blocksVision": true
+            }
+          ],
+          "referencePlan": [
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            {
+              "type": "contest"
+            }
+          ],
+          "referenceReasons": [
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative."
+          ],
+          "referenceContinuations": {
+            "move": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "hold": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "contest": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "retreat": [
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "hold"
+              }
+            ]
+          },
+          "actionDefaults": {
+            "move": {
+              "type": "move",
+              "target": {
+                "x": 46,
+                "y": 45
+              }
+            },
+            "hold": {
+              "type": "hold"
+            },
+            "contest": {
+              "type": "contest"
+            },
+            "retreat": {
+              "type": "retreat"
+            }
+          }
+        },
+        "authoring": {
+          "category": "positioning",
+          "skillLevel": "intermediate",
+          "analystRationale": "Replay packets supply an anonymized formation and action prior; all combat rules and outcomes remain synthetic counterfactual estimates.",
+          "intendedTradeoffs": [
+            "Holding yields tempo but keeps the engage synchronized with ranged damage.",
+            "Contesting immediately can start damage sooner but exposes the engager before the carry arrives."
+          ],
+          "plausibleAlternatives": [
+            {
+              "action": {
+                "type": "retreat"
+              },
+              "when": "If the carry cannot arrive before enemy reinforcements.",
+              "tradeoff": "Preserves lives but gives up the isolated target."
+            },
+            {
+              "action": {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              "when": "If a safer staging pocket is available.",
+              "tradeoff": "Improves geometry without committing damage this frame."
+            }
+          ],
+          "acceptanceTests": [
+            {
+              "name": "wait-for-carry",
+              "actions": [
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "contest"
+                }
+              ],
+              "dodgeBeforeTurns": [
+                2,
+                4
+              ],
+              "expectedStatus": "won",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "isolated"
+            },
+            {
+              "name": "force-too-early",
+              "actions": [
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "contest"
+                }
+              ],
+              "dodgeBeforeTurns": [],
+              "expectedStatus": "lost",
+              "expectedTerminalTurn": 2,
+              "expectedOutcomeContains": "primary damage dealer"
+            }
+          ]
+        },
+        "datasetEvidence": {
+          "repoId": "maknee/league-of-legends-decoded-replay-packets",
+          "patch": "12_22",
+          "sourceFile": "batch_001.jsonl.gz",
+          "sourceSha256": "a0fdcb5fc12182fbdb8be0ce8c56c4490e5bd03abc7ccfeb82fe5c1346e3edbe",
+          "matchIndex": 5,
+          "windowStartSeconds": 780,
+          "coordinateMethod": "25% normalized packet positions blended with 75% authored template positions; approximate and not replay-exact.",
+          "anonymized": true,
+          "rulesSourceMomentId": "positioning-1295"
+        }
+      }
+    ],
+    "teamfight-reversal-1727": [
+      {
+        "id": "dataset-teamfight-reversal-1727-7-160",
+        "slug": "dataset-teamfight-reversal-1727-7-160",
+        "title": "Dataset Formation 7 · 2:40",
+        "description": "An anonymized replay-packet formation adapted to the authoritative tactical simulator.",
+        "map": "Dataset-derived formation · synthetic simulator rules",
+        "startTimeSeconds": 160,
+        "seed": 122200600,
+        "maxTurns": 4,
+        "controlledUnitId": "blue-2",
+        "reasonTags": [
+          "decoded-replay-packets",
+          "anonymized-formation",
+          "counterfactual-estimate"
+        ],
+        "signals": {
+          "winProbabilitySwing": 0.9,
+          "eventDensity": 0.88,
+          "entityProximity": 0.18,
+          "resourceAsymmetry": 0.76
+        },
+        "units": [
+          {
+            "id": "blue-1",
+            "team": "blue",
+            "role": "Anonymized blue unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 32.81,
+              "y": 43.05
+            },
+            "hp": 132,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-2",
+            "team": "blue",
+            "role": "Anonymized blue unit 2",
+            "class": "fighter",
+            "policy": "controlled",
+            "position": {
+              "x": 32.25,
+              "y": 48.73
+            },
+            "hp": 85,
+            "maxHp": 125,
+            "moveRange": 10,
+            "attackRange": 14,
+            "attackDamage": 23,
+            "moveSpeed": 10,
+            "armor": 28,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-3",
+            "team": "blue",
+            "role": "Anonymized blue unit 3",
+            "class": "mage",
+            "policy": "aggressive",
+            "position": {
+              "x": 38.86,
+              "y": 36.0
+            },
+            "hp": 70,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-4",
+            "team": "blue",
+            "role": "Anonymized blue unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 43.85,
+              "y": 45.0
+            },
+            "hp": 0,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": false,
+            "alive": false
+          },
+          {
+            "id": "blue-5",
+            "team": "blue",
+            "role": "Anonymized blue unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 40.5,
+              "y": 42.0
+            },
+            "hp": 0,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": false,
+            "alive": false
+          },
+          {
+            "id": "red-1",
+            "team": "red",
+            "role": "Anonymized red unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 52.67,
+              "y": 42.0
+            },
+            "hp": 118,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-2",
+            "team": "red",
+            "role": "Anonymized red unit 2",
+            "class": "assassin",
+            "policy": "protector",
+            "position": {
+              "x": 38.25,
+              "y": 39.0
+            },
+            "hp": 72,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 25,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-3",
+            "team": "red",
+            "role": "Anonymized red unit 3",
+            "class": "mage",
+            "policy": "aggressive",
+            "position": {
+              "x": 45.11,
+              "y": 36.0
+            },
+            "hp": 70,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-4",
+            "team": "red",
+            "role": "Anonymized red unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 53.46,
+              "y": 43.5
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-5",
+            "team": "red",
+            "role": "Anonymized red unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 36.75,
+              "y": 49.69
+            },
+            "hp": 0,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": false,
+            "alive": false
+          }
+        ],
+        "rules": {
+          "initialAdvantage": 0.38,
+          "victory": {
+            "kind": "eliminate-target",
+            "targetUnitId": "red-3",
+            "description": "Re-engage the locally exposed mid laner before BLG can reform its four-player line.",
+            "defeatDescription": "The local target window closed and BLG converted the nominal numbers advantage.",
+            "allowEscape": false,
+            "safeZone": {
+              "x": 16,
+              "y": 82
+            },
+            "safeRadius": 8,
+            "escapeTurns": 2
+          },
+          "terrain": [
+            {
+              "id": "river",
+              "label": "River",
+              "kind": "river",
+              "position": {
+                "x": 50,
+                "y": 52
+              },
+              "radius": 12,
+              "moveMultiplier": 0.9,
+              "blocksVision": false
+            },
+            {
+              "id": "baron-wall",
+              "label": "Baron choke wall",
+              "kind": "wall",
+              "position": {
+                "x": 50,
+                "y": 44
+              },
+              "radius": 7,
+              "moveMultiplier": 0.8,
+              "blocksVision": true
+            }
+          ],
+          "referencePlan": [
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            }
+          ],
+          "referenceReasons": [
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative."
+          ],
+          "referenceContinuations": {
+            "move": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "hold": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "contest": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "retreat": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ]
+          },
+          "actionDefaults": {
+            "move": {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            "hold": {
+              "type": "hold"
+            },
+            "contest": {
+              "type": "contest"
+            },
+            "retreat": {
+              "type": "retreat"
+            }
+          }
+        },
+        "authoring": {
+          "category": "team-fight-engagement",
+          "skillLevel": "advanced",
+          "analystRationale": "Replay packets supply an anonymized formation and action prior; all combat rules and outcomes remain synthetic counterfactual estimates.",
+          "intendedTradeoffs": [
+            "Contest exploits the short local numbers window but commits into a dangerous marksman projectile.",
+            "Retreat respects the headline 3v4 but gives BLG time to reform and removes the Baron opening."
+          ],
+          "plausibleAlternatives": [
+            {
+              "action": {
+                "type": "hold"
+              },
+              "when": "If the reachable target gains temporary protection.",
+              "tradeoff": "Preserves cooldowns but can let the local window expire."
+            },
+            {
+              "action": {
+                "type": "retreat"
+              },
+              "when": "If Faker cannot arrive in the local fight.",
+              "tradeoff": "Reduces immediate risk but concedes the reversal opportunity."
+            }
+          ],
+          "acceptanceTests": [
+            {
+              "name": "local-reengage",
+              "actions": [
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "contest"
+                }
+              ],
+              "dodgeBeforeTurns": [
+                2
+              ],
+              "expectedStatus": "won",
+              "expectedTerminalTurn": 3,
+              "expectedOutcomeContains": "isolated"
+            },
+            {
+              "name": "count-only-retreat",
+              "actions": [
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "hold"
+                }
+              ],
+              "dodgeBeforeTurns": [],
+              "expectedStatus": "lost",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "local target window"
+            }
+          ]
+        },
+        "datasetEvidence": {
+          "repoId": "maknee/league-of-legends-decoded-replay-packets",
+          "patch": "12_22",
+          "sourceFile": "batch_001.jsonl.gz",
+          "sourceSha256": "a0fdcb5fc12182fbdb8be0ce8c56c4490e5bd03abc7ccfeb82fe5c1346e3edbe",
+          "matchIndex": 6,
+          "windowStartSeconds": 160,
+          "coordinateMethod": "25% normalized packet positions blended with 75% authored template positions; approximate and not replay-exact.",
+          "anonymized": true,
+          "rulesSourceMomentId": "teamfight-reversal-1727"
+        }
+      },
+      {
+        "id": "dataset-teamfight-reversal-1727-8-300",
+        "slug": "dataset-teamfight-reversal-1727-8-300",
+        "title": "Dataset Formation 8 · 5:00",
+        "description": "An anonymized replay-packet formation adapted to the authoritative tactical simulator.",
+        "map": "Dataset-derived formation · synthetic simulator rules",
+        "startTimeSeconds": 300,
+        "seed": 122200701,
+        "maxTurns": 4,
+        "controlledUnitId": "blue-2",
+        "reasonTags": [
+          "decoded-replay-packets",
+          "anonymized-formation",
+          "counterfactual-estimate"
+        ],
+        "signals": {
+          "winProbabilitySwing": 0.9,
+          "eventDensity": 0.88,
+          "entityProximity": 0.18,
+          "resourceAsymmetry": 0.76
+        },
+        "units": [
+          {
+            "id": "blue-1",
+            "team": "blue",
+            "role": "Anonymized blue unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 31.5,
+              "y": 42.75
+            },
+            "hp": 132,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-2",
+            "team": "blue",
+            "role": "Anonymized blue unit 2",
+            "class": "fighter",
+            "policy": "controlled",
+            "position": {
+              "x": 32.25,
+              "y": 39.0
+            },
+            "hp": 85,
+            "maxHp": 125,
+            "moveRange": 10,
+            "attackRange": 14,
+            "attackDamage": 23,
+            "moveSpeed": 10,
+            "armor": 28,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-3",
+            "team": "blue",
+            "role": "Anonymized blue unit 3",
+            "class": "mage",
+            "policy": "aggressive",
+            "position": {
+              "x": 30.08,
+              "y": 36.62
+            },
+            "hp": 70,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-4",
+            "team": "blue",
+            "role": "Anonymized blue unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 50.36,
+              "y": 45.0
+            },
+            "hp": 0,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": false,
+            "alive": false
+          },
+          {
+            "id": "blue-5",
+            "team": "blue",
+            "role": "Anonymized blue unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 40.5,
+              "y": 42.0
+            },
+            "hp": 0,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": false,
+            "alive": false
+          },
+          {
+            "id": "red-1",
+            "team": "red",
+            "role": "Anonymized red unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 48.52,
+              "y": 47.39
+            },
+            "hp": 118,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-2",
+            "team": "red",
+            "role": "Anonymized red unit 2",
+            "class": "assassin",
+            "policy": "protector",
+            "position": {
+              "x": 45.19,
+              "y": 39.0
+            },
+            "hp": 72,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 25,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-3",
+            "team": "red",
+            "role": "Anonymized red unit 3",
+            "class": "mage",
+            "policy": "aggressive",
+            "position": {
+              "x": 41.44,
+              "y": 36.0
+            },
+            "hp": 70,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-4",
+            "team": "red",
+            "role": "Anonymized red unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 46.5,
+              "y": 52.99
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-5",
+            "team": "red",
+            "role": "Anonymized red unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 37.02,
+              "y": 40.74
+            },
+            "hp": 0,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": false,
+            "alive": false
+          }
+        ],
+        "rules": {
+          "initialAdvantage": 0.38,
+          "victory": {
+            "kind": "eliminate-target",
+            "targetUnitId": "red-3",
+            "description": "Re-engage the locally exposed mid laner before BLG can reform its four-player line.",
+            "defeatDescription": "The local target window closed and BLG converted the nominal numbers advantage.",
+            "allowEscape": false,
+            "safeZone": {
+              "x": 16,
+              "y": 82
+            },
+            "safeRadius": 8,
+            "escapeTurns": 2
+          },
+          "terrain": [
+            {
+              "id": "river",
+              "label": "River",
+              "kind": "river",
+              "position": {
+                "x": 50,
+                "y": 52
+              },
+              "radius": 12,
+              "moveMultiplier": 0.9,
+              "blocksVision": false
+            },
+            {
+              "id": "baron-wall",
+              "label": "Baron choke wall",
+              "kind": "wall",
+              "position": {
+                "x": 50,
+                "y": 44
+              },
+              "radius": 7,
+              "moveMultiplier": 0.8,
+              "blocksVision": true
+            }
+          ],
+          "referencePlan": [
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            }
+          ],
+          "referenceReasons": [
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative."
+          ],
+          "referenceContinuations": {
+            "move": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "hold": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "contest": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "retreat": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ]
+          },
+          "actionDefaults": {
+            "move": {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            "hold": {
+              "type": "hold"
+            },
+            "contest": {
+              "type": "contest"
+            },
+            "retreat": {
+              "type": "retreat"
+            }
+          }
+        },
+        "authoring": {
+          "category": "team-fight-engagement",
+          "skillLevel": "advanced",
+          "analystRationale": "Replay packets supply an anonymized formation and action prior; all combat rules and outcomes remain synthetic counterfactual estimates.",
+          "intendedTradeoffs": [
+            "Contest exploits the short local numbers window but commits into a dangerous marksman projectile.",
+            "Retreat respects the headline 3v4 but gives BLG time to reform and removes the Baron opening."
+          ],
+          "plausibleAlternatives": [
+            {
+              "action": {
+                "type": "hold"
+              },
+              "when": "If the reachable target gains temporary protection.",
+              "tradeoff": "Preserves cooldowns but can let the local window expire."
+            },
+            {
+              "action": {
+                "type": "retreat"
+              },
+              "when": "If Faker cannot arrive in the local fight.",
+              "tradeoff": "Reduces immediate risk but concedes the reversal opportunity."
+            }
+          ],
+          "acceptanceTests": [
+            {
+              "name": "local-reengage",
+              "actions": [
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "contest"
+                }
+              ],
+              "dodgeBeforeTurns": [
+                2
+              ],
+              "expectedStatus": "won",
+              "expectedTerminalTurn": 3,
+              "expectedOutcomeContains": "isolated"
+            },
+            {
+              "name": "count-only-retreat",
+              "actions": [
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "hold"
+                }
+              ],
+              "dodgeBeforeTurns": [],
+              "expectedStatus": "lost",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "local target window"
+            }
+          ]
+        },
+        "datasetEvidence": {
+          "repoId": "maknee/league-of-legends-decoded-replay-packets",
+          "patch": "12_22",
+          "sourceFile": "batch_001.jsonl.gz",
+          "sourceSha256": "a0fdcb5fc12182fbdb8be0ce8c56c4490e5bd03abc7ccfeb82fe5c1346e3edbe",
+          "matchIndex": 7,
+          "windowStartSeconds": 300,
+          "coordinateMethod": "25% normalized packet positions blended with 75% authored template positions; approximate and not replay-exact.",
+          "anonymized": true,
+          "rulesSourceMomentId": "teamfight-reversal-1727"
+        }
+      },
+      {
+        "id": "dataset-teamfight-reversal-1727-9-240",
+        "slug": "dataset-teamfight-reversal-1727-9-240",
+        "title": "Dataset Formation 9 · 4:00",
+        "description": "An anonymized replay-packet formation adapted to the authoritative tactical simulator.",
+        "map": "Dataset-derived formation · synthetic simulator rules",
+        "startTimeSeconds": 240,
+        "seed": 122200802,
+        "maxTurns": 4,
+        "controlledUnitId": "blue-2",
+        "reasonTags": [
+          "decoded-replay-packets",
+          "anonymized-formation",
+          "counterfactual-estimate"
+        ],
+        "signals": {
+          "winProbabilitySwing": 0.9,
+          "eventDensity": 0.88,
+          "entityProximity": 0.18,
+          "resourceAsymmetry": 0.76
+        },
+        "units": [
+          {
+            "id": "blue-1",
+            "team": "blue",
+            "role": "Anonymized blue unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 31.5,
+              "y": 42.75
+            },
+            "hp": 132,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-2",
+            "team": "blue",
+            "role": "Anonymized blue unit 2",
+            "class": "fighter",
+            "policy": "controlled",
+            "position": {
+              "x": 42.4,
+              "y": 39.0
+            },
+            "hp": 85,
+            "maxHp": 125,
+            "moveRange": 10,
+            "attackRange": 14,
+            "attackDamage": 23,
+            "moveSpeed": 10,
+            "armor": 28,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-3",
+            "team": "blue",
+            "role": "Anonymized blue unit 3",
+            "class": "mage",
+            "policy": "aggressive",
+            "position": {
+              "x": 29.25,
+              "y": 43.75
+            },
+            "hp": 70,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "blue-4",
+            "team": "blue",
+            "role": "Anonymized blue unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 43.5,
+              "y": 52.24
+            },
+            "hp": 0,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": false,
+            "alive": false
+          },
+          {
+            "id": "blue-5",
+            "team": "blue",
+            "role": "Anonymized blue unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 40.5,
+              "y": 42.0
+            },
+            "hp": 0,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": false,
+            "alive": false
+          },
+          {
+            "id": "red-1",
+            "team": "red",
+            "role": "Anonymized red unit 1",
+            "class": "tank",
+            "policy": "protector",
+            "position": {
+              "x": 53.02,
+              "y": 42.0
+            },
+            "hp": 118,
+            "maxHp": 160,
+            "moveRange": 7,
+            "attackRange": 10,
+            "attackDamage": 16,
+            "moveSpeed": 7,
+            "armor": 40,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-2",
+            "team": "red",
+            "role": "Anonymized red unit 2",
+            "class": "assassin",
+            "policy": "protector",
+            "position": {
+              "x": 38.25,
+              "y": 39.0
+            },
+            "hp": 72,
+            "maxHp": 100,
+            "moveRange": 13,
+            "attackRange": 12,
+            "attackDamage": 25,
+            "moveSpeed": 13,
+            "armor": 18,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-3",
+            "team": "red",
+            "role": "Anonymized red unit 3",
+            "class": "mage",
+            "policy": "aggressive",
+            "position": {
+              "x": 35.25,
+              "y": 43.21
+            },
+            "hp": 70,
+            "maxHp": 95,
+            "moveRange": 9,
+            "attackRange": 24,
+            "attackDamage": 22,
+            "moveSpeed": 9,
+            "armor": 16,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-4",
+            "team": "red",
+            "role": "Anonymized red unit 4",
+            "class": "marksman",
+            "policy": "aggressive",
+            "position": {
+              "x": 46.5,
+              "y": 43.5
+            },
+            "hp": 90,
+            "maxHp": 90,
+            "moveRange": 11,
+            "attackRange": 28,
+            "attackDamage": 24,
+            "moveSpeed": 11,
+            "armor": 14,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": true,
+            "alive": true
+          },
+          {
+            "id": "red-5",
+            "team": "red",
+            "role": "Anonymized red unit 5",
+            "class": "support",
+            "policy": "support",
+            "position": {
+              "x": 37.94,
+              "y": 41.16
+            },
+            "hp": 0,
+            "maxHp": 110,
+            "moveRange": 8,
+            "attackRange": 20,
+            "attackDamage": 13,
+            "moveSpeed": 8,
+            "armor": 24,
+            "visionRange": 34,
+            "attackCooldown": 2,
+            "cooldownTurns": 0,
+            "shield": 0,
+            "guarded": false,
+            "visible": false,
+            "alive": false
+          }
+        ],
+        "rules": {
+          "initialAdvantage": 0.38,
+          "victory": {
+            "kind": "eliminate-target",
+            "targetUnitId": "red-3",
+            "description": "Re-engage the locally exposed mid laner before BLG can reform its four-player line.",
+            "defeatDescription": "The local target window closed and BLG converted the nominal numbers advantage.",
+            "allowEscape": false,
+            "safeZone": {
+              "x": 16,
+              "y": 82
+            },
+            "safeRadius": 8,
+            "escapeTurns": 2
+          },
+          "terrain": [
+            {
+              "id": "river",
+              "label": "River",
+              "kind": "river",
+              "position": {
+                "x": 50,
+                "y": 52
+              },
+              "radius": 12,
+              "moveMultiplier": 0.9,
+              "blocksVision": false
+            },
+            {
+              "id": "baron-wall",
+              "label": "Baron choke wall",
+              "kind": "wall",
+              "position": {
+                "x": 50,
+                "y": 44
+              },
+              "radius": 7,
+              "moveMultiplier": 0.8,
+              "blocksVision": true
+            }
+          ],
+          "referencePlan": [
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            {
+              "type": "contest"
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            }
+          ],
+          "referenceReasons": [
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative.",
+            "The offline replay-action model supplied this coarse action prior; the Go simulator remains authoritative."
+          ],
+          "referenceContinuations": {
+            "move": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "hold": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "contest": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ],
+            "retreat": [
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              }
+            ]
+          },
+          "actionDefaults": {
+            "move": {
+              "type": "move",
+              "target": {
+                "x": 47,
+                "y": 48
+              }
+            },
+            "hold": {
+              "type": "hold"
+            },
+            "contest": {
+              "type": "contest"
+            },
+            "retreat": {
+              "type": "retreat"
+            }
+          }
+        },
+        "authoring": {
+          "category": "team-fight-engagement",
+          "skillLevel": "advanced",
+          "analystRationale": "Replay packets supply an anonymized formation and action prior; all combat rules and outcomes remain synthetic counterfactual estimates.",
+          "intendedTradeoffs": [
+            "Contest exploits the short local numbers window but commits into a dangerous marksman projectile.",
+            "Retreat respects the headline 3v4 but gives BLG time to reform and removes the Baron opening."
+          ],
+          "plausibleAlternatives": [
+            {
+              "action": {
+                "type": "hold"
+              },
+              "when": "If the reachable target gains temporary protection.",
+              "tradeoff": "Preserves cooldowns but can let the local window expire."
+            },
+            {
+              "action": {
+                "type": "retreat"
+              },
+              "when": "If Faker cannot arrive in the local fight.",
+              "tradeoff": "Reduces immediate risk but concedes the reversal opportunity."
+            }
+          ],
+          "acceptanceTests": [
+            {
+              "name": "local-reengage",
+              "actions": [
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "contest"
+                },
+                {
+                  "type": "contest"
+                }
+              ],
+              "dodgeBeforeTurns": [
+                2
+              ],
+              "expectedStatus": "won",
+              "expectedTerminalTurn": 3,
+              "expectedOutcomeContains": "isolated"
+            },
+            {
+              "name": "count-only-retreat",
+              "actions": [
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "hold"
+                },
+                {
+                  "type": "retreat"
+                },
+                {
+                  "type": "hold"
+                }
+              ],
+              "dodgeBeforeTurns": [],
+              "expectedStatus": "lost",
+              "expectedTerminalTurn": 4,
+              "expectedOutcomeContains": "local target window"
+            }
+          ]
+        },
+        "datasetEvidence": {
+          "repoId": "maknee/league-of-legends-decoded-replay-packets",
+          "patch": "12_22",
+          "sourceFile": "batch_001.jsonl.gz",
+          "sourceSha256": "a0fdcb5fc12182fbdb8be0ce8c56c4490e5bd03abc7ccfeb82fe5c1346e3edbe",
+          "matchIndex": 8,
+          "windowStartSeconds": 240,
+          "coordinateMethod": "25% normalized packet positions blended with 75% authored template positions; approximate and not replay-exact.",
+          "anonymized": true,
+          "rulesSourceMomentId": "teamfight-reversal-1727"
+        }
+      }
+    ]
+  }
+}
