@@ -68,6 +68,8 @@ const terminalSession: Session = {
   units: [],
   turrets: [],
   projectiles: [],
+  projectileCharges: 0,
+  projectileAvailable: false,
   dodgeCharges: 2,
   dodgeAvailable: false,
   botControl: { source: "external-model", modelName: "test-policy", modelVersion: "1" },

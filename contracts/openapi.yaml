@@ -1,12 +1,13 @@
 openapi: 3.1.0
 info:
   title: Playable Replays API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Core API for the deterministic, full-map MOBA tactical-board prototype.
-    Dodge is a separate two-charge projectile reaction and is not a tactical
-    action. The optional schema 2.0 bot bridge is non-authoritative; any bridge
-    failure causes the Go simulator to use its deterministic fallback.
+    Dodge and player-directed projectile fire are separate two-charge reactions
+    and are not tactical actions. The optional schema 2.0 bot bridge is
+    non-authoritative; any bridge failure causes the Go simulator to use its
+    deterministic fallback.
 servers:
   - url: http://127.0.0.1:8080
     description: Local Go API
@@ -86,9 +87,11 @@ paths:
       operationId: takeTurn
       summary: Resolve one tactical action
       description: |
-        Accepts move, hold, contest, or retreat. Move alone requires a target.
-        The simulator then resolves bot actions, projectiles, damage, objectives,
-        visibility, scoring, and terminal state in authoritative order.
+        Accepts move, hold, contest, or retreat. Move requires a point target.
+        Contest may identify a visible enemy already inside the controlled
+        unit's attack range. The simulator then resolves bot actions,
+        projectiles, damage, objectives, visibility, scoring, and terminal state
+        in authoritative order.
       requestBody:
         required: true
         content:
@@ -98,6 +101,42 @@ paths:
       responses:
         "200":
           description: Resolved session state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/Error"
+  /api/v1/sessions/{id}/fire:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [Sessions]
+      operationId: fireProjectile
+      summary: Spend one projectile charge on a marksman shot
+      description: |
+        Queues a one-turn projectile from the selected live blue marksman to a
+        visible enemy inside that marksman's attack range. This reaction does
+        not advance the tactical turn. A session has two projectile charges;
+        cooldown, range, visibility, source class, and target team are validated
+        authoritatively.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FireProjectileRequest"
+      responses:
+        "200":
+          description: Projectile queued and updated state returned
           content:
             application/json:
               schema:
@@ -297,7 +336,22 @@ components:
       properties:
         action:
           $ref: "#/components/schemas/Action"
+        targetUnitId:
+          type: string
+          minLength: 1
+          description: Optional visible in-range enemy selected for contest.
       required: [action]
+    FireProjectileRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        sourceUnitId:
+          type: string
+          minLength: 1
+        targetUnitId:
+          type: string
+          minLength: 1
+      required: [sourceUnitId, targetUnitId]
     CreateSessionRequest:
       type: object
       additionalProperties: false
@@ -773,6 +827,12 @@ components:
           maxItems: 2
           items:
             $ref: "#/components/schemas/Projectile"
+        projectileCharges:
+          type: integer
+          minimum: 0
+          maximum: 2
+        projectileAvailable:
+          type: boolean
         dodgeCharges:
           type: integer
           minimum: 0
@@ -830,6 +890,8 @@ components:
         - terrain
         - turrets
         - projectiles
+        - projectileCharges
+        - projectileAvailable
         - dodgeCharges
         - dodgeAvailable
         - botControl
