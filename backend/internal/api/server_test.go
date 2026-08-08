@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -114,17 +115,98 @@ func TestJourney(t *testing.T) {
 	if len(session.LegalActions) != 4 || session.LegalActions[0] != "move" || session.LegalActions[3] != "retreat" {
 		t.Fatalf("expected the four tactical actions, got %v", session.LegalActions)
 	}
-	if len(session.Turrets) != 6 || len(session.Projectiles) != 0 || session.DodgeCharges != 2 ||
+	if len(session.Turrets) != 6 || len(session.Projectiles) != 0 || session.ProjectileCharges != 2 ||
+		!session.ProjectileAvailable || session.DodgeCharges != 2 ||
 		session.DodgeAvailable || session.BotControl.Source != "deterministic-fallback" {
 		t.Fatalf("create response omitted the map, Dodge, or bot-control contract: %+v", session)
 	}
-	turn := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns", `{"action":{"type":"contest"}}`)
+	turn := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns", `{"action":{"type":"contest"},"targetUnitId":"red"}`)
 	if turn.Code != http.StatusOK {
 		t.Fatalf("turn: %d %s", turn.Code, turn.Body.String())
 	}
 	reset := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/reset", "")
 	if reset.Code != http.StatusOK {
 		t.Fatalf("reset: %d", reset.Code)
+	}
+}
+
+func TestTurnEndpointContinuesBeyondAuthoredHorizonUntilHealthThreshold(t *testing.T) {
+	base := testServer()
+	moment := base.ordered[0]
+	moment.MaxTurns = 1
+	handler := New([]model.Moment{moment}, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler()
+	created := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	if !bytes.Contains(created.Body.Bytes(), []byte(`"scenarioGoal":"Reach at least twice`)) {
+		t.Fatalf("session did not expose the health-threshold goal: %s", created.Body.String())
+	}
+	var session model.Session
+	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		turn := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns", `{"action":{"type":"hold"}}`)
+		if turn.Code != http.StatusOK {
+			t.Fatalf("continued turn failed: %d %s", turn.Code, turn.Body.String())
+		}
+		if err := json.Unmarshal(turn.Body.Bytes(), &session); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if session.Status != "active" || session.Turn != 2 || session.MaxTurns != 1 {
+		t.Fatalf("authored horizon incorrectly terminated live play: %+v", session)
+	}
+}
+
+func TestFireProjectileEndpointDoesNotAdvanceTurn(t *testing.T) {
+	handler := testServer().Handler()
+	created := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	var session model.Session
+	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	fired := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/fire", `{"sourceUnitId":"blue","targetUnitId":"red"}`)
+	if fired.Code != http.StatusOK {
+		t.Fatalf("fire projectile: %d %s", fired.Code, fired.Body.String())
+	}
+	if err := json.Unmarshal(fired.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	if session.Turn != 0 || session.ProjectileCharges != 1 || session.ProjectileAvailable ||
+		len(session.Projectiles) != 1 || session.Projectiles[0].SourceUnitID != "blue" ||
+		session.Projectiles[0].TargetUnitID != "red" {
+		t.Fatalf("fire endpoint did not queue the bounded reaction: %+v", session)
+	}
+
+	unavailable := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/fire", `{"sourceUnitId":"blue","targetUnitId":"red"}`)
+	if unavailable.Code != http.StatusUnprocessableEntity ||
+		!bytes.Contains(unavailable.Body.Bytes(), []byte(`"code":"projectile_unavailable"`)) {
+		t.Fatalf("expected structured unavailable-projectile response, got %d %s", unavailable.Code, unavailable.Body.String())
+	}
+}
+
+func TestTargetedContestRejectsOutOfRangeEnemyWithoutMutation(t *testing.T) {
+	base := testServer()
+	moment := base.ordered[0]
+	moment.Units[0].VisionRange = 100
+	moment.Units[1].Position = model.Point{X: 70, Y: 50}
+	handler := New([]model.Moment{moment}, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler()
+	created := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	var before model.Session
+	if err := json.Unmarshal(created.Body.Bytes(), &before); err != nil {
+		t.Fatal(err)
+	}
+	result := request(t, handler, http.MethodPost, "/api/v1/sessions/"+before.ID+"/turns", `{"action":{"type":"contest"},"targetUnitId":"red"}`)
+	if result.Code != http.StatusUnprocessableEntity ||
+		!bytes.Contains(result.Body.Bytes(), []byte(`"code":"illegal_action"`)) {
+		t.Fatalf("expected out-of-range contest rejection, got %d %s", result.Code, result.Body.String())
+	}
+	current := request(t, handler, http.MethodGet, "/api/v1/sessions/"+before.ID, "")
+	var after model.Session
+	if err := json.Unmarshal(current.Body.Bytes(), &after); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, after) {
+		t.Fatal("rejected targeted contest mutated session state")
 	}
 }
 
@@ -181,6 +263,7 @@ func TestClampsOverRangeMovementToClassLimit(t *testing.T) {
 func TestDodgeEndpointEvadesIncomingProjectileWithoutAdvancingTurn(t *testing.T) {
 	base := testServer()
 	moment := base.ordered[0]
+	moment.Units[2].HP = 90
 	moment.Units[1] = model.Unit{
 		ID: "red", Team: "red", Role: "marksman", Class: model.ClassMarksman, Policy: "aggressive",
 		Position: model.Point{X: 45, Y: 50}, HP: 90, MaxHP: 90,

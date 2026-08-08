@@ -13,13 +13,14 @@ import (
 )
 
 const (
-	fixtureVersion    = "3.0"
-	minimumPackSize   = 1
-	maximumPackSize   = 3
-	minimumTradeoffs  = 2
-	minimumAlternates = 2
-	minimumTests      = 2
-	maxUnitsPerMoment = 64
+	fixtureVersion     = "3.0"
+	minimumPackSize    = 1
+	maximumPackSize    = 3
+	minimumTradeoffs   = 2
+	minimumAlternates  = 2
+	minimumTests       = 2
+	maxAcceptanceTurns = 20
+	maxUnitsPerMoment  = 64
 )
 
 var (
@@ -171,7 +172,7 @@ func ValidateMoment(moment model.Moment) error {
 
 	victory := moment.Rules.Victory
 	if !oneOf(victory.Kind, "secure-objective", "eliminate-target", "skirmish") || victory.Description == "" || victory.DefeatDescription == "" {
-		return fmt.Errorf("moment %q must define explicit victory and defeat conditions", moment.ID)
+		return fmt.Errorf("moment %q must define explicit tactical teaching-goal fields", moment.ID)
 	}
 	if victory.TargetUnitID != "" && !unitIDs[victory.TargetUnitID] {
 		return fmt.Errorf("moment %q targets unknown unit %q", moment.ID, victory.TargetUnitID)
@@ -331,8 +332,8 @@ func validateAuthoring(moment model.Moment) error {
 	expectedStatuses := map[string]bool{}
 	for _, test := range authoring.AcceptanceTests {
 		if strings.TrimSpace(test.Name) == "" || testNames[test.Name] || !oneOf(test.ExpectedStatus, "won", "lost") ||
-			test.ExpectedTerminalTurn < 0 || test.ExpectedTerminalTurn > moment.MaxTurns ||
-			len(test.Actions) < 1 || len(test.Actions) > moment.MaxTurns ||
+			test.ExpectedTerminalTurn < 0 || test.ExpectedTerminalTurn > maxAcceptanceTurns ||
+			len(test.Actions) < 1 || len(test.Actions) > maxAcceptanceTurns ||
 			(test.ExpectedTerminalTurn > 0 && len(test.Actions) != test.ExpectedTerminalTurn) || strings.TrimSpace(test.ExpectedOutcomeContains) == "" {
 			return fmt.Errorf("moment %q has invalid acceptance test %q", moment.ID, test.Name)
 		}

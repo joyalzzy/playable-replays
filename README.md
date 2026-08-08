@@ -4,7 +4,9 @@ Playable Replays is a Garena AI Build Challenge 2026 prototype: a shareable
 web tactical board built around three teaching scenarios from the T1–Bilibili
 Gaming 2024 Worlds Final. Choose a high-level command, inspect the authoritative
 simulation, react to incoming marksman projectiles with a separate two-charge
-Dodge control, and compare the result with an authored decision tree.
+Dodge control, and compare the result with an authored decision tree. Live play
+continues until one team has at least twice the opposing team's summed remaining
+health; authored turn counts bound coaching guidance, not gameplay.
 
 This is a compact counterfactual teaching model—not a proprietary game-engine
 recreation, a replay-telemetry viewer, or proof of what a professional player
@@ -115,7 +117,7 @@ except the user-controlled unit. Go rejects the entire response if any unit or
 action is missing, duplicated, unknown, malformed, illegal, or out of bounds.
 Accepted Move targets are still constrained by server-owned class movement
 limits, and Go alone resolves damage, visibility, projectiles, objectives, and
-terminal state.
+the 2:1 team-health terminal state.
 
 `Session.botControl.source` explains the active path:
 

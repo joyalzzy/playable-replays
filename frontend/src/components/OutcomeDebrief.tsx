@@ -8,6 +8,20 @@ type Props = {
   onReplay: () => void;
 };
 
+function featuredPlayerName(session: Session) {
+  const featuredPlayer = session.units.find(
+    (unit) => unit.team === "blue" && unit.policy === "controlled"
+  );
+  const roleSeparator = featuredPlayer?.role.indexOf("·") ?? -1;
+  if (!featuredPlayer || roleSeparator < 1) return undefined;
+
+  return featuredPlayer.role.slice(0, roleSeparator).trim() || undefined;
+}
+
+function possessive(name: string) {
+  return name.toLocaleLowerCase().endsWith("s") ? `${name}’` : `${name}’s`;
+}
+
 export function OutcomeDebrief({ session, busy, onReplay }: Props) {
   const [showBestCase, setShowBestCase] = useState(false);
   const [selectedStep, setSelectedStep] = useState(0);
@@ -21,16 +35,25 @@ export function OutcomeDebrief({ session, busy, onReplay }: Props) {
 
   const bestCase = session.bestCase;
   const activeStep = bestCase?.steps[Math.min(selectedStep, Math.max(0, bestCase.steps.length - 1))];
+  const playerName = featuredPlayerName(session);
+  const playerPossessive = playerName ? possessive(playerName) : undefined;
 
   return (
     <section className={`debrief debrief--${session.status}`} aria-label="Scenario debrief">
       <div className="debrief__header">
         <div>
-          <p className="eyebrow">COUNTERFACTUAL DEBRIEF</p>
-          <h2>{session.status === "won" ? "Scenario secured" : "Scenario lost"}</h2>
-          <p>{session.outcomeReason}</p>
+          <p className="eyebrow">{playerName ? `${playerName.toLocaleUpperCase()} SCENARIO REVIEW` : "COUNTERFACTUAL DEBRIEF"}</p>
+          <h2>{playerName ? `What would ${playerName} do here?` : session.status === "won" ? "Scenario secured" : "Scenario lost"}</h2>
+          <p><strong>{session.status === "won" ? "Scenario secured." : "Scenario lost."}</strong> {session.outcomeReason}</p>
+          {playerName && (
+            <p className="debrief__context">
+              This is an authored coaching counterfactual based on {playerPossessive} match context—not a claim about {playerPossessive} actual intent or an optimal real-world decision.
+            </p>
+          )}
         </div>
-        <button type="button" onClick={onReplay} disabled={busy}>Replay moment</button>
+        <button type="button" onClick={onReplay} disabled={busy}>
+          {playerPossessive ? `Replay ${playerPossessive} moment` : "Replay moment"}
+        </button>
       </div>
 
       <ul className="debrief__facts">
@@ -42,7 +65,7 @@ export function OutcomeDebrief({ session, busy, onReplay }: Props) {
           <div className="best-case__intro">
             <div>
               <p className="eyebrow">CALCULATED BEST ALLIED LINE</p>
-              <h3>Inspect the strongest modeled sequence</h3>
+              <h3>{playerName ? `Inspect the strongest modeled line for ${playerName}` : "Inspect the strongest modeled sequence"}</h3>
               <p>
                 Best reachable result: <strong>{bestCase.status}</strong> in {bestCase.turns} turns · {advantageLabel(bestCase.advantage)}.
               </p>
@@ -123,7 +146,7 @@ export function OutcomeDebrief({ session, busy, onReplay }: Props) {
 
       <div className="comparison-heading">
         <div>
-          <h3>First-decision comparison</h3>
+          <h3>{playerPossessive ? `Compare your opening in ${playerPossessive} scenario` : "First-decision comparison"}</h3>
           <p>Each card replays one legal opening through the same authored policy and scenario seed.</p>
         </div>
         <span>Reference rollouts · not historical outcomes</span>

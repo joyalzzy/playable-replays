@@ -14,8 +14,12 @@ import (
 
 var ErrIllegalAction = errors.New("illegal action")
 var ErrDodgeUnavailable = errors.New("dodge unavailable")
+var ErrProjectileUnavailable = errors.New("projectile unavailable")
 
 var actionTypes = []string{"move", "hold", "contest", "retreat"}
+
+const teamHealthOutcomeMultiplier = 2
+const teamHealthScenarioGoal = "Reach at least twice the opposing team's total remaining health before they reach twice yours."
 
 type Engine struct {
 	moment            model.Moment
@@ -58,7 +62,7 @@ func (e *Engine) Reset(sessionID string) model.Session {
 		ID:                  sessionID,
 		MomentID:            e.moment.ID,
 		ControlledUnitID:    e.moment.ControlledUnitID,
-		ScenarioGoal:        e.moment.Rules.Victory.Description,
+		ScenarioGoal:        teamHealthScenarioGoal,
 		MechanicBriefing:    cloneMechanicBriefing(e.moment.MechanicBriefing),
 		MaxTurns:            e.moment.MaxTurns,
 		Status:              "active",
@@ -67,6 +71,7 @@ func (e *Engine) Reset(sessionID string) model.Session {
 		Terrain:             slices.Clone(e.moment.Rules.Terrain),
 		Turrets:             canonicalTurrets(),
 		Projectiles:         []model.Projectile{},
+		ProjectileCharges:   2,
 		DodgeCharges:        2,
 		BotControl:          model.BotControlState{Source: botSource},
 		LegalActions:        slices.Clone(actionTypes),
@@ -81,6 +86,7 @@ func (e *Engine) Reset(sessionID string) model.Session {
 	}
 	e.applyFog(false)
 	e.updateDodgeAvailability()
+	e.updateProjectileAvailability()
 	e.recomputeAdvantage()
 	return e.State()
 }
@@ -139,14 +145,18 @@ func (e *Engine) Apply(action model.Action) (model.Session, error) {
 }
 
 func (e *Engine) ApplyContext(ctx context.Context, action model.Action) (model.Session, error) {
+	return e.ApplyTargetedContext(ctx, action, "")
+}
+
+func (e *Engine) ApplyTargetedContext(ctx context.Context, action model.Action, targetUnitID string) (model.Session, error) {
 	if e.session.Status != "active" {
 		return e.State(), fmt.Errorf("%w: session is complete", ErrIllegalAction)
 	}
-	controlled := e.unit(e.moment.ControlledUnitID)
+	controlled := e.unit(e.session.ControlledUnitID)
 	if controlled == nil || !controlled.Alive {
 		return e.State(), fmt.Errorf("%w: controlled unit is unavailable", ErrIllegalAction)
 	}
-	if err := e.validateAction(action); err != nil {
+	if err := e.validatePlayerAction(action, targetUnitID); err != nil {
 		return e.State(), err
 	}
 	if ctx == nil {
@@ -159,14 +169,16 @@ func (e *Engine) ApplyContext(ctx context.Context, action model.Action) (model.S
 	if !controlled.Alive {
 		e.recomputeAdvantage()
 		e.evaluateOutcome()
+		e.transferControlIfNeeded()
 		e.revealReferenceForTurn()
 		e.updateDodgeAvailability()
+		e.updateProjectileAvailability()
 		if e.session.Status != "active" {
 			e.session.Debrief = e.buildDebrief()
 		}
 		return e.State(), nil
 	}
-	e.resolveUser(controlled, action)
+	e.resolveUser(controlled, action, targetUnitID)
 	e.applyFog(true)
 	botActions, modelUsed, fallback := e.modelActions(ctx)
 	e.resolveAllies(controlled, botActions, modelUsed)
@@ -178,8 +190,10 @@ func (e *Engine) ApplyContext(ctx context.Context, action model.Action) (model.S
 	e.updateEscape()
 	e.recomputeAdvantage()
 	e.evaluateOutcome()
+	e.transferControlIfNeeded()
 	e.revealReferenceForTurn()
 	e.updateDodgeAvailability()
+	e.updateProjectileAvailability()
 	if e.session.Status != "active" {
 		e.session.Debrief = e.buildDebrief()
 	}
@@ -197,7 +211,7 @@ func (e *Engine) beginTurn() {
 	}
 }
 
-func (e *Engine) resolveUser(unit *model.Unit, action model.Action) {
+func (e *Engine) resolveUser(unit *model.Unit, action model.Action, targetUnitID string) {
 	switch action.Type {
 	case "move":
 		e.moveUnit(unit, *action.Target, 1, "user", "reposition")
@@ -207,6 +221,19 @@ func (e *Engine) resolveUser(unit *model.Unit, action model.Action) {
 		e.addLog("user", "defense", "hold", unit.ID, unit.ID, 4,
 			fmt.Sprintf("%s held formation, gaining 4 shield and reducing incoming damage this turn.", unitName(*unit)))
 	case "contest":
+		if targetUnitID != "" {
+			target := e.unit(targetUnitID)
+			if target == nil || !target.Alive {
+				e.addLog("user", "position", "contest", unit.ID, targetUnitID, 0,
+					fmt.Sprintf("%s's selected target was no longer available when the attack resolved.", unitName(*unit)))
+				return
+			}
+			if !e.performAttack(unit, target, "user", "contest") {
+				e.addLog("user", "position", "cooldown", unit.ID, target.ID, 0,
+					fmt.Sprintf("%s maintained pressure on %s while the attack cooldown recovered.", unitName(*unit), unitName(*target)))
+			}
+			return
+		}
 		target := e.controlledContestTarget(*unit)
 		if target == nil {
 			if objective := e.moment.Rules.Objective; objective != nil {
@@ -234,7 +261,7 @@ func (e *Engine) resolveUser(unit *model.Unit, action model.Action) {
 		destination := e.moment.Rules.Victory.SafeZone
 		e.moveUnit(unit, destination, 1.2, "user", "retreat")
 		e.addLog("user", "defense", "retreat", unit.ID, "", 0,
-			fmt.Sprintf("%s disengaged toward the safe zone and reduced incoming damage this turn.", unitName(*unit)))
+			fmt.Sprintf("%s disengaged toward the Blue base and reduced incoming damage this turn.", unitName(*unit)))
 	}
 }
 
@@ -333,7 +360,7 @@ func (e *Engine) botTarget(unit model.Unit) *model.Unit {
 		return e.enemyTarget(unit)
 	}
 	if unit.Policy == "aggressive" {
-		controlled := e.unit(e.moment.ControlledUnitID)
+		controlled := e.unit(e.session.ControlledUnitID)
 		target := e.unit(e.moment.Rules.Victory.TargetUnitID)
 		if controlled != nil && controlled.Guarded && controlled.Shield > 0 && target != nil && target.Alive && target.Visible {
 			return target
@@ -394,7 +421,9 @@ func (e *Engine) performAttack(attacker, target *model.Unit, actor, action strin
 }
 
 func (e *Engine) fireProjectile(attacker, target *model.Unit, actor string) bool {
-	if attacker.Cooldown > 0 || !attacker.Alive || !target.Alive {
+	if attacker == nil || target == nil || attacker.Class != model.ClassMarksman ||
+		attacker.Team == target.Team || attacker.Cooldown > 0 || !attacker.Alive || !target.Alive ||
+		distance(attacker.Position, target.Position) > attacker.AttackRange {
 		return false
 	}
 	e.nextProjectileID++
@@ -415,6 +444,62 @@ func (e *Engine) fireProjectile(attacker, target *model.Unit, actor string) bool
 	e.addLog(actor, "projectile", "fired", actorID, target.ID, damage,
 		fmt.Sprintf("%s fired a marksman projectile at %s for %d potential damage.", sourceLabel, unitName(*target), damage))
 	return true
+}
+
+// FireProjectile spends one of the player's two projectile charges and queues
+// a shot from a live blue marksman. It is a reaction and does not advance the
+// tactical turn, model, objective, or reference search.
+func (e *Engine) FireProjectile(sourceUnitID, targetUnitID string) (model.Session, error) {
+	if e.session.Status != "active" || e.session.ProjectileCharges <= 0 {
+		return e.State(), ErrProjectileUnavailable
+	}
+	source := e.unit(sourceUnitID)
+	target := e.unit(targetUnitID)
+	if !e.canFirePlayerProjectile(source, target) {
+		return e.State(), ErrProjectileUnavailable
+	}
+	if !e.fireProjectile(source, target, "user") {
+		return e.State(), ErrProjectileUnavailable
+	}
+	e.session.ProjectileCharges--
+	e.updateDodgeAvailability()
+	e.updateProjectileAvailability()
+	return e.State(), nil
+}
+
+func (e *Engine) canFirePlayerProjectile(source, target *model.Unit) bool {
+	return source != nil && target != nil && source.Team == "blue" &&
+		source.Class == model.ClassMarksman && source.Alive && source.Cooldown == 0 &&
+		e.isPlayerProjectileSource(source) &&
+		target.Team == "red" && target.Alive && target.Visible &&
+		distance(source.Position, target.Position) <= source.AttackRange
+}
+
+func (e *Engine) isPlayerProjectileSource(source *model.Unit) bool {
+	controlled := e.unit(e.session.ControlledUnitID)
+	if controlled == nil || !controlled.Alive {
+		return false
+	}
+	if controlled.Class == model.ClassMarksman {
+		return source.ID == controlled.ID
+	}
+	return source.ID != controlled.ID
+}
+
+func (e *Engine) updateProjectileAvailability() {
+	e.session.ProjectileAvailable = false
+	if e.session.Status != "active" || e.session.ProjectileCharges <= 0 {
+		return
+	}
+	for sourceIndex := range e.session.Units {
+		source := &e.session.Units[sourceIndex]
+		for targetIndex := range e.session.Units {
+			if e.canFirePlayerProjectile(source, &e.session.Units[targetIndex]) {
+				e.session.ProjectileAvailable = true
+				return
+			}
+		}
+	}
 }
 
 func (e *Engine) resolveProjectiles() {
@@ -482,6 +567,7 @@ func (e *Engine) Dodge() (model.Session, error) {
 			unitName(*controlled), e.session.DodgeCharges, plural(e.session.DodgeCharges)))
 	e.applyFog(true)
 	e.updateDodgeAvailability()
+	e.updateProjectileAvailability()
 	return e.State(), nil
 }
 
@@ -593,7 +679,7 @@ func (e *Engine) updateEscape() {
 	if !rules.AllowEscape || rules.EscapeTurns < 1 {
 		return
 	}
-	controlled := e.unit(e.moment.ControlledUnitID)
+	controlled := e.unit(e.session.ControlledUnitID)
 	if controlled == nil || !controlled.Alive {
 		return
 	}
@@ -611,7 +697,7 @@ func (e *Engine) updateEscape() {
 	if threatened {
 		e.session.EscapeProgress = 0
 		e.addLog("system", "escape", "contested", controlled.ID, "", 0,
-			"The safe zone is contested; escape progress reset.")
+			"The Blue base is contested; escape progress reset.")
 		return
 	}
 	e.session.EscapeProgress = min(rules.EscapeTurns, e.session.EscapeProgress+1)
@@ -620,49 +706,52 @@ func (e *Engine) updateEscape() {
 }
 
 func (e *Engine) evaluateOutcome() {
-	controlled := e.unit(e.moment.ControlledUnitID)
-	if controlled == nil || !controlled.Alive {
-		e.finish("lost", e.moment.Rules.Victory.DefeatDescription)
+	controlled := e.unit(e.session.ControlledUnitID)
+	playerTeam := "blue"
+	if controlled != nil {
+		playerTeam = controlled.Team
+	}
+	opponentTeam := opposingTeam(playerTeam)
+	playerHealth := teamTotalHealth(e.session.Units, playerTeam)
+	opponentHealth := teamTotalHealth(e.session.Units, opponentTeam)
+
+	if playerHealth <= 0 {
+		e.finish("lost", fmt.Sprintf("Your team has no remaining health; the opposing team has %d.", opponentHealth))
 		return
 	}
-	if e.moment.Rules.Victory.AllowEscape && e.session.EscapeProgress >= e.moment.Rules.Victory.EscapeTurns {
-		e.finish("won", "The controlled unit disengaged and held the safe route long enough to escape.")
+	if opponentHealth <= 0 || playerHealth >= teamHealthOutcomeMultiplier*opponentHealth {
+		e.finish("won", fmt.Sprintf("Your team reached a %d:%d total-health lead (%d to %d).",
+			teamHealthOutcomeMultiplier, 1, playerHealth, opponentHealth))
 		return
 	}
-	if state := e.session.Objective; state != nil {
-		if state.BlueProgress >= state.RequiredProgress {
-			e.finish("won", fmt.Sprintf("Your team secured %s before the opponents completed control.", state.Label))
-			return
-		}
-		if state.RedProgress >= state.RequiredProgress {
-			e.finish("lost", fmt.Sprintf("The opposing team secured %s first.", state.Label))
-			return
-		}
+	if opponentHealth >= teamHealthOutcomeMultiplier*playerHealth {
+		e.finish("lost", fmt.Sprintf("The opposing team reached a %d:%d total-health lead (%d to %d).",
+			teamHealthOutcomeMultiplier, 1, opponentHealth, playerHealth))
 	}
-	if targetID := e.moment.Rules.Victory.TargetUnitID; targetID != "" {
-		if target := e.unit(targetID); target == nil || !target.Alive {
-			e.finish("won", fmt.Sprintf("The isolated %s was eliminated before reinforcements stabilized the fight.", unitRole(targetID, e.session.Units)))
-			return
-		}
-	}
-	if allTeamEliminated(e.session.Units, "red") {
-		e.finish("won", "Every opposing unit was eliminated.")
+}
+
+func (e *Engine) transferControlIfNeeded() {
+	if e.session.Status != "active" {
 		return
 	}
-	if e.session.Turn < e.session.MaxTurns {
+	controlled := e.unit(e.session.ControlledUnitID)
+	if controlled != nil && controlled.Alive {
 		return
 	}
-	switch e.moment.Rules.Victory.Kind {
-	case "secure-objective":
-		e.finish("lost", "The objective window closed before your team secured control or completed an escape.")
-	case "eliminate-target":
-		e.finish("lost", "The overextended target survived until reinforcements stabilized the position.")
-	default:
-		if e.session.Advantage >= .55 {
-			e.finish("won", "Your team ended the decision window with the stronger tactical state.")
-		} else {
-			e.finish("lost", "Your team ended the decision window under greater pressure.")
+	team := "blue"
+	previousID := e.session.ControlledUnitID
+	if controlled != nil {
+		team = controlled.Team
+	}
+	for index := range e.session.Units {
+		candidate := &e.session.Units[index]
+		if candidate.Team != team || !candidate.Alive {
+			continue
 		}
+		e.session.ControlledUnitID = candidate.ID
+		e.addLog("system", "control", "transferred", previousID, candidate.ID, 0,
+			fmt.Sprintf("Control transferred to %s so play can continue toward a decisive team-health result.", unitName(*candidate)))
+		return
 	}
 }
 
@@ -707,6 +796,7 @@ func (e *Engine) buildDebrief() []string {
 	redHealth := int(math.Round(teamHealthRatio(e.session.Units, "red") * 100))
 	items := []string{
 		e.session.OutcomeReason,
+		fmt.Sprintf("Total remaining health: blue %d, red %d.", teamTotalHealth(e.session.Units, "blue"), teamTotalHealth(e.session.Units, "red")),
 		fmt.Sprintf("Combined remaining health: blue %d%%, red %d%%.", blueHealth, redHealth),
 	}
 	if objective := e.session.Objective; objective != nil {
@@ -755,7 +845,7 @@ func (e *Engine) computeReferenceOutcomes() []model.ReferenceOutcome {
 		}
 		outcomes = append(outcomes, model.ReferenceOutcome{
 			FirstAction: firstAction, Status: probe.session.Status, Turns: probe.session.Turn,
-			Advantage: probe.session.Advantage, OutcomeReason: probe.session.OutcomeReason,
+			Advantage: probe.session.Advantage, OutcomeReason: projectionOutcomeReason(probe.session),
 			KeyEvents: keyEvents(probe.session.Log, 3),
 		})
 	}
@@ -798,8 +888,8 @@ func (e *Engine) computeBestCase() *model.BestCaseLine {
 
 	return &model.BestCaseLine{
 		Status: probe.session.Status, Turns: probe.session.Turn, Advantage: probe.session.Advantage,
-		OutcomeReason: probe.session.OutcomeReason,
-		Method:        "Exhaustive deterministic search over all four tactical commands at every remaining turn; Move uses the scenario's authored destination and incoming projectiles use the same two-charge reference reaction.",
+		OutcomeReason: projectionOutcomeReason(probe.session),
+		Method:        "Exhaustive deterministic search over all four tactical commands within the authored teaching horizon; Move uses the scenario's authored destination and incoming projectiles use the same two-charge reference reaction.",
 		Steps:         steps,
 	}
 }
@@ -836,7 +926,7 @@ func bestCaseAlternatives(moment model.Moment, prefix []model.Action) []model.Be
 		result := bestContinuation(moment, append(cloneActions(prefix), action))
 		alternatives = append(alternatives, model.BestCaseAlternative{
 			Action: action, Status: result.state.Status, Turns: result.state.Turn,
-			Advantage: result.state.Advantage, OutcomeReason: result.state.OutcomeReason,
+			Advantage: result.state.Advantage, OutcomeReason: projectionOutcomeReason(result.state),
 		})
 	}
 	return alternatives
@@ -921,10 +1011,22 @@ func bestCaseReason(action model.Action, after model.Session, alternatives []mod
 }
 
 func outcomeNoun(status string) string {
-	if status == "won" {
+	switch status {
+	case "won":
 		return "win"
+	case "active":
+		return "still-contested state"
+	default:
+		return "loss"
 	}
-	return "loss"
+}
+
+func projectionOutcomeReason(state model.Session) string {
+	if state.OutcomeReason != "" {
+		return state.OutcomeReason
+	}
+	return fmt.Sprintf("Neither team reached the %d:%d total-health threshold within the authored %d-turn teaching horizon.",
+		teamHealthOutcomeMultiplier, 1, state.MaxTurns)
 }
 
 func tacticalActionReason(action model.Action, after model.Session, moment model.Moment) string {
@@ -945,7 +1047,7 @@ func tacticalActionReason(action model.Action, after model.Session, moment model
 		}
 		return "Contesting applied pressure to the nearest modeled threat."
 	case "retreat":
-		return "Retreating applied guard and moved 20% faster toward the authored safe zone, creating the strongest modeled disengage."
+		return "Retreating applied guard and moved 20% faster toward the Blue base, creating the strongest modeled disengage."
 	default:
 		return "This command produced the strongest modeled continuation from the current state."
 	}
@@ -1039,7 +1141,7 @@ func (e *Engine) enemyTarget(observer model.Unit) *model.Unit {
 		}
 		d := distance(observer.Position, candidate.Position)
 		priority := d
-		if candidate.ID == e.moment.ControlledUnitID && observer.Policy == "aggressive" {
+		if candidate.ID == e.session.ControlledUnitID && observer.Policy == "aggressive" {
 			priority -= 14
 		}
 		if priority < best {
@@ -1097,10 +1199,10 @@ func normalizeMoment(moment model.Moment) model.Moment {
 		moment.Rules.Victory.Kind = "skirmish"
 	}
 	if moment.Rules.Victory.Description == "" {
-		moment.Rules.Victory.Description = "Finish the decision window with the stronger tactical state."
+		moment.Rules.Victory.Description = "Build a decisive team-health advantage."
 	}
 	if moment.Rules.Victory.DefeatDescription == "" {
-		moment.Rules.Victory.DefeatDescription = "The controlled unit was eliminated."
+		moment.Rules.Victory.DefeatDescription = "Avoid conceding a decisive team-health deficit."
 	}
 	if moment.Rules.Victory.SafeRadius <= 0 {
 		moment.Rules.Victory.SafeRadius = 8
@@ -1180,26 +1282,21 @@ func unitName(unit model.Unit) string {
 	return strings.Title(unit.Team) + " " + unit.Role
 }
 
-func unitRole(id string, units []model.Unit) string {
-	for _, unit := range units {
-		if unit.ID == id {
-			return unit.Role
-		}
-	}
-	return "target"
-}
-
-func allTeamEliminated(units []model.Unit, team string) bool {
-	found := false
+func teamTotalHealth(units []model.Unit, team string) int {
+	total := 0
 	for _, unit := range units {
 		if unit.Team == team {
-			found = true
-			if unit.Alive {
-				return false
-			}
+			total += max(0, unit.HP)
 		}
 	}
-	return found
+	return total
+}
+
+func opposingTeam(team string) string {
+	if team == "red" {
+		return "blue"
+	}
+	return "red"
 }
 
 func teamHealthRatio(units []model.Unit, team string) float64 {

@@ -30,6 +30,28 @@ func (e *Engine) validateAction(action model.Action) error {
 	return nil
 }
 
+func (e *Engine) validatePlayerAction(action model.Action, targetUnitID string) error {
+	if err := e.validateAction(action); err != nil {
+		return err
+	}
+	if targetUnitID == "" {
+		return nil
+	}
+	if action.Type != "contest" {
+		return fmt.Errorf("%w: targetUnitId is only accepted for contest", ErrIllegalAction)
+	}
+	controlled := e.unit(e.session.ControlledUnitID)
+	target := e.unit(targetUnitID)
+	if controlled == nil || !controlled.Alive || target == nil || !target.Alive ||
+		target.Team == controlled.Team || !target.Visible {
+		return fmt.Errorf("%w: selected contest target is unavailable", ErrIllegalAction)
+	}
+	if distance(controlled.Position, target.Position) > controlled.AttackRange {
+		return fmt.Errorf("%w: selected contest target is outside attack range", ErrIllegalAction)
+	}
+	return nil
+}
+
 func (e *Engine) automaticDodgeTarget(unit model.Unit) model.Point {
 	enemy := e.nearestVisibleEnemy(unit)
 	if enemy == nil {
