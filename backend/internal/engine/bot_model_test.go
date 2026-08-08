@@ -83,6 +83,9 @@ func TestBotModelSuppliesEveryNonPlayerAction(t *testing.T) {
 		len(stub.snapshot.LegalActions) != 4 || len(stub.snapshot.Projectiles) != 0 {
 		t.Fatalf("unexpected bot-model snapshot: calls=%d snapshot=%+v", stub.calls, stub.snapshot)
 	}
+	if stub.snapshot.Projectiles == nil {
+		t.Fatal("empty projectiles must remain an array in the bot-model request")
+	}
 	if !reflect.DeepEqual(stub.snapshot.LegalActions, []string{"move", "hold", "contest", "retreat"}) {
 		t.Fatalf("snapshot exposed the wrong action vocabulary: %v", stub.snapshot.LegalActions)
 	}
