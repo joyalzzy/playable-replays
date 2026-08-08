@@ -10,7 +10,7 @@ const commands = [
   { name: "Move", cue: "Reposition", description: "Choose a point on the map and travel toward it." },
   { name: "Hold", cue: "Defend", description: "Stay put, brace for damage, and recover your footing." },
   { name: "Contest", cue: "Pressure", description: "Focus the visible priority target, or approach the nearest visible threat and fight in range." },
-  { name: "Retreat", cue: "Escape", description: "Disengage faster toward the scenario's marked safe area." }
+  { name: "Retreat", cue: "Escape", description: "Disengage faster toward the Blue base." }
 ] as const;
 
 type GuideIconTooltipProps = {

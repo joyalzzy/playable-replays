@@ -23,6 +23,8 @@ describe("ReplayHelp", () => {
     expect(screen.getByText("Hold")).toBeInTheDocument();
     expect(screen.getByText("Contest")).toBeInTheDocument();
     expect(screen.getByText("Retreat")).toBeInTheDocument();
+    expect(screen.getByText(/move 20% faster toward the Blue base/i)).toBeInTheDocument();
+    expect(screen.queryByText(/safe zone/i)).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Separate projectile response" })).toBeInTheDocument();
     expect(screen.getByText("Dodge · two charges")).toBeInTheDocument();
   });
@@ -61,7 +63,7 @@ describe("ReplayHelp", () => {
       "Health",
       "Limited vision",
       "Objective core",
-      "Safe zone",
+      "Blue base",
       "Brush",
       "Wall",
       "River",

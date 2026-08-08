@@ -515,6 +515,7 @@ aside { display: flex; flex-direction: column; gap: 14px; }
 .debrief__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .debrief__header h2 { margin: 4px 0 5px; color: #ffd166; }
 .debrief__header p { margin: 0; color: #b7c4d8; line-height: 1.5; }
+.debrief__header .debrief__context { max-width: 760px; margin-top: 8px; color: #8495ac; font-size: .72rem; }
 .debrief__header button { flex: 0 0 auto; padding: 9px 12px; border: 1px solid #4a6e8a; border-radius: 9px; background: #223a58; }
 .debrief__facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 20px; margin: 16px 0; padding: 12px 12px 12px 30px; border-radius: 10px; color: #aebbd0; background: rgba(6, 13, 27, .34); font-size: .78rem; line-height: 1.45; }
 .best-case { margin-top: 16px; padding: 15px; border: 1px solid #3e6d65; border-radius: 13px; background: linear-gradient(135deg, rgba(15, 49, 46, .76), rgba(8, 18, 34, .82)); }

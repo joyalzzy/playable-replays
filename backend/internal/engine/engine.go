@@ -261,7 +261,7 @@ func (e *Engine) resolveUser(unit *model.Unit, action model.Action, targetUnitID
 		destination := e.moment.Rules.Victory.SafeZone
 		e.moveUnit(unit, destination, 1.2, "user", "retreat")
 		e.addLog("user", "defense", "retreat", unit.ID, "", 0,
-			fmt.Sprintf("%s disengaged toward the safe zone and reduced incoming damage this turn.", unitName(*unit)))
+			fmt.Sprintf("%s disengaged toward the Blue base and reduced incoming damage this turn.", unitName(*unit)))
 	}
 }
 
@@ -697,7 +697,7 @@ func (e *Engine) updateEscape() {
 	if threatened {
 		e.session.EscapeProgress = 0
 		e.addLog("system", "escape", "contested", controlled.ID, "", 0,
-			"The safe zone is contested; escape progress reset.")
+			"The Blue base is contested; escape progress reset.")
 		return
 	}
 	e.session.EscapeProgress = min(rules.EscapeTurns, e.session.EscapeProgress+1)
@@ -1047,7 +1047,7 @@ func tacticalActionReason(action model.Action, after model.Session, moment model
 		}
 		return "Contesting applied pressure to the nearest modeled threat."
 	case "retreat":
-		return "Retreating applied guard and moved 20% faster toward the authored safe zone, creating the strongest modeled disengage."
+		return "Retreating applied guard and moved 20% faster toward the Blue base, creating the strongest modeled disengage."
 	default:
 		return "This command produced the strongest modeled continuation from the current state."
 	}

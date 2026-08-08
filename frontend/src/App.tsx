@@ -10,7 +10,7 @@ import { ProjectileControl } from "./components/ProjectileControl";
 import { ReplayHelp } from "./components/ReplayHelp";
 import { TacticalBoard } from "./components/TacticalBoard";
 import { Timeline } from "./components/Timeline";
-import { actionLabel, advantageLabel, turnLabel } from "./format";
+import { actionLabel, advantageLabel, botControlLabel, turnLabel } from "./format";
 import { scenarioOptionLabel, sortMomentsByDifficulty } from "./scenarioOrder";
 import type { ActionType, MomentSummary, Point, Session, Unit } from "./types";
 
@@ -33,20 +33,9 @@ function objectiveSummary(session: Session) {
     return `${session.objective.blueProgress}/${session.objective.requiredProgress} blue`;
   }
   if (session.escapeTurnsRequired > 0) {
-    return `${session.escapeProgress}/${session.escapeTurnsRequired} safe`;
+    return `${session.escapeProgress}/${session.escapeTurnsRequired} turns at Blue base`;
   }
   return session.status === "active" ? "Open" : session.status === "won" ? "Converted" : "Closed";
-}
-
-function botControlSummary(session: Session) {
-  if (session.botControl.source === "external-model") {
-    const identity = [session.botControl.modelName, session.botControl.modelVersion]
-      .filter(Boolean)
-      .join(" · ");
-    return identity || "External model";
-  }
-  if (session.botControl.source === "deterministic-fallback") return "Deterministic fallback";
-  return "Awaiting first response";
 }
 
 function unitDistance(left: Unit, right: Unit) {
@@ -63,7 +52,7 @@ function visibleEnemiesInRange(session: Session, source?: Unit) {
 function playerMarksmanSources(session: Session) {
   const controlled = session.units.find((unit) => unit.id === session.controlledUnitId);
   if (controlled?.class === "marksman" && controlled.alive) return [controlled];
-  return session.units.filter((unit) => unit.team === "blue" && unit.class === "marksman" && unit.alive);
+  return [];
 }
 
 export default function App() {
@@ -338,7 +327,7 @@ export default function App() {
           <strong>{objectiveSummary(session)}</strong>
         </div>
         <div><span>Known threats</span><strong>{session.visibleEnemyCount} visible · {session.unknownEnemyCount} unknown</strong></div>
-        <div><span>Bot control</span><strong>{botControlSummary(session)}</strong></div>
+        <div><span>Bot control</span><strong>{botControlLabel(session.botControl)}</strong></div>
       </section>
 
       {error && <div className="error" role="alert">{error}</div>}
@@ -363,21 +352,23 @@ export default function App() {
             selectedAttackTargetId={selectedContestTargetUnitId}
             onAttackTarget={setContestTargetUnitId}
           />
-          <ProjectileControl
-            charges={session.projectileCharges}
-            available={session.projectileAvailable}
-            sources={projectileSources}
-            targets={projectileTargets}
-            selectedSourceUnitId={selectedProjectileSource?.id}
-            selectedTargetUnitId={selectedProjectileTargetUnitId}
-            disabled={busy || session.status !== "active" || mechanicsLocked}
-            onSource={(unitId) => {
-              setProjectileSourceUnitId(unitId || undefined);
-              setProjectileTargetUnitId(undefined);
-            }}
-            onTarget={(unitId) => setProjectileTargetUnitId(unitId || undefined)}
-            onFire={() => void fire()}
-          />
+          {projectileSources.length > 0 && (
+            <ProjectileControl
+              charges={session.projectileCharges}
+              available={session.projectileAvailable}
+              sources={projectileSources}
+              targets={projectileTargets}
+              selectedSourceUnitId={selectedProjectileSource?.id}
+              selectedTargetUnitId={selectedProjectileTargetUnitId}
+              disabled={busy || session.status !== "active" || mechanicsLocked}
+              onSource={(unitId) => {
+                setProjectileSourceUnitId(unitId || undefined);
+                setProjectileTargetUnitId(undefined);
+              }}
+              onTarget={(unitId) => setProjectileTargetUnitId(unitId || undefined)}
+              onFire={() => void fire()}
+            />
+          )}
           <DodgeControl
             charges={session.dodgeCharges}
             available={session.dodgeAvailable}

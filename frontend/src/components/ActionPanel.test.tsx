@@ -112,7 +112,8 @@ describe("ActionPanel", () => {
     expect(screen.getByRole("button", { name: /move.*reposition/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /hold.*brace/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /contest.*visible enemy.*attack range.*attack when ready/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /retreat.*safe zone/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retreat.*blue base/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /safe zone/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /dodge/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /outplay/i })).not.toBeInTheDocument();
   });

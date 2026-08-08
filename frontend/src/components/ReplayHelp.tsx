@@ -171,9 +171,9 @@ export function ReplayHelp() {
               symbol={<span className="replay-symbol replay-symbol--objective" aria-hidden="true"><span /></span>}
             />
             <LegendCard
-              title="Safe zone"
-              description="Dashed blue areas mark authored tower, gate, pocket, or exit destinations used for escapes."
-              symbol={<span className="replay-symbol replay-symbol--safe" aria-hidden="true">SAFE</span>}
+              title="Blue base"
+              description="The dashed blue area marks the Blue base destination used when retreating."
+              symbol={<span className="replay-symbol replay-symbol--safe" aria-hidden="true">BASE</span>}
             />
             <LegendCard
               title="Brush"
@@ -233,7 +233,7 @@ export function ReplayHelp() {
             </article>
             <article>
               <strong>Retreat</strong>
-              <p>Move 20% faster toward the scenario's safe zone and reduce incoming damage while disengaging.</p>
+              <p>Move 20% faster toward the Blue base and reduce incoming damage while disengaging.</p>
             </article>
           </div>
 
