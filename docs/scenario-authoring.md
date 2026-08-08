@@ -43,25 +43,28 @@ Keep observation, interpretation, and teaching claims separate:
 Each scenario must include:
 
 - a stable ID/slug, title, description, seed, map, reason tags, and `1..20`
-  tactical turns;
+  authored reference turns (`maxTurns`); live play may continue beyond them;
 - one category, one skill level, an analyst rationale, at least two intended
   tradeoffs, and at least two distinct plausible alternatives;
 - exactly five blue and five red units, with one live blue controlled unit and
   exactly one marksman per team;
 - class-valid health, movement, attack range, combat values, cooldowns,
   visibility, and a supported policy for every unit;
-- explicit victory/defeat rules, optional objective/escape rules, terrain, and
-  any required pre-play mechanic briefing;
+- authored tactical-goal rules, optional objective/escape rules, terrain, and
+  any required pre-play mechanic briefing; these guide the lesson but do not
+  replace the engine's universal 2:1 team-health terminal rule;
 - a reference action and reason for every turn;
 - an action default and a `maxTurns - 1` continuation for each of the four
   tactical commands: `move`, `hold`, `contest`, and `retreat`; and
-- at least two executable acceptance cases covering both `won` and `lost`.
+- at least two executable acceptance cases covering both `won` and `lost` under
+  the 2:1 total-health rule.
 
 Only Move accepts a target. Dodge is not part of `actions`, `actionDefaults`,
 reference continuations, plausible action alternatives, or the tactical action
-enum. An acceptance case may list up to two one-based turn numbers in
-`dodgeBeforeTurns`; the validator invokes the separate Dodge reaction before
-that tactical turn.
+enum. An acceptance case may contain up to 20 tactical actions, including
+actions beyond the authored `maxTurns` reference horizon, and may list up to two
+one-based turn numbers in `dodgeBeforeTurns`; the validator invokes the separate
+Dodge reaction before that tactical turn.
 
 The engine, not the fixture, supplies the canonical six turrets. A scenario may
 author terrain/objectives and full-map unit placement, but it must not create a
@@ -84,10 +87,11 @@ targeting locked until the learner acknowledges the briefing.
    coordinate-approximation disclosure.
 4. Author a complete 5v5 state on the `0..100` full map using class profiles and
    the controlled/non-player policy boundary.
-5. Define terrain, victory conditions, optional objective/escape state, the
+5. Define terrain, tactical teaching goals, optional objective/escape state, the
    four-command reference plan, reasons, defaults, and continuations.
-6. Add a credible success and failure acceptance line. Add Dodge turn numbers
-   only where a pending projectile is actually available.
+6. Add a credible success and failure acceptance line that reaches the 2:1
+   total-health threshold. It may continue beyond `maxTurns`, up to 20 actions.
+   Add Dodge turn numbers only where a pending projectile is actually available.
 7. Validate from `backend/`:
 
    ```bash
@@ -117,7 +121,7 @@ acceptance line with the deterministic authoritative engine.
   "dodgeBeforeTurns": [2],
   "expectedStatus": "won",
   "expectedTerminalTurn": 4,
-  "expectedOutcomeContains": "stronger tactical state"
+  "expectedOutcomeContains": "2:1 total-health lead"
 }
 ```
 

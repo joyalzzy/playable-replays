@@ -91,7 +91,9 @@ paths:
         Contest may identify a visible enemy already inside the controlled
         unit's attack range. The simulator then resolves bot actions,
         projectiles, damage, objectives, visibility, scoring, and terminal state
-        in authoritative order.
+        in authoritative order. Play remains active beyond the authored teaching
+        horizon until either team has at least twice the other's total remaining
+        health.
       requestBody:
         required: true
         content:
@@ -774,6 +776,7 @@ components:
         scenarioGoal:
           type: string
           minLength: 1
+          description: The authoritative universal 2:1 team-health outcome rule.
         mechanicBriefing:
           $ref: "#/components/schemas/MechanicBriefing"
         turn:
@@ -783,12 +786,15 @@ components:
           type: integer
           minimum: 1
           maximum: 20
+          description: Authored reference/guidance horizon; not a terminal turn cap.
         status:
           type: string
           enum: [active, won, lost]
+          description: Active until either team reaches at least a 2:1 total-health lead.
         outcomeReason:
           type: string
           minLength: 1
+          description: Present after the authoritative team-health threshold is reached.
         advantage:
           type: number
           minimum: 0

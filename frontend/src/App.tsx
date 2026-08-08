@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
-import { createSession, dodgeProjectile, listMoments, resetSession, takeTurn } from "./api";
+import { createSession, dodgeProjectile, fireProjectile, listMoments, resetSession, takeTurn } from "./api";
 import { ActionPanel } from "./components/ActionPanel";
 import { BeginnerGuide } from "./components/BeginnerGuide";
 import { DodgeControl } from "./components/DodgeControl";
 import { MainMenu } from "./components/MainMenu";
 import { MechanicsBriefing } from "./components/MechanicsBriefing";
 import { OutcomeDebrief } from "./components/OutcomeDebrief";
+import { ProjectileControl } from "./components/ProjectileControl";
 import { ReplayHelp } from "./components/ReplayHelp";
 import { TacticalBoard } from "./components/TacticalBoard";
 import { Timeline } from "./components/Timeline";
-import { actionLabel, advantageLabel } from "./format";
+import { actionLabel, advantageLabel, turnLabel } from "./format";
 import { scenarioOptionLabel, sortMomentsByDifficulty } from "./scenarioOrder";
-import type { ActionType, MomentSummary, Point, Session } from "./types";
+import type { ActionType, MomentSummary, Point, Session, Unit } from "./types";
 
 type AppView = "menu" | "tutorial" | "guide";
 
@@ -48,6 +49,23 @@ function botControlSummary(session: Session) {
   return "Awaiting first response";
 }
 
+function unitDistance(left: Unit, right: Unit) {
+  return Math.hypot(left.position.x - right.position.x, left.position.y - right.position.y);
+}
+
+function visibleEnemiesInRange(session: Session, source?: Unit) {
+  if (!source) return [];
+  return session.units.filter(
+    (unit) => unit.team === "red" && unit.visible && unit.alive && unitDistance(source, unit) <= source.attackRange
+  );
+}
+
+function playerMarksmanSources(session: Session) {
+  const controlled = session.units.find((unit) => unit.id === session.controlledUnitId);
+  if (controlled?.class === "marksman" && controlled.alive) return [controlled];
+  return session.units.filter((unit) => unit.team === "blue" && unit.class === "marksman" && unit.alive);
+}
+
 export default function App() {
   const [view, setView] = useState<AppView>(viewFromLocation);
   const [moments, setMoments] = useState<MomentSummary[]>([]);
@@ -55,6 +73,9 @@ export default function App() {
   const [session, setSession] = useState<Session>();
   const [action, setAction] = useState<ActionType>("move");
   const [target, setTarget] = useState<Point>();
+  const [contestTargetUnitId, setContestTargetUnitId] = useState<string>();
+  const [projectileSourceUnitId, setProjectileSourceUnitId] = useState<string>();
+  const [projectileTargetUnitId, setProjectileTargetUnitId] = useState<string>();
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string>();
   const [mechanicsUnderstood, setMechanicsUnderstood] = useState(false);
@@ -89,6 +110,9 @@ export default function App() {
       setSession(nextSession);
       setAction("move");
       setTarget(undefined);
+      setContestTargetUnitId(undefined);
+      setProjectileSourceUnitId(undefined);
+      setProjectileTargetUnitId(undefined);
       window.history.replaceState(null, "", `?moment=${encodeURIComponent(next.slug)}`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not start the replay.");
@@ -114,16 +138,25 @@ export default function App() {
 
   async function commit() {
     if (!session || mechanicsLocked) return;
+    const controlled = session.units.find((unit) => unit.id === session.controlledUnitId);
+    const contestTarget = visibleEnemiesInRange(session, controlled).find((unit) => unit.id === contestTargetUnitId);
+    if (action === "contest" && !contestTarget) return;
     setBusy(true);
     setError(undefined);
     try {
       setSession(
-        await takeTurn(session.id, {
-          type: action,
-          ...(action === "move" && target ? { target } : {})
-        })
+        await takeTurn(
+          session.id,
+          {
+            type: action,
+            ...(action === "move" && target ? { target } : {})
+          },
+          action === "contest" ? contestTarget?.id : undefined
+        )
       );
       setTarget(undefined);
+      setContestTargetUnitId(undefined);
+      setProjectileTargetUnitId(undefined);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The turn could not be resolved.");
     } finally {
@@ -138,6 +171,9 @@ export default function App() {
       setSession(await resetSession(session.id));
       setAction("move");
       setTarget(undefined);
+      setContestTargetUnitId(undefined);
+      setProjectileSourceUnitId(undefined);
+      setProjectileTargetUnitId(undefined);
       setMechanicsUnderstood(false);
       setError(undefined);
     } catch (reason) {
@@ -160,8 +196,29 @@ export default function App() {
     try {
       setSession(await dodgeProjectile(session.id));
       setTarget(undefined);
+      setContestTargetUnitId(undefined);
+      setProjectileTargetUnitId(undefined);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The projectile could not be dodged.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function fire() {
+    if (!session || mechanicsLocked || session.status !== "active") return;
+    const sources = playerMarksmanSources(session);
+    const source = sources.find((unit) => unit.id === projectileSourceUnitId) ?? (sources.length === 1 ? sources[0] : undefined);
+    const targetUnit = visibleEnemiesInRange(session, source).find((unit) => unit.id === projectileTargetUnitId);
+    if (!source || !targetUnit) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      setSession(await fireProjectile(session.id, source.id, targetUnit.id));
+      setContestTargetUnitId(undefined);
+      setProjectileTargetUnitId(undefined);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The projectile could not be fired.");
     } finally {
       setBusy(false);
     }
@@ -199,6 +256,19 @@ export default function App() {
       </main>
     );
   }
+
+  const controlledUnit = session.units.find((unit) => unit.id === session.controlledUnitId);
+  const contestTargets = visibleEnemiesInRange(session, controlledUnit);
+  const selectedContestTargetUnitId = contestTargets.some((unit) => unit.id === contestTargetUnitId)
+    ? contestTargetUnitId
+    : undefined;
+  const projectileSources = playerMarksmanSources(session);
+  const selectedProjectileSource = projectileSources.find((unit) => unit.id === projectileSourceUnitId)
+    ?? (projectileSources.length === 1 ? projectileSources[0] : undefined);
+  const projectileTargets = visibleEnemiesInRange(session, selectedProjectileSource);
+  const selectedProjectileTargetUnitId = projectileTargets.some((unit) => unit.id === projectileTargetUnitId)
+    ? projectileTargetUnitId
+    : undefined;
 
   return (
     <main className="shell">
@@ -258,7 +328,10 @@ export default function App() {
       </section>
 
       <section className="stats" aria-label="Replay status">
-        <div><span>Turn</span><strong>{session.turn}/{session.maxTurns}</strong></div>
+        <div>
+          <span>Turn</span>
+          <strong>{turnLabel(session.turn, session.maxTurns)}</strong>
+        </div>
         <div><span>Scenario advantage</span><strong>{advantageLabel(session.advantage)}</strong></div>
         <div>
           <span>{session.objective?.label ?? (session.escapeTurnsRequired > 0 ? "Escape route" : "Target window")}</span>
@@ -284,6 +357,26 @@ export default function App() {
             target={target}
             targeting={action === "move" && session.status === "active" && !mechanicsLocked}
             onTarget={setTarget}
+            attackTargetIds={action === "contest" && session.status === "active" && !mechanicsLocked
+              ? contestTargets.map((unit) => unit.id)
+              : undefined}
+            selectedAttackTargetId={selectedContestTargetUnitId}
+            onAttackTarget={setContestTargetUnitId}
+          />
+          <ProjectileControl
+            charges={session.projectileCharges}
+            available={session.projectileAvailable}
+            sources={projectileSources}
+            targets={projectileTargets}
+            selectedSourceUnitId={selectedProjectileSource?.id}
+            selectedTargetUnitId={selectedProjectileTargetUnitId}
+            disabled={busy || session.status !== "active" || mechanicsLocked}
+            onSource={(unitId) => {
+              setProjectileSourceUnitId(unitId || undefined);
+              setProjectileTargetUnitId(undefined);
+            }}
+            onTarget={(unitId) => setProjectileTargetUnitId(unitId || undefined)}
+            onFire={() => void fire()}
           />
           <DodgeControl
             charges={session.dodgeCharges}
@@ -301,7 +394,11 @@ export default function App() {
               disabled={busy || session.status !== "active"}
               onUnderstand={(understood) => {
                 setMechanicsUnderstood(understood);
-                if (!understood) setTarget(undefined);
+                if (!understood) {
+                  setTarget(undefined);
+                  setContestTargetUnitId(undefined);
+                  setProjectileTargetUnitId(undefined);
+                }
               }}
             />
           )}
@@ -309,11 +406,15 @@ export default function App() {
             legalActions={session.legalActions}
             selected={action}
             target={target}
+            contestTargets={contestTargets}
+            selectedTargetUnitId={selectedContestTargetUnitId}
             disabled={busy || session.status !== "active" || mechanicsLocked}
             onSelect={(next) => {
               setAction(next);
               if (next !== "move") setTarget(undefined);
+              if (next !== "contest") setContestTargetUnitId(undefined);
             }}
+            onTargetUnit={(unitId) => setContestTargetUnitId(unitId || undefined)}
             onCommit={() => void commit()}
           />
         </div>

@@ -49,9 +49,6 @@ func (e *Engine) validatePlayerAction(action model.Action, targetUnitID string) 
 	if distance(controlled.Position, target.Position) > controlled.AttackRange {
 		return fmt.Errorf("%w: selected contest target is outside attack range", ErrIllegalAction)
 	}
-	if controlled.Cooldown > 1 {
-		return fmt.Errorf("%w: controlled unit attack will not be ready this turn", ErrIllegalAction)
-	}
 	return nil
 }
 

@@ -157,6 +157,28 @@ describe("TacticalBoard", () => {
     expect(screen.getByText(/within 7 map units/i)).toBeInTheDocument();
   });
 
+  it("selects a highlighted in-range enemy as the contest target", () => {
+    const onAttackTarget = vi.fn();
+    render(
+      <TacticalBoard
+        units={units}
+        terrain={[]}
+        turrets={[]}
+        projectiles={[]}
+        controlledUnitId="blue"
+        unknownEnemyCount={1}
+        targeting={false}
+        onTarget={vi.fn()}
+        attackTargetIds={["red-mage"]}
+        onAttackTarget={onAttackTarget}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /red mage unit.*selectable attack target/i }));
+    expect(onAttackTarget).toHaveBeenCalledWith("red-mage");
+    expect(screen.getByText(/select a highlighted enemy within 10 attack range/i)).toBeInTheDocument();
+  });
+
   it("clamps a selected map point to the controlled class move range", () => {
     const onTarget = vi.fn();
     render(

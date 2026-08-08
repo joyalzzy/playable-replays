@@ -55,13 +55,20 @@ select an arbitrary outbound URL.
 7. Go validates the response atomically. A complete valid response supplies bot
    intent; any failure uses deterministic built-in actions for the whole turn.
 8. Go resolves allied and enemy behavior, visibility, objective/escape state,
-   rules-based advantage, terminal state, and reference output.
+   rules-based advantage, the universal 2:1 team-health terminal check, and
+   reference output. If the controlled unit falls before that threshold,
+   control transfers deterministically to a surviving teammate.
 9. React receives a complete public `Session` snapshot.
 
 Move targets from the model are bounded to `0..100` and then constrained by
 each unit's server-owned class movement range during resolution. The model can
 never set health, damage, cooldowns, visibility, projectile results, advantage,
 or terminal state.
+
+The fixture's `maxTurns` is an authored coaching/reference horizon rather than
+a live-play cap. The API continues accepting the same four commands after that
+horizon while the session remains active. Only summed remaining team health can
+finish play: a team wins once it has at least twice its opponent's total HP.
 
 ## Dodge flow
 

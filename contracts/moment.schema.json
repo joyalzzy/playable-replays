@@ -383,6 +383,7 @@
     },
     "victory": {
       "type": "object",
+      "description": "Authored tactical teaching goal and bot-policy context; terminal status uses the engine's universal 2:1 team-health rule.",
       "additionalProperties": false,
       "required": [
         "kind",
@@ -581,7 +582,8 @@
         "maxTurns": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 20
+          "maximum": 20,
+          "description": "Authored reference horizon; live play may continue beyond it until the 2:1 health threshold."
         },
         "controlledUnitId": {
           "type": "string",

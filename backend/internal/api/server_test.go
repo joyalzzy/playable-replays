@@ -130,6 +130,33 @@ func TestJourney(t *testing.T) {
 	}
 }
 
+func TestTurnEndpointContinuesBeyondAuthoredHorizonUntilHealthThreshold(t *testing.T) {
+	base := testServer()
+	moment := base.ordered[0]
+	moment.MaxTurns = 1
+	handler := New([]model.Moment{moment}, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler()
+	created := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
+	if !bytes.Contains(created.Body.Bytes(), []byte(`"scenarioGoal":"Reach at least twice`)) {
+		t.Fatalf("session did not expose the health-threshold goal: %s", created.Body.String())
+	}
+	var session model.Session
+	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		turn := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns", `{"action":{"type":"hold"}}`)
+		if turn.Code != http.StatusOK {
+			t.Fatalf("continued turn failed: %d %s", turn.Code, turn.Body.String())
+		}
+		if err := json.Unmarshal(turn.Body.Bytes(), &session); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if session.Status != "active" || session.Turn != 2 || session.MaxTurns != 1 {
+		t.Fatalf("authored horizon incorrectly terminated live play: %+v", session)
+	}
+}
+
 func TestFireProjectileEndpointDoesNotAdvanceTurn(t *testing.T) {
 	handler := testServer().Handler()
 	created := request(t, handler, http.MethodPost, "/api/v1/sessions", `{"momentId":"m1"}`)
@@ -236,6 +263,7 @@ func TestClampsOverRangeMovementToClassLimit(t *testing.T) {
 func TestDodgeEndpointEvadesIncomingProjectileWithoutAdvancingTurn(t *testing.T) {
 	base := testServer()
 	moment := base.ordered[0]
+	moment.Units[2].HP = 90
 	moment.Units[1] = model.Unit{
 		ID: "red", Team: "red", Role: "marksman", Class: model.ClassMarksman, Policy: "aggressive",
 		Position: model.Point{X: 45, Y: 50}, HP: 90, MaxHP: 90,
