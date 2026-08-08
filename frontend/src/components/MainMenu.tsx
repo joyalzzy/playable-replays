@@ -42,7 +42,7 @@ export function MainMenu({
   return (
     <main className="menu-shell">
       <header className="menu-hero">
-        <p className="eyebrow">PLAYABLE / REPLAYS</p>
+        <p className="eyebrow">PLAYABLE REPLAYS</p>
         <span className="menu-hero__status">TACTICAL DECISION LAB</span>
         <h1>Learn the moment.<br />Play the decision.</h1>
         <p>
