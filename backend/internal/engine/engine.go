@@ -460,8 +460,20 @@ func (e *Engine) FireProjectile(sourceUnitID, targetUnitID string) (model.Sessio
 func (e *Engine) canFirePlayerProjectile(source, target *model.Unit) bool {
 	return source != nil && target != nil && source.Team == "blue" &&
 		source.Class == model.ClassMarksman && source.Alive && source.Cooldown == 0 &&
+		e.isPlayerProjectileSource(source) &&
 		target.Team == "red" && target.Alive && target.Visible &&
 		distance(source.Position, target.Position) <= source.AttackRange
+}
+
+func (e *Engine) isPlayerProjectileSource(source *model.Unit) bool {
+	controlled := e.unit(e.session.ControlledUnitID)
+	if controlled == nil || !controlled.Alive {
+		return false
+	}
+	if controlled.Class == model.ClassMarksman {
+		return source.ID == controlled.ID
+	}
+	return source.ID != controlled.ID
 }
 
 func (e *Engine) updateProjectileAvailability() {

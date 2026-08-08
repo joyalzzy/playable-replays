@@ -248,6 +248,20 @@ func TestNonMarksmanPlayerCanDirectMarksmanTeammate(t *testing.T) {
 	}
 }
 
+func TestMarksmanPlayerCannotSpendChargeThroughAnotherMarksman(t *testing.T) {
+	moment := testMoment()
+	moment.Units = append(moment.Units, model.Unit{
+		ID: "blue-other-marksman", Team: "blue", Role: "marksman", Class: model.ClassMarksman, Policy: "aggressive",
+		Position: model.Point{X: 32, Y: 50}, HP: 90, MaxHP: 90, Alive: true,
+	})
+	e := New(moment, "a")
+	before := e.State()
+	after, err := e.FireProjectile("blue-other-marksman", "red-one")
+	if !errors.Is(err, ErrProjectileUnavailable) || !reflect.DeepEqual(before, after) {
+		t.Fatalf("marksman player should be the charged projectile source: err=%v state=%+v", err, after)
+	}
+}
+
 func TestObjectiveHasExplicitVictoryCondition(t *testing.T) {
 	moment := testMoment()
 	moment.MaxTurns = 2
