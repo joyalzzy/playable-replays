@@ -1,633 +1,341 @@
 openapi: 3.1.0
 info:
   title: Playable Replays API
-  version: 0.7.0
-  description: Deterministic tactical replay API with class-aware simulation, an optional non-authoritative position model, authored scenarios, guarded telemetry detection, and summary-only local retention controls. Unknown routes and unsupported methods use the structured Error schema.
+  version: 1.0.0
+  description: |
+    Core API for the deterministic, full-map MOBA tactical-board prototype.
+    Dodge is a separate two-charge projectile reaction and is not a tactical
+    action. The optional schema 2.0 bot bridge is non-authoritative; any bridge
+    failure causes the Go simulator to use its deterministic fallback.
 servers:
   - url: http://127.0.0.1:8080
+    description: Local Go API
 security: []
+tags:
+  - name: Health
+  - name: Moments
+  - name: Sessions
 paths:
   /healthz:
     get:
-      summary: Check API health
+      tags: [Health]
       operationId: health
+      summary: Check API liveness
       responses:
         "200":
           description: Healthy
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status: {type: string, const: ok}
-                required: [status]
+                $ref: "#/components/schemas/HealthResponse"
   /api/v1/moments:
     get:
-      summary: List playable replay moments
+      tags: [Moments]
       operationId: listMoments
+      summary: List the one to three playable replay moments
       responses:
         "200":
-          description: Available replay moments
+          description: Available moments
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  moments:
-                    type: array
-                    items: {$ref: "#/components/schemas/MomentSummary"}
-                required: [moments]
+                $ref: "#/components/schemas/MomentsResponse"
   /api/v1/sessions:
     post:
-      summary: Create a replay session
+      tags: [Sessions]
       operationId: createSession
+      summary: Create an in-memory simulator session
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: false
-              properties:
-                momentId: {type: string}
-              required: [momentId]
+              $ref: "#/components/schemas/CreateSessionRequest"
       responses:
         "201":
           description: Session created
           content:
             application/json:
-              schema: {$ref: "#/components/schemas/Session"}
-        "400": {$ref: "#/components/responses/Error"}
-        "404": {$ref: "#/components/responses/Error"}
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /api/v1/sessions/{id}:
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema: {type: string}
+      - $ref: "#/components/parameters/SessionId"
     get:
-      summary: Get current replay session state
+      tags: [Sessions]
       operationId: getSession
+      summary: Get current simulator state
       responses:
         "200":
-          description: Current session state
+          description: Current session
           content:
             application/json:
-              schema: {$ref: "#/components/schemas/Session"}
-        "404": {$ref: "#/components/responses/Error"}
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          $ref: "#/components/responses/Error"
   /api/v1/sessions/{id}/turns:
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema: {type: string}
+      - $ref: "#/components/parameters/SessionId"
     post:
-      summary: Resolve one replay turn
+      tags: [Sessions]
       operationId: takeTurn
+      summary: Resolve one tactical action
+      description: |
+        Accepts move, hold, contest, or retreat. Move alone requires a target.
+        The simulator then resolves bot actions, projectiles, damage, objectives,
+        visibility, scoring, and terminal state in authoritative order.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: false
-              properties:
-                action: {$ref: "#/components/schemas/Action"}
-              required: [action]
+              $ref: "#/components/schemas/TurnRequest"
       responses:
         "200":
-          description: Resolved turn
+          description: Resolved session state
           content:
             application/json:
-              schema: {$ref: "#/components/schemas/Session"}
-        "400": {$ref: "#/components/responses/Error"}
-        "404": {$ref: "#/components/responses/Error"}
-        "422": {$ref: "#/components/responses/Error"}
-        "429": {$ref: "#/components/responses/Error"}
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/Error"
+  /api/v1/sessions/{id}/dodge:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      tags: [Sessions]
+      operationId: dodgeProjectile
+      summary: Spend one Dodge charge on an incoming projectile
+      description: |
+        This reaction does not advance the turn and has no request body. It is
+        available only while a projectile targets the controlled unit and one
+        of the scenario's two Dodge charges remains.
+      responses:
+        "200":
+          description: Projectile dodged and updated state returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/Error"
   /api/v1/sessions/{id}/reset:
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema: {type: string}
+      - $ref: "#/components/parameters/SessionId"
     post:
-      summary: Reset a replay session
+      tags: [Sessions]
       operationId: resetSession
+      summary: Reset a session to its deterministic fixture seed
       responses:
         "200":
           description: Reset session
           content:
             application/json:
-              schema: {$ref: "#/components/schemas/Session"}
-        "404": {$ref: "#/components/responses/Error"}
-        "429": {$ref: "#/components/responses/Error"}
-  /api/v1/telemetry/matches:
-    get:
-      summary: List local telemetry matches
-      operationId: listTelemetryMatches
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+webhooks:
+  botActionRequest:
+    post:
+      operationId: requestBotActions
+      summary: Request advisory NPC actions from the configured model bridge
+      description: |
+        The Go backend sends this privileged schema 2.0 snapshot to its
+        operator-configured bridge, conventionally POST /v1/actions. The bridge
+        must return exactly one action for every live non-controlled unit.
+        Unknown, duplicate, controlled, defeated, omitted, or invalid units
+        invalidate the complete response and activate deterministic fallback.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BotModelRequest"
       responses:
         "200":
-          description: Ephemeral local telemetry matches, newest first
+          description: Complete advisory action set
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: false
-                properties:
-                  matches:
-                    type: array
-                    items: {$ref: "#/components/schemas/TelemetryMatch"}
-                required: [matches]
-    post:
-      summary: Start a consented telemetry match
-      operationId: createTelemetryMatch
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: "#/components/schemas/CreateTelemetryMatchRequest"}
-      responses:
-        "201":
-          description: Capturing match and ephemeral collector credential
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/CreateTelemetryMatchResponse"}
-        "400": {$ref: "#/components/responses/Error"}
-    delete:
-      summary: Delete all local telemetry data
-      operationId: deleteAllTelemetryMatches
-      responses:
-        "200":
-          description: All in-memory telemetry plus saved summaries and drafts deleted
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/DeleteLocalDataResponse"}
-  /api/v1/telemetry/matches/{id}:
-    parameters:
-      - {$ref: "#/components/parameters/TelemetryMatchId"}
-    get:
-      summary: Get a telemetry match
-      operationId: getTelemetryMatch
-      responses:
-        "200":
-          description: Current match and detected highlight state
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/TelemetryMatch"}
-        "404": {$ref: "#/components/responses/Error"}
-    delete:
-      summary: Delete a telemetry match
-      operationId: deleteTelemetryMatch
-      responses:
-        "200":
-          description: Selected in-memory telemetry plus its saved summary and drafts deleted
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/DeleteLocalDataResponse"}
-        "404": {$ref: "#/components/responses/Error"}
-  /api/v1/telemetry/matches/{id}/frames:
-    parameters:
-      - {$ref: "#/components/parameters/TelemetryMatchId"}
-    post:
-      summary: Ingest an ordered telemetry frame batch
-      operationId: ingestTelemetryFrames
-      security: [{CollectorToken: []}]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: "#/components/schemas/TelemetryFrameBatch"}
-      responses:
-        "202":
-          description: Ordered frame batch accepted and incrementally evaluated
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/TelemetryMatch"}
-        "400": {$ref: "#/components/responses/Error"}
-        "401": {$ref: "#/components/responses/Error"}
-        "404": {$ref: "#/components/responses/Error"}
-        "409": {$ref: "#/components/responses/Error"}
-  /api/v1/telemetry/matches/{id}/timeline:
-    parameters:
-      - {$ref: "#/components/parameters/TelemetryMatchId"}
-    get:
-      summary: Get a bounded anonymous telemetry timeline
-      operationId: getTelemetryTimeline
-      responses:
-        "200":
-          description: Bounded identity-free movement and normalized event timeline
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/TelemetryTimeline"}
-        "404": {$ref: "#/components/responses/Error"}
-        "410": {$ref: "#/components/responses/Error"}
-  /api/v1/telemetry/matches/{id}/finish:
-    parameters:
-      - {$ref: "#/components/parameters/TelemetryMatchId"}
-    post:
-      summary: Finalize telemetry capture
-      operationId: finishTelemetryMatch
-      security: [{CollectorToken: []}]
-      responses:
-        "200":
-          description: Match finalized and provisional candidates made final
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/TelemetryMatch"}
-        "400": {$ref: "#/components/responses/Error"}
-        "401": {$ref: "#/components/responses/Error"}
-        "404": {$ref: "#/components/responses/Error"}
-  /api/v1/telemetry/matches/{id}/events:
-    parameters:
-      - {$ref: "#/components/parameters/TelemetryMatchId"}
-    get:
-      summary: Stream telemetry match updates
-      operationId: streamTelemetryMatch
-      responses:
-        "200":
-          description: Server-sent match snapshots using the `match` event type
-          content:
-            text/event-stream:
-              schema: {type: string}
-        "404": {$ref: "#/components/responses/Error"}
-        "410": {$ref: "#/components/responses/Error"}
-  /api/v1/telemetry/matches/{id}/candidates/{candidateId}/draft:
-    parameters:
-      - {$ref: "#/components/parameters/TelemetryMatchId"}
-      - name: candidateId
-        in: path
-        required: true
-        schema: {type: string}
-    post:
-      summary: Create an analyst scenario draft
-      operationId: createTelemetryDraft
-      responses:
-        "201":
-          description: Incomplete version 2.1 draft with explicit analyst completion issues
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/TelemetryDraftResult"}
-        "404": {$ref: "#/components/responses/Error"}
-        "409": {$ref: "#/components/responses/Error"}
-    get:
-      summary: Get an analyst scenario draft
-      operationId: getTelemetryDraft
-      responses:
-        "200":
-          description: Current detached workbench draft and validation state
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/TelemetryDraftResult"}
-        "404": {$ref: "#/components/responses/Error"}
-    put:
-      summary: Update an analyst scenario draft
-      operationId: updateTelemetryDraft
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              properties:
-                scenario: {$ref: "#/components/schemas/TelemetryScenario"}
-              required: [scenario]
-      responses:
-        "200":
-          description: Locally saved draft with refreshed field and acceptance-test results
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/TelemetryDraftResult"}
-        "400": {$ref: "#/components/responses/Error"}
-        "404": {$ref: "#/components/responses/Error"}
-        "409": {$ref: "#/components/responses/Error"}
-  /api/v1/telemetry/matches/{id}/candidates/{candidateId}/draft/validate:
-    parameters:
-      - {$ref: "#/components/parameters/TelemetryMatchId"}
-      - {$ref: "#/components/parameters/TelemetryCandidateId"}
-    post:
-      summary: Validate an analyst scenario draft
-      operationId: validateTelemetryDraft
-      responses:
-        "200":
-          description: Field validation and deterministic win/loss acceptance results
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/TelemetryDraftResult"}
-        "404": {$ref: "#/components/responses/Error"}
-  /api/v1/telemetry/matches/{id}/candidates/{candidateId}/draft/preview:
-    parameters:
-      - {$ref: "#/components/parameters/TelemetryMatchId"}
-      - {$ref: "#/components/parameters/TelemetryCandidateId"}
-    post:
-      summary: Preview a validated scenario draft
-      operationId: previewTelemetryDraft
-      responses:
-        "201":
-          description: Ephemeral local session for a fully validated draft
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/DraftPreview"}
-        "404": {$ref: "#/components/responses/Error"}
-        "422": {$ref: "#/components/responses/Error"}
-  /api/v1/telemetry/matches/{id}/candidates/{candidateId}/draft/review-pack:
-    parameters:
-      - {$ref: "#/components/parameters/TelemetryMatchId"}
-      - {$ref: "#/components/parameters/TelemetryCandidateId"}
-    post:
-      summary: Export a scenario draft review pack
-      operationId: exportTelemetryDraftReviewPack
-      responses:
-        "200":
-          description: Separate fixture review pack; the authored library is not modified
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/FixtureReviewPack"}
-        "404": {$ref: "#/components/responses/Error"}
-        "422": {$ref: "#/components/responses/Error"}
-  /api/v1/local-storage:
-    get:
-      summary: Get local retention status
-      operationId: getLocalStorageStatus
-      responses:
-        "200":
-          description: Inventory and retention policy for safe local summaries and drafts
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/LocalStorageStatus"}
-  /api/v1/local-storage/retention:
-    put:
-      summary: Update local retention policy
-      operationId: updateLocalStorageRetention
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              properties:
-                retentionDays: {type: integer, minimum: 1, maximum: 365}
-              required: [retentionDays]
-      responses:
-        "200":
-          description: Updated retention policy and post-cleanup inventory
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/LocalStorageStatus"}
-        "400": {$ref: "#/components/responses/Error"}
-webhooks:
-  positionModelTurn:
-    post:
-      operationId: suggestNonPlayerPositions
-      summary: Suggest teammate and opponent positions for the next frame
-      description: |
-        When `POSITION_MODEL_URL` (or its deprecated `OPPONENT_MODEL_URL`
-        alias) is configured, the API sends this privileged request once per
-        resolved user turn. The response may target any live unit except
-        `controlledUnitId`. Invalid suggestions reject the complete response;
-        accepted targets are clamped to server-owned class movement limits.
-        Omitted allies hold position and omitted opponents use their
-        deterministic scenario policy.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: "#/components/schemas/PositionModelRequest"}
-      responses:
-        "200":
-          description: Advisory positions returned; simulator validation still applies
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/PositionModelResponse"}
+                $ref: "#/components/schemas/BotModelResponse"
         default:
-          description: Any non-200 response activates deterministic fallback
+          $ref: "#/components/responses/Error"
 components:
-  securitySchemes:
-    CollectorToken:
-      type: http
-      scheme: bearer
-      bearerFormat: ephemeral-local-token
-      description: Returned once when a consented local telemetry match is created.
   parameters:
-    TelemetryMatchId:
+    SessionId:
       name: id
       in: path
       required: true
-      schema: {type: string}
-    TelemetryCandidateId:
-      name: candidateId
-      in: path
-      required: true
-      schema: {type: string}
+      description: Process-local session ID.
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    Error:
+      description: Structured error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    RateLimited:
+      description: Per-session mutation limit exceeded
+      headers:
+        Retry-After:
+          description: Minimum seconds before retrying.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          const: ok
+      required: [status]
+    Error:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+              minLength: 1
+            message:
+              type: string
+              minLength: 1
+          required: [code, message]
+      required: [error]
     Point:
       type: object
       additionalProperties: false
       properties:
-        x: {type: number, minimum: 0, maximum: 100}
-        y: {type: number, minimum: 0, maximum: 100}
-      required: [x, y]
-    Action:
-      type: object
-      additionalProperties: false
-      properties:
-        type: {type: string, enum: [move, hold, contest, retreat, dodge, outplay]}
-        target: {$ref: "#/components/schemas/Point"}
-      required: [type]
-    Unit:
-      type: object
-      additionalProperties: false
-      properties:
-        id: {type: string}
-        team: {type: string, enum: [blue, red]}
-        role: {type: string}
-        class:
-          type: string
-          enum: [tank, fighter, marksman, mage, support, assassin]
-        policy: {type: string}
-        position: {$ref: "#/components/schemas/Point"}
-        hp: {type: integer, minimum: 0}
-        maxHp: {type: integer, minimum: 1}
-        moveRange:
+        x:
           type: number
           minimum: 0
           maximum: 100
-          description: Maximum map units this class can move in one frame.
-        attackRange: {type: number, exclusiveMinimum: 0}
-        attackDamage: {type: integer, minimum: 1}
-        moveSpeed: {type: number, exclusiveMinimum: 0}
-        armor: {type: integer, minimum: 0}
-        visionRange: {type: number, exclusiveMinimum: 0}
-        attackCooldown: {type: integer, minimum: 1}
-        cooldownTurns: {type: integer, minimum: 0}
-        shield: {type: integer, minimum: 0}
-        guarded: {type: boolean}
-        visible: {type: boolean}
-        alive: {type: boolean}
-      required: [id, team, role, class, policy, position, hp, maxHp, moveRange, attackRange, attackDamage, moveSpeed, armor, visionRange, attackCooldown, cooldownTurns, shield, guarded, visible, alive]
-    TerrainFeature:
+        y:
+          type: number
+          minimum: 0
+          maximum: 100
+      required: [x, y]
+    MapBounds:
       type: object
       additionalProperties: false
       properties:
-        id: {type: string}
-        label: {type: string}
-        kind: {type: string}
-        position: {$ref: "#/components/schemas/Point"}
-        radius: {type: number, exclusiveMinimum: 0}
-        moveMultiplier: {type: number, exclusiveMinimum: 0}
-        blocksVision: {type: boolean}
-      required: [id, label, kind, position, radius, moveMultiplier, blocksVision]
-    ObjectiveState:
+        minX:
+          type: number
+          const: 0
+        maxX:
+          type: number
+          const: 100
+        minY:
+          type: number
+          const: 0
+        maxY:
+          type: number
+          const: 100
+      required: [minX, maxX, minY, maxY]
+    ActionType:
+      type: string
+      enum: [move, hold, contest, retreat]
+    Action:
+      oneOf:
+        - $ref: "#/components/schemas/MoveAction"
+        - $ref: "#/components/schemas/SimpleAction"
+    MoveAction:
       type: object
       additionalProperties: false
       properties:
-        id: {type: string}
-        label: {type: string}
-        position: {$ref: "#/components/schemas/Point"}
-        radius: {type: number, exclusiveMinimum: 0}
-        blueProgress: {type: integer, minimum: 0}
-        redProgress: {type: integer, minimum: 0}
-        requiredProgress: {type: integer, minimum: 1}
-        status: {type: string, enum: [neutral, contested, blue-control, red-control, secured-blue, secured-red]}
-      required: [id, label, position, radius, blueProgress, redProgress, requiredProgress, status]
-    LogEntry:
+        type:
+          type: string
+          const: move
+        target:
+          $ref: "#/components/schemas/Point"
+      required: [type, target]
+    SimpleAction:
       type: object
       additionalProperties: false
       properties:
-        turn: {type: integer}
-        actor: {type: string, enum: [user, ally, enemy, policy, system]}
-        kind: {type: string}
-        action: {type: string}
-        actorId: {type: string}
-        targetId: {type: string}
-        value: {type: integer}
-        message: {type: string}
-      required: [turn, actor, kind, action, message]
-    ReferenceOutcome:
+        type:
+          type: string
+          enum: [hold, contest, retreat]
+      required: [type]
+    TurnRequest:
       type: object
       additionalProperties: false
       properties:
-        firstAction: {$ref: "#/components/schemas/Action"}
-        status: {type: string, enum: [won, lost]}
-        turns: {type: integer, minimum: 1}
-        advantage: {type: number, minimum: 0, maximum: 1}
-        outcomeReason: {type: string}
-        keyEvents:
-          type: array
-          items: {type: string}
-      required: [firstAction, status, turns, advantage, outcomeReason, keyEvents]
-    BestCaseAlternative:
+        action:
+          $ref: "#/components/schemas/Action"
+      required: [action]
+    CreateSessionRequest:
       type: object
       additionalProperties: false
       properties:
-        action: {$ref: "#/components/schemas/Action"}
-        status: {type: string, enum: [won, lost]}
-        turns: {type: integer, minimum: 1}
-        advantage: {type: number, minimum: 0, maximum: 1}
-        outcomeReason: {type: string}
-      required: [action, status, turns, advantage, outcomeReason]
-    BestCaseStep:
-      type: object
-      additionalProperties: false
-      properties:
-        turn: {type: integer, minimum: 1}
-        action: {$ref: "#/components/schemas/Action"}
-        reason: {type: string}
-        advantageBefore: {type: number, minimum: 0, maximum: 1}
-        advantageAfter: {type: number, minimum: 0, maximum: 1}
-        keyEvents:
-          type: array
-          items: {type: string}
-        alternatives:
-          type: array
-          items: {$ref: "#/components/schemas/BestCaseAlternative"}
-      required: [turn, action, reason, advantageBefore, advantageAfter, keyEvents, alternatives]
-    BestCaseLine:
-      type: object
-      additionalProperties: false
-      properties:
-        status: {type: string, enum: [won, lost]}
-        turns: {type: integer, minimum: 1}
-        advantage: {type: number, minimum: 0, maximum: 1}
-        outcomeReason: {type: string}
-        method: {type: string}
-        steps:
-          type: array
-          minItems: 1
-          items: {$ref: "#/components/schemas/BestCaseStep"}
-      required: [status, turns, advantage, outcomeReason, method, steps]
-    ScenarioMechanic:
-      type: object
-      additionalProperties: false
-      properties:
-        elementId:
+        momentId:
           type: string
           minLength: 1
-          description: ID of the objective or terrain element that implements this mechanic.
-        name: {type: string, minLength: 1}
-        description: {type: string, minLength: 1}
-        roleInScenario: {type: string, minLength: 1}
-      required: [elementId, name, description, roleInScenario]
-    MechanicBriefing:
+      required: [momentId]
+    MomentsResponse:
       type: object
       additionalProperties: false
       properties:
-        mechanics:
+        moments:
           type: array
           minItems: 1
-          items: {$ref: "#/components/schemas/ScenarioMechanic"}
-      required: [mechanics]
-    Session:
+          maxItems: 3
+          items:
+            $ref: "#/components/schemas/MomentSummary"
+      required: [moments]
+    MomentSummary:
       type: object
       additionalProperties: false
       properties:
-        id: {type: string}
-        momentId: {type: string}
-        controlledUnitId: {type: string}
-        scenarioGoal: {type: string}
-        mechanicBriefing: {$ref: "#/components/schemas/MechanicBriefing"}
-        turn: {type: integer}
-        maxTurns: {type: integer}
-        status: {type: string, enum: [active, won, lost]}
-        outcomeReason: {type: string}
-        advantage: {type: number, minimum: 0, maximum: 1, description: Rules-based state indicator; not a calibrated probability.}
-        escapeProgress: {type: integer, minimum: 0}
-        escapeTurnsRequired: {type: integer, minimum: 0}
-        visibleEnemyCount: {type: integer, minimum: 0}
-        unknownEnemyCount: {type: integer, minimum: 0}
-        visionLimited: {type: boolean}
-        objective: {$ref: "#/components/schemas/ObjectiveState"}
-        terrain:
-          type: array
-          items: {$ref: "#/components/schemas/TerrainFeature"}
-        lastReferenceAction: {$ref: "#/components/schemas/Action"}
-        referenceReason: {type: string}
-        referenceOutcomes:
-          type: array
-          items: {$ref: "#/components/schemas/ReferenceOutcome"}
-        bestCase: {$ref: "#/components/schemas/BestCaseLine"}
-        legalActions:
-          type: array
-          items: {type: string, enum: [move, hold, contest, retreat, dodge, outplay]}
-        units:
-          type: array
-          items: {$ref: "#/components/schemas/Unit"}
-        log:
-          type: array
-          items: {$ref: "#/components/schemas/LogEntry"}
-        debrief:
-          type: array
-          items: {type: string}
-      required: [id, momentId, controlledUnitId, scenarioGoal, turn, maxTurns, status, advantage, escapeProgress, escapeTurnsRequired, visibleEnemyCount, unknownEnemyCount, visionLimited, terrain, legalActions, units, log]
-    MomentSummary:
-      type: object
-      properties:
-        id: {type: string}
-        slug: {type: string}
-        title: {type: string}
-        description: {type: string}
-        map: {type: string}
+        id:
+          type: string
+          minLength: 1
+        slug:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        map:
+          type: string
+          minLength: 1
         category:
           type: string
           enum: [objective-contest, team-fight-engagement, escape, positioning, resource-trade, vision-uncertainty]
@@ -636,332 +344,635 @@ components:
           enum: [beginner, intermediate, advanced]
         reasonTags:
           type: array
-          items: {type: string}
-        highlightScore: {type: number, minimum: 0, maximum: 1}
-      required: [id, slug, title, description, map, category, skillLevel, reasonTags, highlightScore]
-    LiveTelemetryUnit:
-      type: object
-      additionalProperties: false
-      properties:
-        id: {type: string, minLength: 1}
-        team: {type: string, minLength: 1}
-        position: {$ref: "#/components/schemas/Point"}
-        hp: {type: number, minimum: 0}
-        maxHp: {type: number, exclusiveMinimum: 0}
-        gold: {type: number, minimum: 0}
-        alive: {type: boolean}
-      required: [id, team, position, hp, maxHp, gold, alive]
-    LiveTelemetryFrame:
-      type: object
-      additionalProperties: false
-      properties:
-        second: {type: integer, minimum: 0}
-        winProbability: {type: number, minimum: 0, maximum: 1}
-        events:
-          type: array
-          items: {type: string, enum: [damage, kill, objective, vision-loss]}
-        units:
-          type: array
-          minItems: 2
-          maxItems: 64
-          items: {$ref: "#/components/schemas/LiveTelemetryUnit"}
-      required: [second, winProbability, events, units]
-    TelemetryFrameBatch:
-      type: object
-      additionalProperties: false
-      properties:
-        schemaVersion: {type: string, const: "1.0"}
-        sequence: {type: integer, minimum: 0}
-        frames:
-          type: array
           minItems: 1
-          maxItems: 16
-          items: {$ref: "#/components/schemas/LiveTelemetryFrame"}
-      required: [schemaVersion, sequence, frames]
-    CreateTelemetryMatchRequest:
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+        highlightScore:
+          type: number
+          minimum: 0
+          maximum: 1
+      required: [id, slug, title, description, map, category, skillLevel, reasonTags, highlightScore]
+    UnitClass:
+      type: string
+      enum: [tank, fighter, marksman, mage, support, assassin]
+    Unit:
       type: object
       additionalProperties: false
       properties:
-        source: {type: string, enum: [synthetic, authorized]}
-        consent: {type: boolean, const: true}
-      required: [source, consent]
-    TelemetrySignals:
-      type: object
-      additionalProperties: false
-      properties:
-        winProbabilitySwing: {type: number, minimum: 0, maximum: 1}
-        eventDensity: {type: number, minimum: 0, maximum: 1}
-        entityProximity: {type: number, minimum: 0, maximum: 1}
-        resourceAsymmetry: {type: number, minimum: 0, maximum: 1}
-      required: [winProbabilitySwing, eventDensity, entityProximity, resourceAsymmetry]
-    TelemetrySemanticEvidence:
-      type: object
-      additionalProperties: false
-      description: Detector evidence using stable anonymous A/B track aliases rather than source unit IDs.
-      properties:
-        oneVersusManyUnitIds: {type: array, items: {type: string, pattern: "^[AB][1-9][0-9]*$"}}
-        successfulEscapeUnitIds: {type: array, items: {type: string, pattern: "^[AB][1-9][0-9]*$"}}
-        teamFightReversalSecond: {type: [integer, "null"], minimum: 0}
-      required: [oneVersusManyUnitIds, successfulEscapeUnitIds, teamFightReversalSecond]
-    TelemetryDetection:
-      type: object
-      additionalProperties: false
-      properties:
-        schemaVersion: {type: string, const: "1.0"}
-        startSecond: {type: integer, minimum: 0}
-        endSecond: {type: integer, minimum: 0}
-        score: {type: number, minimum: 0, maximum: 1}
-        reasonTags: {type: array, items: {type: string}}
-        signals: {$ref: "#/components/schemas/TelemetrySignals"}
-        semanticEvidence: {$ref: "#/components/schemas/TelemetrySemanticEvidence"}
-      required: [schemaVersion, startSecond, endSecond, score, reasonTags, signals, semanticEvidence]
-    TelemetryCandidate:
-      type: object
-      additionalProperties: false
-      properties:
-        id: {type: string}
-        status: {type: string, enum: [provisional, final]}
-        category:
+        id:
           type: string
-          enum: [objective-contest, team-fight-engagement, escape, positioning, resource-trade, vision-uncertainty]
-        draftStatus: {type: string, enum: [not-created, incomplete, ready]}
-        detection: {$ref: "#/components/schemas/TelemetryDetection"}
-      required: [id, status, category, draftStatus, detection]
-    TelemetryMatch:
+          minLength: 1
+        team:
+          type: string
+          enum: [blue, red]
+        role:
+          type: string
+          minLength: 1
+        class:
+          $ref: "#/components/schemas/UnitClass"
+        policy:
+          type: string
+          enum: [controlled, support, protector, aggressive, skirmisher]
+        position:
+          $ref: "#/components/schemas/Point"
+        hp:
+          type: integer
+          minimum: 0
+        maxHp:
+          type: integer
+          minimum: 1
+        moveRange:
+          type: number
+          minimum: 0
+          maximum: 100
+        attackRange:
+          type: number
+          minimum: 0
+          maximum: 100
+        attackDamage:
+          type: integer
+          minimum: 1
+        moveSpeed:
+          type: number
+          minimum: 0
+        armor:
+          type: integer
+          minimum: 0
+        visionRange:
+          type: number
+          exclusiveMinimum: 0
+        attackCooldown:
+          type: integer
+          minimum: 1
+        cooldownTurns:
+          type: integer
+          minimum: 0
+        shield:
+          type: integer
+          minimum: 0
+        guarded:
+          type: boolean
+        visible:
+          type: boolean
+        alive:
+          type: boolean
+      required:
+        - id
+        - team
+        - role
+        - class
+        - policy
+        - position
+        - hp
+        - maxHp
+        - moveRange
+        - attackRange
+        - attackDamage
+        - moveSpeed
+        - armor
+        - visionRange
+        - attackCooldown
+        - cooldownTurns
+        - shield
+        - guarded
+        - visible
+        - alive
+    TerrainFeature:
       type: object
       additionalProperties: false
       properties:
-        id: {type: string}
-        source: {type: string, enum: [synthetic, authorized]}
-        status: {type: string, enum: [capturing, finalized]}
-        frameCount: {type: integer, minimum: 0}
-        lastSecond: {type: integer, minimum: -1}
-        expectedSequence: {type: integer, minimum: 0}
-        savedLocally: {type: boolean}
-        timelineAvailable: {type: boolean}
-        candidates: {type: array, items: {$ref: "#/components/schemas/TelemetryCandidate"}}
-      required: [id, source, status, frameCount, lastSecond, expectedSequence, savedLocally, timelineAvailable, candidates]
-    TelemetryTimelineUnit:
+        id:
+          type: string
+          minLength: 1
+        label:
+          type: string
+          minLength: 1
+        kind:
+          type: string
+          enum: [river, brush, wall, safe-zone]
+        position:
+          $ref: "#/components/schemas/Point"
+        radius:
+          type: number
+          exclusiveMinimum: 0
+        moveMultiplier:
+          type: number
+          exclusiveMinimum: 0
+        blocksVision:
+          type: boolean
+      required: [id, label, kind, position, radius, moveMultiplier, blocksVision]
+    ObjectiveState:
       type: object
       additionalProperties: false
       properties:
-        trackId: {type: string, pattern: "^[AB][1-9][0-9]*$"}
-        side: {type: string, enum: [a, b]}
-        position: {$ref: "#/components/schemas/Point"}
-        alive: {type: boolean}
-      required: [trackId, side, position, alive]
-    TelemetryTimelineFrame:
+        id:
+          type: string
+          minLength: 1
+        label:
+          type: string
+          minLength: 1
+        position:
+          $ref: "#/components/schemas/Point"
+        radius:
+          type: number
+          exclusiveMinimum: 0
+        blueProgress:
+          type: integer
+          minimum: 0
+        redProgress:
+          type: integer
+          minimum: 0
+        requiredProgress:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [neutral, contested, blue-control, red-control, secured-blue, secured-red]
+      required: [id, label, position, radius, blueProgress, redProgress, requiredProgress, status]
+    Turret:
       type: object
       additionalProperties: false
       properties:
-        second: {type: integer, minimum: 0}
-        units:
-          type: array
-          maxItems: 64
-          items: {$ref: "#/components/schemas/TelemetryTimelineUnit"}
-      required: [second, units]
-    TelemetryTimelineEvent:
+        id:
+          type: string
+          minLength: 1
+        team:
+          type: string
+          enum: [blue, red]
+        lane:
+          type: string
+          enum: [top, middle, bottom]
+        position:
+          $ref: "#/components/schemas/Point"
+        hp:
+          type: integer
+          minimum: 0
+        maxHp:
+          type: integer
+          minimum: 1
+        alive:
+          type: boolean
+      required: [id, team, lane, position, hp, maxHp, alive]
+    Projectile:
       type: object
       additionalProperties: false
       properties:
-        second: {type: integer, minimum: 0}
-        type: {type: string, enum: [damage, kill, objective, vision-loss]}
-        count: {type: integer, minimum: 1}
-      required: [second, type, count]
-    TelemetryTimeline:
-      type: object
-      additionalProperties: false
-      description: Bounded display trace. Source unit/team identifiers, health, gold, and credentials are intentionally omitted.
-      properties:
-        matchId: {type: string}
-        sourceFrameCount: {type: integer, minimum: 0, maximum: 10000}
-        sampleEvery: {type: integer, minimum: 1}
-        truncated: {type: boolean}
-        frames:
-          type: array
-          maxItems: 180
-          items: {$ref: "#/components/schemas/TelemetryTimelineFrame"}
-        events:
-          type: array
-          maxItems: 240
-          items: {$ref: "#/components/schemas/TelemetryTimelineEvent"}
-      required: [matchId, sourceFrameCount, sampleEvery, truncated, frames, events]
-    CreateTelemetryMatchResponse:
-      type: object
-      additionalProperties: false
-      properties:
-        match: {$ref: "#/components/schemas/TelemetryMatch"}
-        collectorToken: {type: string, minLength: 1, writeOnly: true}
-      required: [match, collectorToken]
-    LocalStorageStatus:
-      type: object
-      additionalProperties: false
-      description: Counts only finalized match summaries and analyst drafts. Raw frames and collector tokens are excluded by design.
-      properties:
-        mode: {type: string, enum: [local-summary-only, memory-only]}
-        retentionDays: {type: integer, minimum: 0, maximum: 365}
-        matchSummaryCount: {type: integer, minimum: 0}
-        draftCount: {type: integer, minimum: 0}
-      required: [mode, retentionDays, matchSummaryCount, draftCount]
-    DeleteLocalDataResponse:
+        id:
+          type: string
+          minLength: 1
+        team:
+          type: string
+          enum: [blue, red]
+        sourceUnitId:
+          type: string
+          description: Empty when a red source is hidden from the browser.
+        targetUnitId:
+          type: string
+          minLength: 1
+        position:
+          $ref: "#/components/schemas/Point"
+        target:
+          $ref: "#/components/schemas/Point"
+        damage:
+          type: integer
+          minimum: 1
+      required: [id, team, sourceUnitId, targetUnitId, position, target, damage]
+    BotControl:
       type: object
       additionalProperties: false
       properties:
-        deletedMatches: {type: integer, minimum: 0}
-        deletedDrafts: {type: integer, minimum: 0}
-      required: [deletedMatches, deletedDrafts]
-    TelemetryDraftBundle:
+        source:
+          type: string
+          enum: [pending, external-model, deterministic-fallback]
+        modelName:
+          type: string
+          minLength: 1
+        modelVersion:
+          type: string
+          minLength: 1
+      required: [source]
+    ScenarioMechanic:
       type: object
       additionalProperties: false
       properties:
-        version: {type: string, const: "2.1"}
-        drafts:
+        elementId:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        roleInScenario:
+          type: string
+          minLength: 1
+      required: [elementId, name, description, roleInScenario]
+    MechanicBriefing:
+      type: object
+      additionalProperties: false
+      properties:
+        mechanics:
           type: array
           minItems: 1
           items:
-            type: object
-            additionalProperties: false
-            properties:
-              status: {type: string, const: draft}
-              scenario: {$ref: "#/components/schemas/TelemetryScenario"}
-            required: [status, scenario]
-      required: [version, drafts]
-    TelemetryScenario:
-      type: object
-      description: Full version 2.1 scenario fixture. Draft identity, category, timestamps, score, signals, reason tags, and source detection are immutable in the workbench.
-    DraftFieldIssue:
+            $ref: "#/components/schemas/ScenarioMechanic"
+      required: [mechanics]
+    LogEntry:
       type: object
       additionalProperties: false
       properties:
-        field:
+        turn:
+          type: integer
+          minimum: 0
+        actor:
           type: string
-          enum: [status, provenance, title, description, map, difficulty, rationale, tradeoffs, alternatives, acceptanceTests, units, terrain, rules]
-        message: {type: string}
-      required: [field, message]
-    AcceptanceResult:
-      type: object
-      additionalProperties: false
-      properties:
-        momentId: {type: string}
-        testName: {type: string}
-        passed: {type: boolean}
-        detail: {type: string}
-      required: [momentId, testName, passed, detail]
-    TelemetryDraftResult:
-      type: object
-      additionalProperties: false
-      properties:
-        candidateId: {type: string}
-        status: {type: string, enum: [incomplete, ready]}
-        completionIssues: {type: array, items: {type: string}}
-        fieldIssues: {type: array, items: {$ref: "#/components/schemas/DraftFieldIssue"}}
-        acceptanceResults: {type: array, items: {$ref: "#/components/schemas/AcceptanceResult"}}
-        canPreview: {type: boolean}
-        canExport: {type: boolean}
-        bundle: {$ref: "#/components/schemas/TelemetryDraftBundle"}
-      required: [candidateId, status, completionIssues, fieldIssues, acceptanceResults, canPreview, canExport, bundle]
-    DraftPreview:
-      type: object
-      additionalProperties: false
-      properties:
-        moment: {$ref: "#/components/schemas/MomentSummary"}
-        session: {$ref: "#/components/schemas/Session"}
-      required: [moment, session]
-    FixtureReviewPack:
-      type: object
-      additionalProperties: false
-      properties:
-        version: {type: string, const: "2.1"}
-        moments: {type: array, items: {$ref: "#/components/schemas/TelemetryScenario"}}
-      required: [version, moments]
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code: {type: string}
-            message: {type: string}
-          required: [code, message]
-      required: [error]
-    MapBounds:
-      type: object
-      additionalProperties: false
-      properties:
-        minX: {type: number}
-        maxX: {type: number}
-        minY: {type: number}
-        maxY: {type: number}
-      required: [minX, maxX, minY, maxY]
-    PositionModelRequest:
-      type: object
-      additionalProperties: false
-      description: Privileged server-side snapshot sent to the optional position model.
-      properties:
-        schemaVersion:
+          enum: [user, ally, enemy, policy, system]
+        kind:
           type: string
-          const: "1.1"
-          description: Version of the non-player position connector contract.
-        stateScope:
+          minLength: 1
+        action:
           type: string
-          const: authoritative_server_state
-          description: Marks this as privileged server state, not the browser view.
-        sessionId: {type: string, minLength: 1}
-        momentId: {type: string, minLength: 1}
+          minLength: 1
+        actorId:
+          type: string
+        targetId:
+          type: string
+        value:
+          type: integer
+        message:
+          type: string
+          minLength: 1
+      required: [turn, actor, kind, action, message]
+    ReferenceOutcome:
+      type: object
+      additionalProperties: false
+      properties:
+        firstAction:
+          $ref: "#/components/schemas/Action"
+        status:
+          type: string
+          enum: [won, lost]
+        turns:
+          type: integer
+          minimum: 1
+        advantage:
+          type: number
+          minimum: 0
+          maximum: 1
+        outcomeReason:
+          type: string
+          minLength: 1
+        keyEvents:
+          type: array
+          items:
+            type: string
+      required: [firstAction, status, turns, advantage, outcomeReason, keyEvents]
+    BestCaseAlternative:
+      type: object
+      additionalProperties: false
+      properties:
+        action:
+          $ref: "#/components/schemas/Action"
+        status:
+          type: string
+          enum: [won, lost]
+        turns:
+          type: integer
+          minimum: 1
+        advantage:
+          type: number
+          minimum: 0
+          maximum: 1
+        outcomeReason:
+          type: string
+          minLength: 1
+      required: [action, status, turns, advantage, outcomeReason]
+    BestCaseStep:
+      type: object
+      additionalProperties: false
+      properties:
         turn:
           type: integer
           minimum: 1
-          description: One-based index of the current frame being resolved.
-        mapBounds: {$ref: "#/components/schemas/MapBounds"}
-        controlledUnitId: {type: string, minLength: 1}
+        action:
+          $ref: "#/components/schemas/Action"
+        reason:
+          type: string
+          minLength: 1
+        advantageBefore:
+          type: number
+          minimum: 0
+          maximum: 1
+        advantageAfter:
+          type: number
+          minimum: 0
+          maximum: 1
+        keyEvents:
+          type: array
+          items:
+            type: string
+        alternatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/BestCaseAlternative"
+      required: [turn, action, reason, advantageBefore, advantageAfter, keyEvents, alternatives]
+    BestCaseLine:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [won, lost]
+        turns:
+          type: integer
+          minimum: 1
+        advantage:
+          type: number
+          minimum: 0
+          maximum: 1
+        outcomeReason:
+          type: string
+          minLength: 1
+        method:
+          type: string
+          minLength: 1
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/BestCaseStep"
+      required: [status, turns, advantage, outcomeReason, method, steps]
+    Session:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          minLength: 1
+        momentId:
+          type: string
+          minLength: 1
+        controlledUnitId:
+          type: string
+          minLength: 1
+        scenarioGoal:
+          type: string
+          minLength: 1
+        mechanicBriefing:
+          $ref: "#/components/schemas/MechanicBriefing"
+        turn:
+          type: integer
+          minimum: 0
+        maxTurns:
+          type: integer
+          minimum: 1
+          maximum: 20
+        status:
+          type: string
+          enum: [active, won, lost]
+        outcomeReason:
+          type: string
+          minLength: 1
+        advantage:
+          type: number
+          minimum: 0
+          maximum: 1
+        escapeProgress:
+          type: integer
+          minimum: 0
+        escapeTurnsRequired:
+          type: integer
+          minimum: 0
+        visibleEnemyCount:
+          type: integer
+          minimum: 0
+          maximum: 5
+        unknownEnemyCount:
+          type: integer
+          minimum: 0
+          maximum: 5
+        visionLimited:
+          type: boolean
+        objective:
+          $ref: "#/components/schemas/ObjectiveState"
+        terrain:
+          type: array
+          items:
+            $ref: "#/components/schemas/TerrainFeature"
+        turrets:
+          type: array
+          description: Six full-map turrets, one per lane for each team.
+          minItems: 6
+          maxItems: 6
+          items:
+            $ref: "#/components/schemas/Turret"
+        projectiles:
+          type: array
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/Projectile"
+        dodgeCharges:
+          type: integer
+          minimum: 0
+          maximum: 2
+        dodgeAvailable:
+          type: boolean
+        botControl:
+          $ref: "#/components/schemas/BotControl"
+        lastReferenceAction:
+          $ref: "#/components/schemas/Action"
+        referenceReason:
+          type: string
+          minLength: 1
+        referenceOutcomes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReferenceOutcome"
+        bestCase:
+          $ref: "#/components/schemas/BestCaseLine"
+        legalActions:
+          type: array
+          minItems: 4
+          maxItems: 4
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ActionType"
+        units:
+          type: array
+          minItems: 5
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/Unit"
+        log:
+          type: array
+          items:
+            $ref: "#/components/schemas/LogEntry"
+        debrief:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - momentId
+        - controlledUnitId
+        - scenarioGoal
+        - turn
+        - maxTurns
+        - status
+        - advantage
+        - escapeProgress
+        - escapeTurnsRequired
+        - visibleEnemyCount
+        - unknownEnemyCount
+        - visionLimited
+        - terrain
+        - turrets
+        - projectiles
+        - dodgeCharges
+        - dodgeAvailable
+        - botControl
+        - legalActions
+        - units
+        - log
+    BotSnapshotUnit:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          minLength: 1
+        team:
+          type: string
+          enum: [blue, red]
+        role:
+          type: string
+          minLength: 1
+        class:
+          $ref: "#/components/schemas/UnitClass"
+        fallbackPolicy:
+          type: string
+          enum: [controlled, support, protector, aggressive, skirmisher]
+        position:
+          $ref: "#/components/schemas/Point"
+        hp:
+          type: integer
+          minimum: 0
+        maxHp:
+          type: integer
+          minimum: 1
+        moveRange:
+          type: number
+          minimum: 0
+          maximum: 100
+        attackRange:
+          type: number
+          minimum: 0
+          maximum: 100
+        cooldownTurns:
+          type: integer
+          minimum: 0
+        shield:
+          type: integer
+          minimum: 0
+        guarded:
+          type: boolean
+        visible:
+          type: boolean
+        alive:
+          type: boolean
+      required:
+        - id
+        - team
+        - role
+        - class
+        - fallbackPolicy
+        - position
+        - hp
+        - maxHp
+        - moveRange
+        - attackRange
+        - cooldownTurns
+        - shield
+        - guarded
+        - visible
+        - alive
+    BotModelRequest:
+      type: object
+      additionalProperties: false
+      description: Privileged authoritative snapshot; never expose it to the browser.
+      properties:
+        schemaVersion:
+          type: string
+          const: "2.0"
+        stateScope:
+          type: string
+          const: authoritative_server_state
+        sessionId:
+          type: string
+          minLength: 1
+        momentId:
+          type: string
+          minLength: 1
+        turn:
+          type: integer
+          minimum: 1
+        mapBounds:
+          $ref: "#/components/schemas/MapBounds"
+        controlledUnitId:
+          type: string
+          minLength: 1
+        legalActions:
+          type: array
+          minItems: 4
+          maxItems: 4
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ActionType"
+        objective:
+          $ref: "#/components/schemas/ObjectiveState"
+        projectiles:
+          type: array
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/Projectile"
         units:
           type: array
           minItems: 2
           maxItems: 64
-          items: {$ref: "#/components/schemas/PositionModelSnapshotUnit"}
-      required: [schemaVersion, stateScope, sessionId, momentId, turn, mapBounds, controlledUnitId, units]
-    PositionModelSnapshotUnit:
+          items:
+            $ref: "#/components/schemas/BotSnapshotUnit"
+      required:
+        - schemaVersion
+        - stateScope
+        - sessionId
+        - momentId
+        - turn
+        - mapBounds
+        - controlledUnitId
+        - legalActions
+        - projectiles
+        - units
+    BotActionSuggestion:
       type: object
       additionalProperties: false
-      description: Bounded authoritative unit state sent to the trusted model connector.
       properties:
-        id: {type: string, minLength: 1}
-        team: {type: string, enum: [blue, red]}
-        role: {type: string, minLength: 1}
-        class:
+        unitId:
           type: string
-          enum: [tank, fighter, marksman, mage, support, assassin]
-        position: {$ref: "#/components/schemas/Point"}
-        hp: {type: integer, minimum: 0}
-        maxHp: {type: integer, minimum: 1}
-        moveRange: {type: number, minimum: 0, maximum: 100}
-        attackRange: {type: number, minimum: 0, maximum: 100}
-        cooldownTurns: {type: integer, minimum: 0}
-        visible: {type: boolean}
-        alive: {type: boolean}
-      required: [id, team, role, class, position, hp, maxHp, moveRange, attackRange, cooldownTurns, visible, alive]
-    PositionSuggestion:
+          minLength: 1
+        action:
+          $ref: "#/components/schemas/Action"
+      required: [unitId, action]
+    BotModelResponse:
       type: object
       additionalProperties: false
+      description: Exactly one action per live unit other than controlledUnitId.
       properties:
-        unitId: {type: string, minLength: 1}
-        position: {$ref: "#/components/schemas/Point"}
-      required: [unitId, position]
-    PositionModelResponse:
-      type: object
-      additionalProperties: false
-      description: |
-        Advisory next-frame targets for live non-controlled units. Omitted
-        teammates hold position and omitted opponents use deterministic chase.
-      properties:
-        positions:
+        actions:
           type: array
+          minItems: 1
           maxItems: 64
-          items: {$ref: "#/components/schemas/PositionSuggestion"}
-      required: [positions]
-  responses:
-    Error:
-      description: Structured error
-      content:
-        application/json:
-          schema: {$ref: "#/components/schemas/Error"}
+          items:
+            $ref: "#/components/schemas/BotActionSuggestion"
+      required: [actions]

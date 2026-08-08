@@ -1,25 +1,23 @@
 import { useEffect, useState } from "react";
-import { createSession, listMoments, resetSession, takeTurn } from "./api";
+import { createSession, dodgeProjectile, listMoments, resetSession, takeTurn } from "./api";
 import { ActionPanel } from "./components/ActionPanel";
 import { BeginnerGuide } from "./components/BeginnerGuide";
+import { DodgeControl } from "./components/DodgeControl";
 import { MainMenu } from "./components/MainMenu";
 import { MechanicsBriefing } from "./components/MechanicsBriefing";
 import { OutcomeDebrief } from "./components/OutcomeDebrief";
 import { ReplayHelp } from "./components/ReplayHelp";
 import { TacticalBoard } from "./components/TacticalBoard";
-import { TelemetryHub } from "./components/TelemetryHub";
 import { Timeline } from "./components/Timeline";
 import { actionLabel, advantageLabel } from "./format";
-import { mapViewportForMoment } from "./mapViewport";
 import { scenarioOptionLabel, sortMomentsByDifficulty } from "./scenarioOrder";
-import type { ActionType, DraftPreview, MomentSummary, Point, Session } from "./types";
+import type { ActionType, MomentSummary, Point, Session } from "./types";
 
-type AppView = "menu" | "tutorial" | "telemetry" | "guide";
+type AppView = "menu" | "tutorial" | "guide";
 
 function viewFromLocation(): AppView {
   const parameters = new URLSearchParams(window.location.search);
   if (parameters.has("moment") || parameters.get("view") === "tutorial") return "tutorial";
-  if (parameters.get("view") === "telemetry") return "telemetry";
   if (parameters.get("view") === "guide") return "guide";
   return "menu";
 }
@@ -33,7 +31,21 @@ function objectiveSummary(session: Session) {
   if (session.objective) {
     return `${session.objective.blueProgress}/${session.objective.requiredProgress} blue`;
   }
-  return `${session.escapeProgress}/${session.escapeTurnsRequired} safe`;
+  if (session.escapeTurnsRequired > 0) {
+    return `${session.escapeProgress}/${session.escapeTurnsRequired} safe`;
+  }
+  return session.status === "active" ? "Open" : session.status === "won" ? "Converted" : "Closed";
+}
+
+function botControlSummary(session: Session) {
+  if (session.botControl.source === "external-model") {
+    const identity = [session.botControl.modelName, session.botControl.modelVersion]
+      .filter(Boolean)
+      .join(" · ");
+    return identity || "External model";
+  }
+  if (session.botControl.source === "deterministic-fallback") return "Deterministic fallback";
+  return "Awaiting first response";
 }
 
 export default function App() {
@@ -90,11 +102,6 @@ export default function App() {
     window.history.replaceState(null, "", "?view=menu");
   }
 
-  function openTelemetry() {
-    setView("telemetry");
-    window.history.replaceState(null, "", "?view=telemetry");
-  }
-
   function openGuide() {
     setView("guide");
     window.history.replaceState(null, "", "?view=guide");
@@ -103,17 +110,6 @@ export default function App() {
   function openTutorial() {
     const chosen = moment ?? moments[0];
     if (chosen) void chooseMoment(chosen);
-  }
-
-  function openDraftPreview(preview: DraftPreview) {
-    setView("tutorial");
-    setMoment(preview.moment);
-    setSession(preview.session);
-    setAction("move");
-    setTarget(undefined);
-    setMechanicsUnderstood(false);
-    setError(undefined);
-    window.history.replaceState(null, "", "?view=tutorial&preview=local");
   }
 
   async function commit() {
@@ -151,6 +147,26 @@ export default function App() {
     }
   }
 
+  async function dodge() {
+    if (
+      !session ||
+      mechanicsLocked ||
+      session.status !== "active" ||
+      !session.dodgeAvailable ||
+      session.dodgeCharges <= 0
+    ) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      setSession(await dodgeProjectile(session.id));
+      setTarget(undefined);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The projectile could not be dodged.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if ((busy || error) && moments.length === 0) {
     return (
       <main className="shell shell--center">
@@ -165,15 +181,10 @@ export default function App() {
       <MainMenu
         moments={moments}
         onOpenTutorial={openTutorial}
-        onOpenTelemetry={openTelemetry}
         onOpenGuide={openGuide}
         onOpenScenario={(next) => void chooseMoment(next)}
       />
     );
-  }
-
-  if (view === "telemetry") {
-    return <TelemetryHub onBack={openMenu} onOpenTutorial={openTutorial} onPreviewDraft={openDraftPreview} />;
   }
 
   if (view === "guide") {
@@ -231,7 +242,7 @@ export default function App() {
           </div>
         </div>
         <div className="meter">
-          <span>Highlight confidence</span>
+          <span>Authored highlight score</span>
           <strong>{Math.round(moment.highlightScore * 100)}%</strong>
         </div>
       </section>
@@ -249,8 +260,12 @@ export default function App() {
       <section className="stats" aria-label="Replay status">
         <div><span>Turn</span><strong>{session.turn}/{session.maxTurns}</strong></div>
         <div><span>Scenario advantage</span><strong>{advantageLabel(session.advantage)}</strong></div>
-        <div><span>{session.objective?.label ?? "Escape route"}</span><strong>{objectiveSummary(session)}</strong></div>
+        <div>
+          <span>{session.objective?.label ?? (session.escapeTurnsRequired > 0 ? "Escape route" : "Target window")}</span>
+          <strong>{objectiveSummary(session)}</strong>
+        </div>
         <div><span>Known threats</span><strong>{session.visibleEnemyCount} visible · {session.unknownEnemyCount} unknown</strong></div>
+        <div><span>Bot control</span><strong>{botControlSummary(session)}</strong></div>
       </section>
 
       {error && <div className="error" role="alert">{error}</div>}
@@ -262,12 +277,22 @@ export default function App() {
             units={session.units}
             terrain={session.terrain}
             objective={session.objective}
+            turrets={session.turrets}
+            projectiles={session.projectiles}
             controlledUnitId={session.controlledUnitId}
             unknownEnemyCount={session.unknownEnemyCount}
-            viewport={mapViewportForMoment(session.momentId)}
             target={target}
             targeting={action === "move" && session.status === "active" && !mechanicsLocked}
             onTarget={setTarget}
+          />
+          <DodgeControl
+            charges={session.dodgeCharges}
+            available={session.dodgeAvailable}
+            incomingProjectiles={session.projectiles.filter(
+              (projectile) => projectile.targetUnitId === session.controlledUnitId
+            ).length}
+            disabled={busy || session.status !== "active" || mechanicsLocked}
+            onDodge={() => void dodge()}
           />
           {session.mechanicBriefing && (
             <MechanicsBriefing
@@ -315,7 +340,7 @@ export default function App() {
       </div>
 
       <footer>
-        Synthetic data · deterministic authored rules · advantage is not a win probability
+        Replay-derived scenarios · authoritative simulation · advantage is not a win probability
       </footer>
     </main>
   );

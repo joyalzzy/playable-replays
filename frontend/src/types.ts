@@ -63,7 +63,7 @@ export type MechanicBriefing = {
   mechanics: ScenarioMechanic[];
 };
 
-export type ActionType = "move" | "hold" | "contest" | "retreat" | "dodge" | "outplay";
+export type ActionType = "move" | "hold" | "contest" | "retreat";
 
 export type Action = {
   type: ActionType;
@@ -79,6 +79,32 @@ export type LogEntry = {
   targetId?: string;
   value?: number;
   message: string;
+};
+
+export type Turret = {
+  id: string;
+  team: "blue" | "red";
+  lane: "top" | "middle" | "bottom";
+  position: Point;
+  hp: number;
+  maxHp: number;
+  alive: boolean;
+};
+
+export type Projectile = {
+  id: string;
+  team: "blue" | "red";
+  sourceUnitId: string;
+  targetUnitId: string;
+  position: Point;
+  target: Point;
+  damage: number;
+};
+
+export type BotControl = {
+  source: "pending" | "external-model" | "deterministic-fallback";
+  modelName?: string;
+  modelVersion?: string;
 };
 
 export type ReferenceOutcome = {
@@ -141,6 +167,11 @@ export type Session = {
   bestCase?: BestCaseLine;
   legalActions: ActionType[];
   units: Unit[];
+  turrets: Turret[];
+  projectiles: Projectile[];
+  dodgeCharges: number;
+  dodgeAvailable: boolean;
+  botControl: BotControl;
   log: LogEntry[];
   debrief?: string[];
 };
@@ -155,197 +186,6 @@ export type MomentSummary = {
   skillLevel: "beginner" | "intermediate" | "advanced";
   reasonTags: string[];
   highlightScore: number;
-};
-
-export type TelemetrySignals = {
-  winProbabilitySwing: number;
-  eventDensity: number;
-  entityProximity: number;
-  resourceAsymmetry: number;
-};
-
-export type TelemetryDetection = {
-  schemaVersion: "1.0";
-  startSecond: number;
-  endSecond: number;
-  score: number;
-  reasonTags: string[];
-  signals: TelemetrySignals;
-  semanticEvidence: {
-    oneVersusManyUnitIds: string[];
-    successfulEscapeUnitIds: string[];
-    teamFightReversalSecond: number | null;
-  };
-};
-
-export type TelemetryCandidate = {
-  id: string;
-  status: "provisional" | "final";
-  category: MomentSummary["category"];
-  draftStatus: "not-created" | "incomplete" | "ready";
-  detection: TelemetryDetection;
-};
-
-export type TelemetryMatch = {
-  id: string;
-  source: "synthetic" | "authorized";
-  status: "capturing" | "finalized";
-  frameCount: number;
-  lastSecond: number;
-  expectedSequence: number;
-  savedLocally: boolean;
-  timelineAvailable: boolean;
-  candidates: TelemetryCandidate[];
-};
-
-export type LocalStorageStatus = {
-  mode: "local-summary-only" | "memory-only";
-  retentionDays: number;
-  matchSummaryCount: number;
-  draftCount: number;
-};
-
-export type DeleteLocalDataResponse = {
-  deletedMatches: number;
-  deletedDrafts: number;
-};
-
-export type TelemetryTimelineUnit = {
-  trackId: string;
-  side: "a" | "b";
-  position: Point;
-  alive: boolean;
-};
-
-export type TelemetryTimelineFrame = {
-  second: number;
-  units: TelemetryTimelineUnit[];
-};
-
-export type TelemetryTimelineEvent = {
-  second: number;
-  type: "damage" | "kill" | "objective" | "vision-loss";
-  count: number;
-};
-
-export type TelemetryTimeline = {
-  matchId: string;
-  sourceFrameCount: number;
-  sampleEvery: number;
-  truncated: boolean;
-  frames: TelemetryTimelineFrame[];
-  events: TelemetryTimelineEvent[];
-};
-
-export type TelemetryDraftResult = {
-  candidateId: string;
-  status: "incomplete" | "ready";
-  completionIssues: string[];
-  fieldIssues: Array<{ field: DraftField; message: string }>;
-  acceptanceResults: AcceptanceResult[];
-  canPreview: boolean;
-  canExport: boolean;
-  bundle: DraftBundle;
-};
-
-export type DraftField =
-  | "status"
-  | "provenance"
-  | "title"
-  | "description"
-  | "map"
-  | "difficulty"
-  | "rationale"
-  | "tradeoffs"
-  | "alternatives"
-  | "acceptanceTests"
-  | "units"
-  | "terrain"
-  | "rules";
-
-export type TelemetryScenario = {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  map: string;
-  startTimeSeconds: number;
-  seed: number;
-  maxTurns: number;
-  controlledUnitId: string;
-  reasonTags: string[];
-  signals: TelemetrySignals;
-  sourceDetection: TelemetryDetection;
-  mechanicBriefing?: MechanicBriefing;
-  units: Unit[];
-  rules: {
-    initialAdvantage: number;
-    objective?: {
-      id: string;
-      label: string;
-      position: Point;
-      radius: number;
-      captureTurns: number;
-    };
-    victory: {
-      kind: string;
-      targetUnitId?: string;
-      description: string;
-      defeatDescription: string;
-      allowEscape: boolean;
-      safeZone: Point;
-      safeRadius: number;
-      escapeTurns: number;
-    };
-    terrain: TerrainFeature[];
-    referencePlan: Action[];
-    referenceReasons: string[];
-    referenceContinuations: Record<ActionType, Action[]>;
-    actionDefaults: Partial<Record<ActionType, Action>>;
-  };
-  authoring: {
-    category: MomentSummary["category"];
-    skillLevel: "" | MomentSummary["skillLevel"];
-    analystRationale: string;
-    intendedTradeoffs: string[];
-    plausibleAlternatives: Array<{
-      action: Action;
-      when: string;
-      tradeoff: string;
-    }>;
-    acceptanceTests: Array<{
-      name: string;
-      actions: Action[];
-      expectedStatus: "won" | "lost";
-      expectedTerminalTurn: number;
-      expectedOutcomeContains: string;
-    }>;
-  };
-};
-
-export type DraftBundle = {
-  version: "2.1";
-  drafts: [
-    { status: "draft"; scenario: TelemetryScenario },
-    ...Array<{ status: "draft"; scenario: TelemetryScenario }>
-  ];
-};
-
-export type AcceptanceResult = {
-  momentId: string;
-  testName: string;
-  passed: boolean;
-  detail: string;
-};
-
-export type DraftPreview = {
-  moment: MomentSummary;
-  session: Session;
-};
-
-export type FixtureReviewPack = {
-  version: "2.1";
-  moments: TelemetryScenario[];
 };
 
 export type ApiError = { error: { code: string; message: string } };

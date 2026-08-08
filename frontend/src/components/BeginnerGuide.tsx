@@ -9,7 +9,7 @@ type BeginnerGuideProps = {
 const commands = [
   { name: "Move", cue: "Reposition", description: "Choose a point on the map and travel toward it." },
   { name: "Hold", cue: "Defend", description: "Stay put, brace for damage, and recover your footing." },
-  { name: "Contest", cue: "Pressure", description: "Approach the nearest visible threat and fight in range." },
+  { name: "Contest", cue: "Pressure", description: "Focus the visible priority target, or approach the nearest visible threat and fight in range." },
   { name: "Retreat", cue: "Escape", description: "Disengage faster toward the scenario's marked safe area." }
 ] as const;
 
@@ -74,8 +74,9 @@ export function BeginnerGuide({ onBack, onStartTutorial }: BeginnerGuideProps) {
             <span>+</span><small>Ally</small>
           </div>
           <div className="beginner-guide__field-unit beginner-guide__field-unit--enemy">
-            <span>AP</span><small>Enemy</small>
+            <span>AD</span><small>Marksman</small>
           </div>
+          <div className="beginner-guide__field-projectile" aria-hidden="true"><span /></div>
           <div className="beginner-guide__field-objective"><span /></div>
           <p><b>Gold ring</b> marks the character you control</p>
         </div>
@@ -122,12 +123,12 @@ export function BeginnerGuide({ onBack, onStartTutorial }: BeginnerGuideProps) {
         </article>
 
         <article className="beginner-guide__panel beginner-guide__panel--signals">
-          <header><span>04</span><h2>Three signals to watch</h2></header>
+          <header><span>04</span><h2>Four signals to watch</h2></header>
           <ul>
             <li>
               <GuideIconTooltip
                 label="Gold ring"
-                description="Identifies the one blue unit controlled by your commands. Other allied units follow the scenario's authored response policy."
+                description="Identifies the one blue unit controlled by your commands. Other units receive complete external-model actions, with a deterministic fallback when needed."
                 variant="signal"
               >
                 <i className="beginner-guide__signal beginner-guide__signal--gold" />
@@ -153,6 +154,16 @@ export function BeginnerGuide({ onBack, onStartTutorial }: BeginnerGuideProps) {
                 <i className="beginner-guide__signal beginner-guide__signal--target" />
               </GuideIconTooltip>
               <div><b>Crosshair</b><span>Your selected move destination</span></div>
+            </li>
+            <li>
+              <GuideIconTooltip
+                label="Incoming projectile"
+                description="A marksman's shot worth half your maximum health is pending. Use the separate Dodge button before your next tactical command; you have two charges per scenario."
+                variant="signal"
+              >
+                <i className="beginner-guide__signal beginner-guide__signal--projectile">→</i>
+              </GuideIconTooltip>
+              <div><b>Bright bolt</b><span>A dodgeable marksman projectile</span></div>
             </li>
           </ul>
         </article>

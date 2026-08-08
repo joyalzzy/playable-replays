@@ -2,7 +2,7 @@ import { scenarioOptionLabel } from "../scenarioOrder";
 import type { MomentSummary } from "../types";
 
 type ModeIconProps = {
-  kind: "tutorial" | "telemetry" | "guide";
+  kind: "tutorial" | "guide";
 };
 
 function ModeIcon({ kind }: ModeIconProps) {
@@ -17,22 +17,11 @@ function ModeIcon({ kind }: ModeIconProps) {
     );
   }
 
-  if (kind === "guide") {
-    return (
-      <svg className="mode-icon" viewBox="0 0 120 120" aria-hidden="true">
-        <path d="M20 29c14-5 27-2 40 8v62C47 89 34 86 20 91Zm80 0c-14-5-27-2-40 8v62c13-10 26-13 40-8Z" />
-        <path d="M32 48c7-1 13 1 18 5M32 63c7-1 13 1 18 5M70 53c6-4 12-6 18-5M70 68c6-4 12-6 18-5" />
-        <circle className="mode-icon__accent" cx="60" cy="22" r="8" />
-      </svg>
-    );
-  }
-
   return (
     <svg className="mode-icon" viewBox="0 0 120 120" aria-hidden="true">
-      <circle cx="60" cy="60" r="43" />
-      <circle className="mode-icon__ring" cx="60" cy="60" r="31" />
-      <path className="mode-icon__accent" d="M27 67h14l8-21 12 35 10-27 8 13h14" />
-      <path d="M60 17v10M60 93v10M17 60h10M93 60h10" />
+      <path d="M20 29c14-5 27-2 40 8v62C47 89 34 86 20 91Zm80 0c-14-5-27-2-40 8v62c13-10 26-13 40-8Z" />
+      <path d="M32 48c7-1 13 1 18 5M32 63c7-1 13 1 18 5M70 53c6-4 12-6 18-5M70 68c6-4 12-6 18-5" />
+      <circle className="mode-icon__accent" cx="60" cy="22" r="8" />
     </svg>
   );
 }
@@ -40,7 +29,6 @@ function ModeIcon({ kind }: ModeIconProps) {
 type MainMenuProps = {
   moments: MomentSummary[];
   onOpenTutorial: () => void;
-  onOpenTelemetry: () => void;
   onOpenGuide: () => void;
   onOpenScenario: (moment: MomentSummary) => void;
 };
@@ -48,7 +36,6 @@ type MainMenuProps = {
 export function MainMenu({
   moments,
   onOpenTutorial,
-  onOpenTelemetry,
   onOpenGuide,
   onOpenScenario
 }: MainMenuProps) {
@@ -59,43 +46,27 @@ export function MainMenu({
         <span className="menu-hero__status">TACTICAL DECISION LAB</span>
         <h1>Learn the moment.<br />Play the decision.</h1>
         <p>
-          Practice fixed tactical lessons, turn match telemetry into reviewable
-          scenarios, or learn every replay symbol before you begin.
+          Replay pivotal full-map decisions, command one player, dodge heavy
+          projectiles, and learn from the modeled response.
         </p>
       </header>
 
       <section className="mode-grid" aria-label="Playable Replays modes">
         <button
           aria-label="Open Tutorial"
-          className="mode-card mode-card--tutorial"
+          className="mode-card mode-card--featured"
           type="button"
           onClick={onOpenTutorial}
         >
+          <span className="mode-card__badge">MAIN GAME</span>
           <span className="mode-card__number">01</span>
           <span className="mode-card__icon"><ModeIcon kind="tutorial" /></span>
           <span className="mode-card__copy">
             <small>FIXED SCENARIOS</small>
             <strong>Tutorial</strong>
-            <span>Play the authored replay lessons already available in the tactical board.</span>
+            <span>Play one of the curated replay lessons on the complete tactical map.</span>
           </span>
           <span className="mode-card__action">Open tutorials <b>→</b></span>
-        </button>
-
-        <button
-          aria-label="Open Match Telemetry"
-          className="mode-card mode-card--featured"
-          type="button"
-          onClick={onOpenTelemetry}
-        >
-          <span className="mode-card__badge">MAIN GAME</span>
-          <span className="mode-card__number">02</span>
-          <span className="mode-card__icon"><ModeIcon kind="telemetry" /></span>
-          <span className="mode-card__copy">
-            <small>YOUR MATCH DATA</small>
-            <strong>Match Telemetry</strong>
-            <span>Detect pivotal windows and prepare them for analyst-authored replay scenarios.</span>
-          </span>
-          <span className="mode-card__action">Open telemetry <b>→</b></span>
         </button>
 
         <button
@@ -104,7 +75,7 @@ export function MainMenu({
           type="button"
           onClick={onOpenGuide}
         >
-          <span className="mode-card__number">03</span>
+          <span className="mode-card__number">02</span>
           <span className="mode-card__icon"><ModeIcon kind="guide" /></span>
           <span className="mode-card__copy">
             <small>NEW PLAYER REFERENCE</small>
@@ -121,7 +92,7 @@ export function MainMenu({
             <p className="eyebrow">TUTORIAL SECTION</p>
             <h2 id="tutorial-library-title">Fixed scenario library</h2>
           </div>
-          <span>{moments.length} authored lessons</span>
+          <span>{moments.length} authored {moments.length === 1 ? "lesson" : "lessons"}</span>
         </header>
         <div className="tutorial-library__grid">
           {moments.map((moment) => (
@@ -135,7 +106,7 @@ export function MainMenu({
       </section>
 
       <footer className="menu-footer">
-        Synthetic scenarios · deterministic outcomes · analyst review required
+        Replay-derived scenarios · authoritative simulation · deterministic fallback
       </footer>
     </main>
   );

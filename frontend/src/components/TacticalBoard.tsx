@@ -1,7 +1,6 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from "react";
-import { fullMapViewport, type MapViewport } from "../mapViewport";
 import { roleMarks } from "../replaySymbols";
-import type { ObjectiveState, Point, TerrainFeature, Unit } from "../types";
+import type { ObjectiveState, Point, Projectile, TerrainFeature, Turret, Unit } from "../types";
 
 const laneIDs = ["top-lane", "middle-lane", "bottom-lane"] as const;
 const laneLayers = ["shadow", "verge", "edge", "stones", "wear"] as const;
@@ -10,13 +9,20 @@ function roleClass(role: string) {
   return role.toLowerCase().replaceAll(/[^a-z0-9-]/g, "");
 }
 
+function projectileAngle(projectile: Projectile) {
+  const deltaX = projectile.target.x - projectile.position.x;
+  const deltaY = projectile.target.y - projectile.position.y;
+  return Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+}
+
 type Props = {
   units: Unit[];
   terrain: TerrainFeature[];
   objective?: ObjectiveState;
+  turrets: Turret[];
+  projectiles: Projectile[];
   controlledUnitId: string;
   unknownEnemyCount: number;
-  viewport?: MapViewport;
   target?: Point;
   targeting: boolean;
   onTarget: (point: Point) => void;
@@ -81,9 +87,10 @@ export function TacticalBoard({
   units,
   terrain,
   objective,
+  turrets,
+  projectiles,
   controlledUnitId,
   unknownEnemyCount,
-  viewport,
   target,
   targeting,
   onTarget
@@ -93,9 +100,8 @@ export function TacticalBoard({
   const visibleUnits = units.filter((unit) => unit.visible && unit.alive);
   const controlledUnit = visibleUnits.find((unit) => unit.id === controlledUnitId);
   const selectedUnit = visibleUnits.find((unit) => unit.id === selectedUnitId) ?? controlledUnit;
-  const activeViewport = viewport ?? fullMapViewport;
-  const viewportWidth = activeViewport.xMax - activeViewport.xMin;
-  const viewportHeight = activeViewport.yMax - activeViewport.yMin;
+  const viewportWidth = 100;
+  const viewportHeight = 100;
 
   useEffect(() => {
     setSelectedUnitId(controlledUnitId);
@@ -103,8 +109,8 @@ export function TacticalBoard({
 
   function projectPoint(point: Point) {
     return {
-      x: ((point.x - activeViewport.xMin) / viewportWidth) * 100,
-      y: ((point.y - activeViewport.yMin) / viewportHeight) * 100
+      x: clamp(point.x, 0, 100),
+      y: clamp(point.y, 0, 100)
     };
   }
 
@@ -112,8 +118,8 @@ export function TacticalBoard({
     const bounds = event.currentTarget.getBoundingClientRect();
     const screenX = bounds.width > 0 ? (event.clientX - bounds.left) / bounds.width : 0;
     const screenY = bounds.height > 0 ? (event.clientY - bounds.top) / bounds.height : 0;
-    const x = activeViewport.xMin + screenX * viewportWidth;
-    const y = activeViewport.yMin + screenY * viewportHeight;
+    const x = screenX * viewportWidth;
+    const y = screenY * viewportHeight;
     return {
       x: Math.min(100, Math.max(0, Math.round(x))),
       y: Math.min(100, Math.max(0, Math.round(y)))
@@ -138,7 +144,7 @@ export function TacticalBoard({
         />
       <svg
         className="lane-network"
-        viewBox={`${activeViewport.xMin * 1.6} ${activeViewport.yMin} ${viewportWidth * 1.6} ${viewportHeight}`}
+        viewBox="0 0 160 100"
         preserveAspectRatio="none"
         aria-hidden="true"
       >
@@ -185,7 +191,7 @@ export function TacticalBoard({
           <path d="M146.2 9 L150.4 4.8 L154.6 9 L150.4 13.2 Z" className="lane-base__rune" />
         </g>
       </svg>
-      {viewport && <span className="map-focus">{viewport.label}</span>}
+      <span className="map-focus">Full map</span>
       {terrain.map((feature) => (
         <span
           key={feature.id}
@@ -241,6 +247,27 @@ export function TacticalBoard({
           {hoverPoint ? `X ${hoverPoint.x} · Y ${hoverPoint.y}` : "Hover to inspect"}
         </strong>
       </span>
+      {turrets.map((turret) => {
+        const health = `, ${turret.hp} of ${turret.maxHp} health`;
+        const healthPercent = turret.maxHp > 0
+          ? clamp((turret.hp / turret.maxHp) * 100, 0, 100)
+          : 0;
+        return (
+          <span
+            key={turret.id}
+            className={`turret turret--${turret.team}${turret.alive ? "" : " turret--destroyed"}`}
+            style={{ left: `${projectPoint(turret.position).x}%`, top: `${projectPoint(turret.position).y}%` }}
+            role="img"
+            aria-label={`${turret.team} ${turret.lane} lane turret${turret.alive ? "" : ", destroyed"}${health}`}
+            title={`${turret.team} ${turret.lane} lane turret${health}`}
+          >
+            <span className="turret__crown" aria-hidden="true" />
+            <span className="turret__health" aria-hidden="true">
+              <span style={{ width: `${healthPercent}%` }} />
+            </span>
+          </span>
+        );
+      })}
       {selectedUnit && (
         <RangeIndicator
           unit={selectedUnit}
@@ -293,6 +320,22 @@ export function TacticalBoard({
           </button>
         );
       })}
+      {projectiles.map((projectile) => (
+        <span
+          key={projectile.id}
+          className={`projectile projectile--${projectile.team}`}
+          style={{
+            left: `${projectPoint(projectile.position).x}%`,
+            top: `${projectPoint(projectile.position).y}%`,
+            "--projectile-angle": `${projectileAngle(projectile)}deg`
+          } as CSSProperties}
+          role="img"
+          aria-label={`${projectile.team} marksman projectile from ${projectile.sourceUnitId || "unknown source"} targeting ${projectile.targetUnitId}, ${projectile.damage} damage`}
+          title={`Heavy marksman projectile · ${projectile.damage} damage`}
+        >
+          <span aria-hidden="true" />
+        </span>
+      ))}
       {target && (
         <span
           className="target"

@@ -1,22 +1,18 @@
-.PHONY: test test-go test-web test-ml test-detector-evaluation test-pipeline dev-api dev-web dev-telemetry-demo build
+.PHONY: test test-go test-web test-model validate-fixtures dev-api dev-web dev-model build build-api build-web
 
-test: test-go test-ml test-pipeline test-web
+test: test-go test-model test-web validate-fixtures
 
 test-go:
 	cd backend && go test ./...
 
-test-ml:
-	python3 -m unittest discover -s ml/tests -v
-	python3 -m ml.evaluate.detector
-
-test-detector-evaluation:
-	python3 -m ml.evaluate.detector
-
-test-pipeline:
-	python3 scripts/test_telemetry_scenario_pipeline.py
-
 test-web:
 	cd frontend && npm ci && npm run check && npm test -- --run && npm run build
+
+test-model:
+	python3 -m unittest discover -s model-daemon/tests -v
+
+validate-fixtures:
+	cd backend && go run ./cmd/validate-fixtures -path ../fixtures/moments.json
 
 dev-api:
 	cd backend && go run ./cmd/server
@@ -24,10 +20,13 @@ dev-api:
 dev-web:
 	cd frontend && npm install && npm run dev
 
-dev-telemetry-demo:
-	cd backend && go run ./cmd/telemetry-collector --input ../fixtures/telemetry-demo.json --rate 4
+dev-model:
+	python3 model-daemon/server.py
 
-build:
-	cd backend && go build ./cmd/server
+build: build-api build-web
+
+build-api:
+	cd backend && go build -o /tmp/playable-replays-api ./cmd/server
+
+build-web:
 	cd frontend && npm ci && npm run build
-

@@ -13,8 +13,9 @@ import (
 )
 
 var ErrIllegalAction = errors.New("illegal action")
+var ErrDodgeUnavailable = errors.New("dodge unavailable")
 
-var actionTypes = []string{"move", "hold", "contest", "retreat", "dodge", "outplay"}
+var actionTypes = []string{"move", "hold", "contest", "retreat"}
 
 type Engine struct {
 	moment            model.Moment
@@ -22,26 +23,21 @@ type Engine struct {
 	rng               *rand.Rand
 	referenceOutcomes []model.ReferenceOutcome
 	bestCase          *model.BestCaseLine
-	positionModel     PositionModel
-	rollouts          []ModelRolloutRecord
-}
-
-type turnEffects struct {
-	dodgeActive      bool
-	dodgeEvaded      bool
-	outplaySucceeded bool
+	botModel          BotModel
+	rollouts          []BotRolloutRecord
+	nextProjectileID  uint64
 }
 
 func New(moment model.Moment, sessionID string) *Engine {
 	return newEngine(moment, sessionID, true, nil)
 }
 
-func NewWithPositionModel(moment model.Moment, sessionID string, positionModel PositionModel) *Engine {
-	return newEngine(moment, sessionID, true, positionModel)
+func NewWithBotModel(moment model.Moment, sessionID string, botModel BotModel) *Engine {
+	return newEngine(moment, sessionID, true, botModel)
 }
 
-func newEngine(moment model.Moment, sessionID string, withReferences bool, positionModel PositionModel) *Engine {
-	e := &Engine{moment: normalizeMoment(cloneMoment(moment)), positionModel: positionModel}
+func newEngine(moment model.Moment, sessionID string, withReferences bool, botModel BotModel) *Engine {
+	e := &Engine{moment: normalizeMoment(cloneMoment(moment)), botModel: botModel}
 	e.Reset(sessionID)
 	if withReferences {
 		e.referenceOutcomes = e.computeReferenceOutcomes()
@@ -53,6 +49,11 @@ func newEngine(moment model.Moment, sessionID string, withReferences bool, posit
 func (e *Engine) Reset(sessionID string) model.Session {
 	e.rng = rand.New(rand.NewSource(e.moment.Seed))
 	e.rollouts = nil
+	e.nextProjectileID = 0
+	botSource := "deterministic-fallback"
+	if e.botModel != nil {
+		botSource = "pending"
+	}
 	e.session = model.Session{
 		ID:                  sessionID,
 		MomentID:            e.moment.ID,
@@ -62,8 +63,12 @@ func (e *Engine) Reset(sessionID string) model.Session {
 		MaxTurns:            e.moment.MaxTurns,
 		Status:              "active",
 		Advantage:           e.moment.Rules.InitialAdvantage,
-		EscapeTurnsRequired: e.moment.Rules.Victory.EscapeTurns,
+		EscapeTurnsRequired: escapeTurnsRequired(e.moment.Rules.Victory),
 		Terrain:             slices.Clone(e.moment.Rules.Terrain),
+		Turrets:             canonicalTurrets(),
+		Projectiles:         []model.Projectile{},
+		DodgeCharges:        2,
+		BotControl:          model.BotControlState{Source: botSource},
 		LegalActions:        slices.Clone(actionTypes),
 		Units:               cloneUnits(e.moment.Units),
 		Log:                 []model.LogEntry{},
@@ -75,8 +80,16 @@ func (e *Engine) Reset(sessionID string) model.Session {
 		}
 	}
 	e.applyFog(false)
+	e.updateDodgeAvailability()
 	e.recomputeAdvantage()
 	return e.State()
+}
+
+func escapeTurnsRequired(victory model.VictoryRules) int {
+	if !victory.AllowEscape {
+		return 0
+	}
+	return victory.EscapeTurns
 }
 
 func (e *Engine) State() model.Session {
@@ -90,6 +103,17 @@ func (e *Engine) State() model.Session {
 	state.Log = slices.Clone(e.session.Log)
 	state.LegalActions = slices.Clone(e.session.LegalActions)
 	state.Terrain = slices.Clone(e.session.Terrain)
+	state.Turrets = append([]model.Turret(nil), e.session.Turrets...)
+	state.Projectiles = make([]model.Projectile, len(e.session.Projectiles))
+	for index, projectile := range e.session.Projectiles {
+		state.Projectiles[index] = projectile
+		if projectile.Team == "red" {
+			source := e.unit(projectile.SourceUnitID)
+			if source == nil || !source.Visible {
+				state.Projectiles[index].SourceUnitID = ""
+			}
+		}
+	}
 	state.MechanicBriefing = cloneMechanicBriefing(e.session.MechanicBriefing)
 	state.Debrief = slices.Clone(e.session.Debrief)
 	if e.session.Objective != nil {
@@ -131,19 +155,31 @@ func (e *Engine) ApplyContext(ctx context.Context, action model.Action) (model.S
 
 	e.beginTurn()
 	e.session.Turn++
-	effects := e.resolveUser(controlled, action)
+	e.resolveProjectiles()
+	if !controlled.Alive {
+		e.recomputeAdvantage()
+		e.evaluateOutcome()
+		e.revealReferenceForTurn()
+		e.updateDodgeAvailability()
+		if e.session.Status != "active" {
+			e.session.Debrief = e.buildDebrief()
+		}
+		return e.State(), nil
+	}
+	e.resolveUser(controlled, action)
 	e.applyFog(true)
-	suggestions, modelUsed, fallback := e.modelSuggestions(ctx)
-	e.resolveAllies(controlled, suggestions, modelUsed)
+	botActions, modelUsed, fallback := e.modelActions(ctx)
+	e.resolveAllies(controlled, botActions, modelUsed)
 	e.applyFog(true)
-	e.resolveEnemies(controlled, suggestions, modelUsed, &effects)
-	e.logPositionPolicy(modelUsed, fallback)
+	e.resolveEnemies(controlled, botActions, modelUsed)
+	e.logBotPolicy(modelUsed, fallback)
 	e.applyFog(true)
 	e.updateObjective()
 	e.updateEscape()
 	e.recomputeAdvantage()
 	e.evaluateOutcome()
 	e.revealReferenceForTurn()
+	e.updateDodgeAvailability()
 	if e.session.Status != "active" {
 		e.session.Debrief = e.buildDebrief()
 	}
@@ -161,8 +197,7 @@ func (e *Engine) beginTurn() {
 	}
 }
 
-func (e *Engine) resolveUser(unit *model.Unit, action model.Action) turnEffects {
-	effects := turnEffects{}
+func (e *Engine) resolveUser(unit *model.Unit, action model.Action) {
 	switch action.Type {
 	case "move":
 		e.moveUnit(unit, *action.Target, 1, "user", "reposition")
@@ -172,7 +207,7 @@ func (e *Engine) resolveUser(unit *model.Unit, action model.Action) turnEffects 
 		e.addLog("user", "defense", "hold", unit.ID, unit.ID, 4,
 			fmt.Sprintf("%s held formation, gaining 4 shield and reducing incoming damage this turn.", unitName(*unit)))
 	case "contest":
-		target := e.nearestVisibleEnemy(*unit)
+		target := e.controlledContestTarget(*unit)
 		if target == nil {
 			if objective := e.moment.Rules.Objective; objective != nil {
 				e.moveUnit(unit, objective.Position, 1, "user", "contest")
@@ -183,13 +218,13 @@ func (e *Engine) resolveUser(unit *model.Unit, action model.Action) turnEffects 
 				e.addLog("user", "defense", "contest", unit.ID, "", 0,
 					fmt.Sprintf("%s found no visible target and held position.", unitName(*unit)))
 			}
-			return effects
+			return
 		}
 		if distance(unit.Position, target.Position) > unit.AttackRange {
 			e.moveUnit(unit, target.Position, 1, "user", "close distance")
 		}
 		if distance(unit.Position, target.Position) <= unit.AttackRange {
-			e.attack(unit, target, "user", "contest")
+			e.performAttack(unit, target, "user", "contest")
 		} else {
 			e.addLog("user", "position", "contest", unit.ID, target.ID, 0,
 				fmt.Sprintf("%s closed distance but %s remained out of range.", unitName(*unit), unitName(*target)))
@@ -200,169 +235,131 @@ func (e *Engine) resolveUser(unit *model.Unit, action model.Action) turnEffects 
 		e.moveUnit(unit, destination, 1.2, "user", "retreat")
 		e.addLog("user", "defense", "retreat", unit.ID, "", 0,
 			fmt.Sprintf("%s disengaged toward the safe zone and reduced incoming damage this turn.", unitName(*unit)))
-	case "dodge":
-		destination := e.automaticDodgeTarget(*unit)
-		if action.Target != nil {
-			destination = *action.Target
-		}
-		e.moveUnit(unit, destination, 1, "user", "dodge")
-		effects.dodgeActive = true
-		e.addLog("user", "defense", "dodge", unit.ID, "", 0,
-			fmt.Sprintf("%s prepared to evade the next incoming skillshot.", unitName(*unit)))
-	case "outplay":
-		target := e.nearestVisibleEnemy(*unit)
-		if target == nil || distance(unit.Position, target.Position) > unit.AttackRange || unit.Cooldown > 0 {
-			reason := "no visible enemy was in attack range"
-			if unit.Cooldown > 0 {
-				reason = "the ability was on cooldown"
-			}
-			e.addLog("user", "combat", "outplay-unavailable", unit.ID, "", 0,
-				fmt.Sprintf("The outplay was unavailable because %s.", reason))
-			break
-		}
-		effects.outplaySucceeded = e.attack(unit, target, "user", "outplay")
-		if effects.outplaySucceeded {
-			unit.Guarded = true
-			e.addLog("user", "combat", "outplay", unit.ID, target.ID, 0,
-				fmt.Sprintf("%s outplayed %s and reduced incoming damage this turn.", unitName(*unit), unitName(*target)))
-		}
 	}
-	return effects
 }
 
-func (e *Engine) resolveAllies(controlled *model.Unit, suggestions map[string]model.Point, modelUsed bool) {
+func (e *Engine) resolveAllies(controlled *model.Unit, actions map[string]model.Action, modelUsed bool) {
 	for i := range e.session.Units {
 		unit := &e.session.Units[i]
 		if !unit.Alive || unit.Team != "blue" || unit.ID == controlled.ID {
 			continue
 		}
-		e.applySuggestedMove(unit, suggestions, "ally")
-		allowPolicyMovement := !modelUsed
-		switch unit.Policy {
-		case "support":
-			if unit.Cooldown == 0 && distance(unit.Position, controlled.Position) <= unit.VisionRange {
-				shield := 10
-				controlled.Shield += shield
-				unit.Cooldown = unit.AttackCooldown
-				e.addLog("ally", "support", "shield", unit.ID, controlled.ID, shield,
-					fmt.Sprintf("%s shielded %s for %d.", unitName(*unit), unitName(*controlled), shield))
-			} else if allowPolicyMovement {
-				e.moveUnit(unit, controlled.Position, .85, "ally", "follow")
-			}
-		case "protector":
-			target := e.nearestVisibleEnemy(*unit)
-			if target != nil && distance(target.Position, controlled.Position) <= 30 {
-				if allowPolicyMovement && distance(unit.Position, target.Position) > unit.AttackRange {
-					e.moveUnit(unit, target.Position, .9, "ally", "intercept")
-				}
-				if distance(unit.Position, target.Position) <= unit.AttackRange {
-					e.attack(unit, target, "ally", "intercept")
-				}
-			} else if allowPolicyMovement {
-				e.moveUnit(unit, controlled.Position, .75, "ally", "protect")
-			}
-		default:
-			target := e.nearestVisibleEnemy(*unit)
-			if target != nil && distance(unit.Position, target.Position) <= unit.VisionRange {
-				if allowPolicyMovement && distance(unit.Position, target.Position) > unit.AttackRange {
-					e.moveUnit(unit, target.Position, .85, "ally", "engage")
-				}
-				if distance(unit.Position, target.Position) <= unit.AttackRange {
-					e.attack(unit, target, "ally", "engage")
-				}
-			} else if allowPolicyMovement {
-				e.moveUnit(unit, controlled.Position, .75, "ally", "regroup")
-			}
+		action, ok := actions[unit.ID]
+		if !ok || !modelUsed {
+			action = e.fallbackBotAction(*unit, controlled)
 		}
+		e.resolveBotAction(unit, action, "ally")
 	}
 }
 
-func (e *Engine) resolveEnemies(controlled *model.Unit, suggestions map[string]model.Point, _ bool, effects *turnEffects) {
+func (e *Engine) resolveEnemies(controlled *model.Unit, actions map[string]model.Action, modelUsed bool) {
 	for i := range e.session.Units {
 		unit := &e.session.Units[i]
 		if !unit.Alive || unit.Team != "red" {
 			continue
 		}
-		modelMoved := e.applySuggestedMove(unit, suggestions, "enemy")
-		if unit.Policy == "support" {
-			if e.resolveEnemySupport(unit) {
-				continue
-			}
+		action, ok := actions[unit.ID]
+		if !ok || !modelUsed {
+			action = e.fallbackBotAction(*unit, controlled)
 		}
-		target := e.enemyTarget(*unit)
+		e.resolveBotAction(unit, action, "enemy")
+	}
+}
+
+func (e *Engine) fallbackBotAction(unit model.Unit, controlled *model.Unit) model.Action {
+	if unit.ID == e.moment.Rules.Victory.TargetUnitID {
+		return model.Action{Type: "hold"}
+	}
+	if unit.MaxHP > 0 && float64(unit.HP)/float64(unit.MaxHP) < .35 {
+		return model.Action{Type: "retreat"}
+	}
+	if unit.Policy == "support" || unit.Policy == "protector" {
+		return model.Action{Type: "hold"}
+	}
+	if unit.Team == "blue" && e.nearestVisibleEnemy(unit) == nil {
+		target := controlled.Position
+		return model.Action{Type: "move", Target: &target}
+	}
+	return model.Action{Type: "contest"}
+}
+
+func (e *Engine) controlledContestTarget(unit model.Unit) *model.Unit {
+	if targetID := e.moment.Rules.Victory.TargetUnitID; targetID != "" {
+		target := e.unit(targetID)
+		if target != nil && target.Alive && target.Team != unit.Team && target.Visible {
+			return target
+		}
+	}
+	return e.nearestVisibleEnemy(unit)
+}
+
+func (e *Engine) resolveBotAction(unit *model.Unit, action model.Action, actor string) {
+	switch action.Type {
+	case "move":
+		if action.Target != nil {
+			e.moveUnit(unit, *action.Target, 1, actor, "move")
+		}
+	case "hold":
+		unit.Guarded = true
+		unit.Shield += 4
+		e.addLog(actor, "defense", "hold", unit.ID, unit.ID, 4,
+			fmt.Sprintf("%s held position and gained 4 shield.", unitName(*unit)))
+	case "retreat":
+		unit.Guarded = true
+		destination := model.Point{X: 8, Y: 92}
+		if unit.Team == "red" {
+			destination = model.Point{X: 92, Y: 8}
+		}
+		e.moveUnit(unit, destination, 1.2, actor, "retreat")
+	case "contest":
+		target := e.botTarget(*unit)
 		if target == nil {
 			if objective := e.moment.Rules.Objective; objective != nil {
-				e.moveUnit(unit, objective.Position, .8, "enemy", "objective")
+				e.moveUnit(unit, objective.Position, .8, actor, "contest-objective")
 			}
-			continue
+			return
 		}
-		currentDistance := distance(unit.Position, target.Position)
-		if !modelMoved && unit.Policy == "skirmisher" && currentDistance < unit.AttackRange*.5 {
-			e.moveUnit(unit, moveAway(unit.Position, target.Position, unit.MoveSpeed), 1, "enemy", "kite")
-			currentDistance = distance(unit.Position, target.Position)
-		}
-		if !modelMoved && currentDistance > unit.AttackRange {
-			e.moveUnit(unit, target.Position, 1, "enemy", "engage")
+		if distance(unit.Position, target.Position) > unit.AttackRange {
+			e.moveUnit(unit, target.Position, 1, actor, "contest")
 		}
 		if distance(unit.Position, target.Position) <= unit.AttackRange {
-			if target.ID == controlled.ID && effects.dodgeActive && unit.Cooldown == 0 {
-				unit.Cooldown = unit.AttackCooldown
-				effects.dodgeEvaded = true
-				e.addLog("enemy", "combat", "skillshot-dodged", unit.ID, controlled.ID, 0,
-					fmt.Sprintf("%s dodged %s's skillshot.", unitName(*controlled), unitName(*unit)))
-				continue
-			}
-			e.attack(unit, target, "enemy", "attack")
+			e.performAttack(unit, target, actor, "contest")
 		}
 	}
 }
 
-func (e *Engine) applySuggestedMove(unit *model.Unit, suggestions map[string]model.Point, actor string) bool {
-	destination, ok := suggestions[unit.ID]
-	if !ok {
-		return false
+func (e *Engine) botTarget(unit model.Unit) *model.Unit {
+	if unit.Team == "red" {
+		return e.enemyTarget(unit)
 	}
-	e.moveUnit(unit, destination, 1, actor, "model-position")
-	return true
+	if unit.Policy == "aggressive" {
+		controlled := e.unit(e.moment.ControlledUnitID)
+		target := e.unit(e.moment.Rules.Victory.TargetUnitID)
+		if controlled != nil && controlled.Guarded && controlled.Shield > 0 && target != nil && target.Alive && target.Visible {
+			return target
+		}
+	}
+	return e.nearestVisibleEnemy(unit)
 }
 
-func (e *Engine) logPositionPolicy(modelUsed, fallback bool) {
+func (e *Engine) logBotPolicy(modelUsed, fallback bool) {
 	if !modelUsed && !fallback {
 		return
 	}
-	action := "model-respond"
-	message := "The position model response was applied to eligible non-player units under authoritative class movement limits."
+	action := "model-actions"
+	message := "The external model supplied every live bot action; the simulator validated and resolved them under authoritative rules."
+	if modelUsed && len(e.rollouts) > 0 {
+		record := e.rollouts[len(e.rollouts)-1]
+		e.session.BotControl = model.BotControlState{
+			Source: "external-model", ModelName: record.ModelName, ModelVersion: record.ModelVersion,
+		}
+	}
 	if fallback {
 		action = "fallback"
-		message = "The position model response was unusable; deterministic non-player policies were applied."
+		message = "The external bot model was unavailable or unusable; deterministic bot actions were applied for this turn."
+		e.session.BotControl = model.BotControlState{Source: "deterministic-fallback"}
 	}
 	e.addLog("policy", "model", action, "", "", 0, message)
-}
-
-func (e *Engine) resolveEnemySupport(unit *model.Unit) bool {
-	var weakest *model.Unit
-	lowestRatio := 2.0
-	for i := range e.session.Units {
-		candidate := &e.session.Units[i]
-		if candidate.Team != "red" || !candidate.Alive || candidate.ID == unit.ID ||
-			distance(unit.Position, candidate.Position) > unit.VisionRange {
-			continue
-		}
-		ratio := float64(candidate.HP) / float64(candidate.MaxHP)
-		if ratio < lowestRatio {
-			weakest, lowestRatio = candidate, ratio
-		}
-	}
-	if weakest != nil && unit.Cooldown == 0 && lowestRatio < .9 {
-		weakest.Shield += 9
-		unit.Cooldown = unit.AttackCooldown
-		if unit.Visible || weakest.Visible {
-			e.addLog("enemy", "support", "shield", unit.ID, weakest.ID, 9,
-				fmt.Sprintf("%s shielded %s for 9.", unitName(*unit), unitName(*weakest)))
-		}
-		return true
-	}
-	return false
 }
 
 func (e *Engine) moveUnit(unit *model.Unit, destination model.Point, speedScale float64, actor, action string) {
@@ -387,6 +384,125 @@ func (e *Engine) moveUnit(unit *model.Unit, destination model.Point, speedScale 
 	}
 	e.addLog(actor, "movement", action, unit.ID, "", 0,
 		fmt.Sprintf("%s moved %.1f map units toward (%.0f, %.0f).", unitName(*unit), moved, destination.X, destination.Y))
+}
+
+func (e *Engine) performAttack(attacker, target *model.Unit, actor, action string) bool {
+	if attacker.Class == model.ClassMarksman {
+		return e.fireProjectile(attacker, target, actor)
+	}
+	return e.attack(attacker, target, actor, action)
+}
+
+func (e *Engine) fireProjectile(attacker, target *model.Unit, actor string) bool {
+	if attacker.Cooldown > 0 || !attacker.Alive || !target.Alive {
+		return false
+	}
+	e.nextProjectileID++
+	damage := max(1, (target.MaxHP+1)/2)
+	projectile := model.Projectile{
+		ID:   fmt.Sprintf("projectile-%d-%d", e.session.Turn, e.nextProjectileID),
+		Team: attacker.Team, SourceUnitID: attacker.ID, TargetUnitID: target.ID,
+		Position: attacker.Position, Target: target.Position, Damage: damage,
+	}
+	e.session.Projectiles = append(e.session.Projectiles, projectile)
+	attacker.Cooldown = attacker.AttackCooldown
+	sourceLabel := unitName(*attacker)
+	actorID := attacker.ID
+	if attacker.Team == "red" && !attacker.Visible {
+		sourceLabel = "An unseen marksman"
+		actorID = ""
+	}
+	e.addLog(actor, "projectile", "fired", actorID, target.ID, damage,
+		fmt.Sprintf("%s fired a marksman projectile at %s for %d potential damage.", sourceLabel, unitName(*target), damage))
+	return true
+}
+
+func (e *Engine) resolveProjectiles() {
+	pending := append([]model.Projectile(nil), e.session.Projectiles...)
+	e.session.Projectiles = e.session.Projectiles[:0]
+	for _, projectile := range pending {
+		target := e.unit(projectile.TargetUnitID)
+		if target == nil || !target.Alive {
+			continue
+		}
+		before := target.HP
+		damage := min(projectile.Damage, target.HP)
+		target.HP -= damage
+		target.Alive = target.HP > 0
+		sourceID := e.publicProjectileSourceID(projectile)
+		e.addLog("system", "projectile", "hit", sourceID, target.ID, damage,
+			fmt.Sprintf("The marksman projectile hit %s for %d damage (%d to %d HP).", unitName(*target), damage, before, target.HP))
+		if !target.Alive {
+			e.addLog("system", "elimination", "eliminated", sourceID, target.ID, 0,
+				fmt.Sprintf("%s was eliminated by a marksman projectile.", unitName(*target)))
+		}
+	}
+}
+
+func (e *Engine) publicProjectileSourceID(projectile model.Projectile) string {
+	if projectile.Team != "red" {
+		return projectile.SourceUnitID
+	}
+	source := e.unit(projectile.SourceUnitID)
+	if source == nil || !source.Visible {
+		return ""
+	}
+	return projectile.SourceUnitID
+}
+
+// Dodge evades the currently incoming marksman projectile without consuming a
+// tactical turn. It is a separate, two-charge reaction and is never part of
+// LegalActions or the decision-tree search.
+func (e *Engine) Dodge() (model.Session, error) {
+	if e.session.Status != "active" || e.session.DodgeCharges <= 0 {
+		return e.State(), ErrDodgeUnavailable
+	}
+	controlled := e.unit(e.session.ControlledUnitID)
+	if controlled == nil || !controlled.Alive {
+		return e.State(), ErrDodgeUnavailable
+	}
+	projectileIndex := -1
+	for index, projectile := range e.session.Projectiles {
+		if projectile.Team == "red" && projectile.TargetUnitID == controlled.ID {
+			projectileIndex = index
+			break
+		}
+	}
+	if projectileIndex < 0 {
+		return e.State(), ErrDodgeUnavailable
+	}
+
+	projectile := e.session.Projectiles[projectileIndex]
+	e.session.Projectiles = append(e.session.Projectiles[:projectileIndex], e.session.Projectiles[projectileIndex+1:]...)
+	e.session.DodgeCharges--
+	destination := e.automaticDodgeTarget(*controlled)
+	e.moveUnit(controlled, destination, 1, "user", "evade-projectile")
+	e.addLog("user", "projectile", "evaded", controlled.ID, projectile.ID, projectile.Damage,
+		fmt.Sprintf("%s evaded the incoming marksman projectile; %d Dodge charge%s remain.",
+			unitName(*controlled), e.session.DodgeCharges, plural(e.session.DodgeCharges)))
+	e.applyFog(true)
+	e.updateDodgeAvailability()
+	return e.State(), nil
+}
+
+func (e *Engine) updateDodgeAvailability() {
+	e.session.DodgeAvailable = false
+	if e.session.Status != "active" || e.session.DodgeCharges <= 0 {
+		return
+	}
+	for _, projectile := range e.session.Projectiles {
+		if projectile.Team == "red" && projectile.TargetUnitID == e.session.ControlledUnitID {
+			e.session.DodgeAvailable = true
+			return
+		}
+	}
+}
+
+func plural(value int) string {
+	if value == 1 {
+		return ""
+	}
+	return "s"
 }
 
 func (e *Engine) attack(attacker, target *model.Unit, actor, action string) bool {
@@ -419,7 +535,7 @@ func (e *Engine) attack(attacker, target *model.Unit, actor, action string) bool
 	}
 	e.addLog(actor, "damage", action, actorID, target.ID, damage, message)
 	if !target.Alive {
-		e.addLog("system", "elimination", "eliminated", attacker.ID, target.ID, 0,
+		e.addLog("system", "elimination", "eliminated", actorID, target.ID, 0,
 			fmt.Sprintf("%s was eliminated by %s.", unitName(*target), attackerLabel))
 	}
 	return true
@@ -600,6 +716,7 @@ func (e *Engine) buildDebrief() []string {
 	if e.moment.Rules.Victory.AllowEscape {
 		items = append(items, fmt.Sprintf("Escape progress ended at %d/%d turns.", e.session.EscapeProgress, e.moment.Rules.Victory.EscapeTurns))
 	}
+	items = append(items, fmt.Sprintf("Dodge reactions remaining: %d of 2.", e.session.DodgeCharges))
 	items = append(items, "Scenario advantage is a rules-based state indicator, not a calibrated win probability.")
 	return items
 }
@@ -623,7 +740,7 @@ func (e *Engine) computeReferenceOutcomes() []model.ReferenceOutcome {
 	for _, actionType := range actionTypes {
 		probe := newEngine(e.moment, "reference-"+actionType, false, nil)
 		firstAction := cloneAction(e.moment.Rules.ActionDefaults[actionType])
-		_, err := probe.Apply(firstAction)
+		_, err := applyReferenceTurn(probe, firstAction)
 		continuation := e.moment.Rules.ReferenceContinuations[actionType]
 		for err == nil && probe.session.Status == "active" && probe.session.Turn < probe.session.MaxTurns {
 			index := probe.session.Turn - 1
@@ -634,7 +751,7 @@ func (e *Engine) computeReferenceOutcomes() []model.ReferenceOutcome {
 			if next.Type == "move" && next.Target == nil {
 				next = cloneAction(e.moment.Rules.ActionDefaults["move"])
 			}
-			_, err = probe.Apply(next)
+			_, err = applyReferenceTurn(probe, next)
 		}
 		outcomes = append(outcomes, model.ReferenceOutcome{
 			FirstAction: firstAction, Status: probe.session.Status, Turns: probe.session.Turn,
@@ -660,7 +777,7 @@ func (e *Engine) computeBestCase() *model.BestCaseLine {
 		before := probe.session.Advantage
 		logStart := len(probe.session.Log)
 		alternatives := bestCaseAlternatives(e.moment, prefix)
-		_, err := probe.Apply(action)
+		_, err := applyReferenceTurn(probe, action)
 		if err != nil {
 			break
 		}
@@ -682,7 +799,7 @@ func (e *Engine) computeBestCase() *model.BestCaseLine {
 	return &model.BestCaseLine{
 		Status: probe.session.Status, Turns: probe.session.Turn, Advantage: probe.session.Advantage,
 		OutcomeReason: probe.session.OutcomeReason,
-		Method:        "Exhaustive deterministic search over all six modeled commands at every remaining turn; Move uses the scenario's authored destination.",
+		Method:        "Exhaustive deterministic search over all four tactical commands at every remaining turn; Move uses the scenario's authored destination and incoming projectiles use the same two-charge reference reaction.",
 		Steps:         steps,
 	}
 }
@@ -693,7 +810,7 @@ func bestContinuation(moment model.Moment, prefix []model.Action) bestRolloutRes
 		if probe.session.Status != "active" {
 			break
 		}
-		_, _ = probe.Apply(action)
+		_, _ = applyReferenceTurn(probe, action)
 	}
 	if probe.session.Status != "active" || len(prefix) >= moment.MaxTurns {
 		return bestRolloutResult{actions: cloneActions(prefix), state: probe.session}
@@ -723,6 +840,13 @@ func bestCaseAlternatives(moment model.Moment, prefix []model.Action) []model.Be
 		})
 	}
 	return alternatives
+}
+
+func applyReferenceTurn(probe *Engine, action model.Action) (model.Session, error) {
+	if probe.session.DodgeAvailable && probe.session.DodgeCharges > 0 {
+		_, _ = probe.Dodge()
+	}
+	return probe.Apply(action)
 }
 
 func rolloutBetter(candidate, current bestRolloutResult) bool {
@@ -814,7 +938,7 @@ func tacticalActionReason(action model.Action, after model.Session, moment model
 		return "Holding added 4 shield and reduced incoming damage by 35% while allied policies continued to resolve."
 	case "contest":
 		if after.VisibleEnemyCount > 0 {
-			return "Contesting closed on the nearest visible threat and converted current vision into an attack whenever range allowed."
+			return "Contesting focused the visible authored target when present, otherwise the nearest visible threat, and converted current vision into an attack whenever range allowed."
 		}
 		if moment.Rules.Objective != nil {
 			return "With no visible enemy target, contesting advanced directly toward the modeled objective."
@@ -844,7 +968,7 @@ func alternativeBetter(candidate, current model.BestCaseAlternative) bool {
 func stepEvents(log []model.LogEntry, limit int) []string {
 	events := make([]string, 0, limit)
 	for _, entry := range log {
-		if entry.Actor != "user" && entry.Kind != "damage" && entry.Kind != "support" && entry.Kind != "objective" &&
+		if entry.Actor != "user" && entry.Kind != "damage" && entry.Kind != "projectile" && entry.Kind != "support" && entry.Kind != "objective" &&
 			entry.Kind != "escape" && entry.Kind != "elimination" && entry.Kind != "outcome" {
 			continue
 		}
@@ -916,7 +1040,7 @@ func (e *Engine) enemyTarget(observer model.Unit) *model.Unit {
 		d := distance(observer.Position, candidate.Position)
 		priority := d
 		if candidate.ID == e.moment.ControlledUnitID && observer.Policy == "aggressive" {
-			priority -= 6
+			priority -= 14
 		}
 		if priority < best {
 			target, best = candidate, priority
@@ -1108,7 +1232,7 @@ func teamAlive(units []model.Unit, team string) (int, int) {
 func keyEvents(log []model.LogEntry, limit int) []string {
 	items := make([]string, 0, limit)
 	for _, entry := range log {
-		if entry.Kind != "damage" && entry.Kind != "objective" && entry.Kind != "escape" && entry.Kind != "outcome" {
+		if entry.Kind != "damage" && entry.Kind != "projectile" && entry.Kind != "objective" && entry.Kind != "escape" && entry.Kind != "outcome" {
 			continue
 		}
 		items = append(items, entry.Message)
@@ -1123,16 +1247,11 @@ func cloneMoment(moment model.Moment) model.Moment {
 	moment.Units = cloneUnits(moment.Units)
 	moment.ReasonTags = slices.Clone(moment.ReasonTags)
 	moment.MechanicBriefing = cloneMechanicBriefing(moment.MechanicBriefing)
-	if moment.SourceDetection != nil {
-		source := *moment.SourceDetection
-		source.ReasonTags = slices.Clone(source.ReasonTags)
-		source.SemanticEvidence.OneVersusManyUnitIDs = slices.Clone(source.SemanticEvidence.OneVersusManyUnitIDs)
-		source.SemanticEvidence.SuccessfulEscapeUnitIDs = slices.Clone(source.SemanticEvidence.SuccessfulEscapeUnitIDs)
-		if source.SemanticEvidence.TeamFightReversalSecond != nil {
-			second := *source.SemanticEvidence.TeamFightReversalSecond
-			source.SemanticEvidence.TeamFightReversalSecond = &second
-		}
-		moment.SourceDetection = &source
+	if moment.ReplayEvidence != nil {
+		evidence := *moment.ReplayEvidence
+		evidence.CaptionEvidence = slices.Clone(evidence.CaptionEvidence)
+		evidence.ExternalEvidence = slices.Clone(evidence.ExternalEvidence)
+		moment.ReplayEvidence = &evidence
 	}
 	moment.Authoring.IntendedTradeoffs = slices.Clone(moment.Authoring.IntendedTradeoffs)
 	alternatives := moment.Authoring.PlausibleAlternatives
@@ -1146,6 +1265,7 @@ func cloneMoment(moment model.Moment) model.Moment {
 	for i, acceptanceTest := range acceptanceTests {
 		moment.Authoring.AcceptanceTests[i] = acceptanceTest
 		moment.Authoring.AcceptanceTests[i].Actions = cloneActions(acceptanceTest.Actions)
+		moment.Authoring.AcceptanceTests[i].DodgeBeforeTurns = slices.Clone(acceptanceTest.DodgeBeforeTurns)
 	}
 	moment.Rules.Terrain = slices.Clone(moment.Rules.Terrain)
 	moment.Rules.ReferenceReasons = slices.Clone(moment.Rules.ReferenceReasons)

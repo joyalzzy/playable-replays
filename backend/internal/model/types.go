@@ -159,22 +159,23 @@ type Signals struct {
 	ResourceAsymmetry   float64 `json:"resourceAsymmetry"`
 }
 
-type TelemetrySemanticEvidence struct {
-	OneVersusManyUnitIDs    []string `json:"oneVersusManyUnitIds"`
-	SuccessfulEscapeUnitIDs []string `json:"successfulEscapeUnitIds"`
-	TeamFightReversalSecond *int     `json:"teamFightReversalSecond"`
-}
-
-// TelemetryDetection preserves the detector facts used to seed an authored
-// scenario. It is fixture provenance, not a calibrated outcome probability.
-type TelemetryDetection struct {
-	SchemaVersion    string                    `json:"schemaVersion"`
-	StartSecond      int                       `json:"startSecond"`
-	EndSecond        int                       `json:"endSecond"`
-	Score            float64                   `json:"score"`
-	ReasonTags       []string                  `json:"reasonTags"`
-	Signals          Signals                   `json:"signals"`
-	SemanticEvidence TelemetrySemanticEvidence `json:"semanticEvidence"`
+// ReplayEvidence records the public evidence used to author a scenario. The
+// normalized map coordinates remain explicit analyst approximations because
+// the source bundle contains review frames and event timings, not positional
+// telemetry.
+type ReplayEvidence struct {
+	BundleID           string   `json:"bundleId"`
+	BundleSHA256       string   `json:"bundleSha256"`
+	SourceMomentID     string   `json:"sourceMomentId"`
+	Game               int      `json:"game"`
+	DecisionTime       string   `json:"decisionTime"`
+	SourceVODSeconds   float64  `json:"sourceVodSeconds"`
+	Judgment           string   `json:"judgment"`
+	Assessment         string   `json:"assessment"`
+	CoachingCorrection string   `json:"coachingCorrection"`
+	CaptionEvidence    []string `json:"captionEvidence"`
+	ExternalEvidence   []string `json:"externalEvidence"`
+	CoordinateMethod   string   `json:"coordinateMethod"`
 }
 
 type ScenarioAlternative struct {
@@ -186,6 +187,7 @@ type ScenarioAlternative struct {
 type ScenarioAcceptanceTest struct {
 	Name                    string   `json:"name"`
 	Actions                 []Action `json:"actions"`
+	DodgeBeforeTurns        []int    `json:"dodgeBeforeTurns"`
 	ExpectedStatus          string   `json:"expectedStatus"`
 	ExpectedTerminalTurn    int      `json:"expectedTerminalTurn"`
 	ExpectedOutcomeContains string   `json:"expectedOutcomeContains"`
@@ -215,22 +217,22 @@ type MechanicBriefing struct {
 }
 
 type Moment struct {
-	ID               string              `json:"id"`
-	Slug             string              `json:"slug"`
-	Title            string              `json:"title"`
-	Description      string              `json:"description"`
-	Map              string              `json:"map"`
-	StartTimeSeconds int                 `json:"startTimeSeconds"`
-	Seed             int64               `json:"seed"`
-	MaxTurns         int                 `json:"maxTurns"`
-	ControlledUnitID string              `json:"controlledUnitId"`
-	ReasonTags       []string            `json:"reasonTags"`
-	Signals          Signals             `json:"signals"`
-	SourceDetection  *TelemetryDetection `json:"sourceDetection,omitempty"`
-	MechanicBriefing *MechanicBriefing   `json:"mechanicBriefing,omitempty"`
-	Units            []Unit              `json:"units"`
-	Rules            ScenarioRules       `json:"rules"`
-	Authoring        ScenarioAuthoring   `json:"authoring"`
+	ID               string            `json:"id"`
+	Slug             string            `json:"slug"`
+	Title            string            `json:"title"`
+	Description      string            `json:"description"`
+	Map              string            `json:"map"`
+	StartTimeSeconds int               `json:"startTimeSeconds"`
+	Seed             int64             `json:"seed"`
+	MaxTurns         int               `json:"maxTurns"`
+	ControlledUnitID string            `json:"controlledUnitId"`
+	ReasonTags       []string          `json:"reasonTags"`
+	Signals          Signals           `json:"signals"`
+	ReplayEvidence   *ReplayEvidence   `json:"replayEvidence,omitempty"`
+	MechanicBriefing *MechanicBriefing `json:"mechanicBriefing,omitempty"`
+	Units            []Unit            `json:"units"`
+	Rules            ScenarioRules     `json:"rules"`
+	Authoring        ScenarioAuthoring `json:"authoring"`
 }
 
 type Action struct {
@@ -262,6 +264,35 @@ type ObjectiveState struct {
 	RedProgress      int     `json:"redProgress"`
 	RequiredProgress int     `json:"requiredProgress"`
 	Status           string  `json:"status"`
+}
+
+type Turret struct {
+	ID       string `json:"id"`
+	Team     string `json:"team"`
+	Lane     string `json:"lane"`
+	Position Point  `json:"position"`
+	HP       int    `json:"hp"`
+	MaxHP    int    `json:"maxHp"`
+	Alive    bool   `json:"alive"`
+}
+
+// Projectile is a one-turn marksman skillshot. Position is its launch point;
+// Target is the fixed point the shot was aimed at. The authoritative engine
+// resolves or evades it before the next tactical action.
+type Projectile struct {
+	ID           string `json:"id"`
+	Team         string `json:"team"`
+	SourceUnitID string `json:"sourceUnitId"`
+	TargetUnitID string `json:"targetUnitId"`
+	Position     Point  `json:"position"`
+	Target       Point  `json:"target"`
+	Damage       int    `json:"damage"`
+}
+
+type BotControlState struct {
+	Source       string `json:"source"`
+	ModelName    string `json:"modelName,omitempty"`
+	ModelVersion string `json:"modelVersion,omitempty"`
 }
 
 type ReferenceOutcome struct {
@@ -318,6 +349,11 @@ type Session struct {
 	VisionLimited       bool               `json:"visionLimited"`
 	Objective           *ObjectiveState    `json:"objective,omitempty"`
 	Terrain             []TerrainFeature   `json:"terrain"`
+	Turrets             []Turret           `json:"turrets"`
+	Projectiles         []Projectile       `json:"projectiles"`
+	DodgeCharges        int                `json:"dodgeCharges"`
+	DodgeAvailable      bool               `json:"dodgeAvailable"`
+	BotControl          BotControlState    `json:"botControl"`
 	LastReferenceAction *Action            `json:"lastReferenceAction,omitempty"`
 	ReferenceReason     string             `json:"referenceReason,omitempty"`
 	ReferenceOutcomes   []ReferenceOutcome `json:"referenceOutcomes,omitempty"`
@@ -342,115 +378,6 @@ type MomentSummary struct {
 	SkillLevel  string   `json:"skillLevel"`
 	ReasonTags  []string `json:"reasonTags"`
 	Score       float64  `json:"highlightScore"`
-}
-
-// LiveTelemetryUnit is the game-agnostic, identity-minimized unit shape used
-// at the live ingestion boundary. It intentionally contains only fields used
-// by the deterministic highlight detector.
-type LiveTelemetryUnit struct {
-	ID       string  `json:"id"`
-	Team     string  `json:"team"`
-	Position Point   `json:"position"`
-	HP       float64 `json:"hp"`
-	MaxHP    float64 `json:"maxHp"`
-	Gold     float64 `json:"gold"`
-	Alive    bool    `json:"alive"`
-}
-
-type LiveTelemetryFrame struct {
-	Second         int                 `json:"second"`
-	WinProbability float64             `json:"winProbability"`
-	Events         []string            `json:"events"`
-	Units          []LiveTelemetryUnit `json:"units"`
-}
-
-type LiveTelemetryDocument struct {
-	Version string               `json:"version"`
-	Frames  []LiveTelemetryFrame `json:"frames"`
-}
-
-type TelemetryFrameBatch struct {
-	SchemaVersion string               `json:"schemaVersion"`
-	Sequence      int                  `json:"sequence"`
-	Frames        []LiveTelemetryFrame `json:"frames"`
-}
-
-type CreateTelemetryMatchRequest struct {
-	Source  string `json:"source"`
-	Consent bool   `json:"consent"`
-}
-
-type TelemetryCandidate struct {
-	ID          string             `json:"id"`
-	Status      string             `json:"status"`
-	Category    string             `json:"category"`
-	DraftStatus string             `json:"draftStatus"`
-	Detection   TelemetryDetection `json:"detection"`
-}
-
-type TelemetryMatch struct {
-	ID                string               `json:"id"`
-	Source            string               `json:"source"`
-	Status            string               `json:"status"`
-	FrameCount        int                  `json:"frameCount"`
-	LastSecond        int                  `json:"lastSecond"`
-	ExpectedSequence  int                  `json:"expectedSequence"`
-	SavedLocally      bool                 `json:"savedLocally"`
-	TimelineAvailable bool                 `json:"timelineAvailable"`
-	Candidates        []TelemetryCandidate `json:"candidates"`
-}
-
-// LocalStorageStatus describes only the safe summary/draft store. Raw frames
-// and collector credentials are never included in this inventory.
-type LocalStorageStatus struct {
-	Mode              string `json:"mode"`
-	RetentionDays     int    `json:"retentionDays"`
-	MatchSummaryCount int    `json:"matchSummaryCount"`
-	DraftCount        int    `json:"draftCount"`
-}
-
-type UpdateRetentionRequest struct {
-	RetentionDays int `json:"retentionDays"`
-}
-
-type DeleteLocalDataResponse struct {
-	DeletedMatches int `json:"deletedMatches"`
-	DeletedDrafts  int `json:"deletedDrafts"`
-}
-
-// TelemetryTimeline is a bounded, identity-free view of unit movement and
-// normalized events. Source unit/team identifiers and resource fields never
-// cross this read boundary.
-type TelemetryTimeline struct {
-	MatchID          string                   `json:"matchId"`
-	SourceFrameCount int                      `json:"sourceFrameCount"`
-	SampleEvery      int                      `json:"sampleEvery"`
-	Truncated        bool                     `json:"truncated"`
-	Frames           []TelemetryTimelineFrame `json:"frames"`
-	Events           []TelemetryTimelineEvent `json:"events"`
-}
-
-type TelemetryTimelineFrame struct {
-	Second int                     `json:"second"`
-	Units  []TelemetryTimelineUnit `json:"units"`
-}
-
-type TelemetryTimelineUnit struct {
-	TrackID  string `json:"trackId"`
-	Side     string `json:"side"`
-	Position Point  `json:"position"`
-	Alive    bool   `json:"alive"`
-}
-
-type TelemetryTimelineEvent struct {
-	Second int    `json:"second"`
-	Type   string `json:"type"`
-	Count  int    `json:"count"`
-}
-
-type CreateTelemetryMatchResponse struct {
-	Match          TelemetryMatch `json:"match"`
-	CollectorToken string         `json:"collectorToken"`
 }
 
 type ErrorResponse struct {

@@ -1,8 +1,7 @@
-"""Interpretable offline highlight selection for synthetic telemetry.
+"""Interpretable offline highlight scoring for authored scenario signals.
 
-This module intentionally uses no model or network service. It establishes a
-testable baseline and creates training/evaluation candidates for a future
-compact sequence policy.
+This module intentionally uses no model or network service. It preserves the
+small explainable score used by the three reviewed fixture summaries.
 """
 
 from __future__ import annotations
@@ -101,4 +100,3 @@ if __name__ == "__main__":
                 }
             )
         )
-

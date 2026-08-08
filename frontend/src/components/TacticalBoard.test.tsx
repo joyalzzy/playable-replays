@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Unit } from "../types";
+import type { Projectile, Turret, Unit } from "../types";
 import { clampTargetToMoveRange, TacticalBoard } from "./TacticalBoard";
 
 afterEach(cleanup);
@@ -75,12 +75,33 @@ const units: Unit[] = [
   }
 ];
 
+const turrets: Turret[] = [
+  { id: "blue-top", team: "blue", lane: "top", position: { x: 22, y: 32 }, hp: 100, maxHp: 100, alive: true },
+  { id: "blue-middle", team: "blue", lane: "middle", position: { x: 35, y: 65 }, hp: 100, maxHp: 100, alive: true },
+  { id: "blue-bottom", team: "blue", lane: "bottom", position: { x: 45, y: 82 }, hp: 100, maxHp: 100, alive: true },
+  { id: "red-top", team: "red", lane: "top", position: { x: 55, y: 18 }, hp: 100, maxHp: 100, alive: true },
+  { id: "red-middle", team: "red", lane: "middle", position: { x: 65, y: 35 }, hp: 100, maxHp: 100, alive: true },
+  { id: "red-bottom", team: "red", lane: "bottom", position: { x: 78, y: 68 }, hp: 100, maxHp: 100, alive: true }
+];
+
+const projectiles: Projectile[] = [{
+  id: "red-heavy-shot",
+  team: "red",
+  sourceUnitId: "red-mage",
+  targetUnitId: "blue",
+  position: { x: 24, y: 20 },
+  target: { x: 20, y: 20 },
+  damage: 80
+}];
+
 describe("TacticalBoard", () => {
   it("does not render hidden enemies", () => {
     const { container } = render(
       <TacticalBoard
         units={units}
         terrain={[]}
+        turrets={[]}
+        projectiles={[]}
         controlledUnitId="blue"
         unknownEnemyCount={1}
         targeting={false}
@@ -99,6 +120,8 @@ describe("TacticalBoard", () => {
       <TacticalBoard
         units={units}
         terrain={[]}
+        turrets={[]}
+        projectiles={[]}
         controlledUnitId="blue"
         unknownEnemyCount={1}
         targeting={false}
@@ -120,6 +143,8 @@ describe("TacticalBoard", () => {
       <TacticalBoard
         units={units}
         terrain={[]}
+        turrets={[]}
+        projectiles={[]}
         controlledUnitId="blue"
         unknownEnemyCount={1}
         targeting
@@ -138,6 +163,8 @@ describe("TacticalBoard", () => {
       <TacticalBoard
         units={units}
         terrain={[]}
+        turrets={[]}
+        projectiles={[]}
         controlledUnitId="blue"
         unknownEnemyCount={0}
         targeting
@@ -168,6 +195,8 @@ describe("TacticalBoard", () => {
       <TacticalBoard
         units={units}
         terrain={[]}
+        turrets={[]}
+        projectiles={[]}
         controlledUnitId="blue"
         unknownEnemyCount={0}
         targeting
@@ -179,34 +208,22 @@ describe("TacticalBoard", () => {
     expect(screen.getByText("X 24 · Y 22")).toBeInTheDocument();
   });
 
-  it("projects focused views while keeping hover coordinates in world space", () => {
+  it("renders the full map with all server-supplied turrets and projectiles", () => {
     render(
       <TacticalBoard
         units={units}
         terrain={[]}
+        turrets={turrets}
+        projectiles={projectiles}
         controlledUnitId="blue"
         unknownEnemyCount={0}
-        viewport={{ xMin: 10, xMax: 70, yMin: 20, yMax: 80, label: "Focused view · Test lane" }}
-        targeting
+        targeting={false}
         onTarget={vi.fn()}
       />
     );
-    const board = screen.getByRole("button", { name: /choose movement/i });
-    vi.spyOn(board, "getBoundingClientRect").mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 200,
-      height: 100,
-      right: 200,
-      bottom: 100,
-      x: 0,
-      y: 0,
-      toJSON: () => undefined
-    });
 
-    expect(screen.getByText("Focused view · Test lane")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /blue tank unit/i })).toHaveStyle("left: 16.666666666666664%; top: 0%");
-    fireEvent.mouseMove(board, { clientX: 100, clientY: 50 });
-    expect(screen.getByText("X 40 · Y 50")).toBeInTheDocument();
+    expect(screen.getByText("Full map")).toBeInTheDocument();
+    expect(screen.getAllByRole("img", { name: /lane turret/i })).toHaveLength(6);
+    expect(screen.getByRole("img", { name: /red marksman projectile.*80 damage/i })).toBeInTheDocument();
   });
 });

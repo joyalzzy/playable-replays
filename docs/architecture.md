@@ -1,144 +1,139 @@
 # Architecture
 
-## Prototype boundary
+## Product boundary
 
-The MVP is a shareable tactical board, not an in-game replay. It works entirely
-from synthetic fixtures and uses high-level commands so it can later be adapted
-to an authorized telemetry source without coupling the user interface to one
-publisher's game engine.
+Playable Replays is a Garena AI Build Challenge 2026 web prototype for three
+short tactical teaching scenarios. It is a full-map simulator, not an in-game
+replay, live telemetry product, or proprietary game-engine implementation.
+
+The scenario evidence comes from the supplied T1–Bilibili Gaming Worlds 2024
+review bundle. Fixture evidence anchors the teaching premise to reviewed video,
+captions, and event sources. Unit, terrain, objective, turret, and target
+coordinates are authored on a normalized `0..100` map. They are approximations
+informed by reviewed minimap frames, **not replay telemetry or claims of exact
+historical positions**.
 
 ```mermaid
 flowchart TD
-    A["Authorized or synthetic normalized telemetry"] --> B["Offline scorer or local collector"]
-    B --> C["Deterministic highlight detector"]
-    C --> F["Live review and incomplete version 2.1 draft"]
-    F --> G["Analyst authors and validates teaching content"]
-    G --> H["Versioned moment fixture"]
-    H --> D["Go authoritative simulator"]
-    D --> E["TypeScript tactical board"]
-    E -->|Legal action| D
-    D -.->|Optional snapshot| I["Non-player position model"]
-    I -.->|Advisory targets| D
+    A["Reviewed source bundle"] --> B["Three authored fixtures"]
+    B --> C["Go authoritative simulator"]
+    C <--> D["React full-map board"]
+    C --> E["Python model daemon"]
+    E --> F["OpenAI Responses API"]
+    C -. "failure fallback" .-> C
 ```
 
-## Determinism
+There is no runtime source ingestion or scenario drafting path. Adding or
+changing a scenario is an offline, analyst-reviewed fixture change.
 
-Each fixture carries a stable seed. With the default built-in non-player policies,
-the backend owns the random generator and all state transitions. The same
-fixture and action sequence therefore produce the same state, score, and
-terminal result. Invalid user actions leave the state unchanged.
+## Component ownership
 
-An external position model may itself be nondeterministic. The engine therefore
-retains each accepted response with its operator-configured model name/version
-in session-scoped server memory. Durable reproduction additionally requires
-exporting those records with the fixture and user action sequence; that storage
-is deferred. Connector failures still produce a deterministic result by using
-the seeded built-in policy.
+| Component | Owns | Must not own |
+| --- | --- | --- |
+| React frontend | Interaction, accessible controls, full-map rendering, range/stat display, timeline, logs, and debrief | Legality, hidden state, damage, model credentials, or fallback rules |
+| Go API | Strict HTTP boundary, in-memory sessions, per-session locking, rate limits, and public-state filtering | Browser-only model calls or durable telemetry storage |
+| Go engine | Movement, class limits, fog, combat, projectiles, Dodge, objectives, outcomes, references, and deterministic fallback | External model inference or replay-exact claims |
+| Python model daemon | Strict schema `2.0` validation and a real OpenAI Responses API call for advisory bot actions | Authoritative state mutation, retries, local fake success, or browser access |
+| Fixture pack | Three teaching states, source evidence, authored rules, reference lines, and acceptance cases | Raw media, secrets, or claimed measured map coordinates |
 
-## Information boundary
+The browser talks only to the Go API. The daemon URL and identity are
+operator-owned startup configuration; a session or browser request can never
+select an arbitrary outbound URL.
 
-The full simulator state remains on the server. Public session responses omit
-hidden enemy units entirely, including their coordinates and statistics, and
-instead return visible and unknown enemy counts. Terrain can block long-range
-vision, and reveal events are logged only when a blue unit obtains vision.
-This is a meaningful information boundary, but it is still a prototype rather
-than an anti-cheat-hardened production service.
+## Tactical-turn flow
 
-The optional position connector is also server-side and receives the unit snapshot. Its
-URL is an operator configuration value, never a per-session user input. A
-production deployment should require HTTPS, restrict outbound destinations,
-authenticate the model service, minimize fields, and avoid sending hidden or
-identity-bearing telemetry unless that use is explicitly authorized.
+1. React submits `move`, `hold`, `contest`, or `retreat` to
+   `POST /api/v1/sessions/{id}/turns`.
+2. Go validates the complete action before mutating state.
+3. Go resets per-turn defense, ticks cooldowns, increments the turn, and
+   resolves any projectile left pending from the previous turn.
+4. If the controlled unit survives, Go resolves its command and visibility.
+5. When configured, Go sends one privileged schema `2.0` snapshot to the model
+   daemon. The snapshot includes the legal four-action set, all authoritative
+   units, objective state, projectiles, and `controlledUnitId`.
+6. The daemon requests exactly one action for every live non-controlled unit.
+7. Go validates the response atomically. A complete valid response supplies bot
+   intent; any failure uses deterministic built-in actions for the whole turn.
+8. Go resolves allied and enemy behavior, visibility, objective/escape state,
+   rules-based advantage, terminal state, and reference output.
+9. React receives a complete public `Session` snapshot.
 
-## AI boundary
+Move targets from the model are bounded to `0..100` and then constrained by
+each unit's server-owned class movement range during resolution. The model can
+never set health, damage, cooldowns, visibility, projectile results, advantage,
+or terminal state.
 
-The baseline highlight selector is an interpretable weighted score. A future
-trajectory model may choose among legal high-level actions. The optional
-position connector has an even narrower output: desired next-frame positions
-for live units other than the player-controlled unit. This includes allied
-teammates and opponents. The Go simulator rejects the complete response for an
-unknown, controlled, dead, duplicate, or malformed unit suggestion; constrains
-valid targets to map and class movement limits; and remains the only component
-allowed to resolve movement, attacks, damage, cooldowns, visibility, scoring,
-or victory state.
-Optional natural-language commands should be parsed into the same action schema
-and rejected unless valid.
+## Dodge flow
 
-## Position-model connector protocol
+Dodge is a reaction, not a tactical action. React calls
+`POST /api/v1/sessions/{id}/dodge` only when `dodgeAvailable` is true. Go checks
+that the active controlled unit has a charge and an incoming red projectile,
+removes one eligible projectile, applies a class-limited automatic sidestep,
+decrements `dodgeCharges`, updates the log, and returns the session. It does not
+increment `turn`, call the model, or advance objectives/cooldowns.
 
-When `POSITION_MODEL_URL` is unset, no outbound request is made. When it is set,
-`POSITION_MODEL_NAME` and `POSITION_MODEL_VERSION` are also required so accepted
-results can be attributed; missing identity fails configuration at startup. The
-deprecated `OPPONENT_MODEL_*` aliases are accepted only as one complete
-environment-name group and cannot be mixed with the preferred names. They do
-not select the retired opponent-only protocol; the endpoint must implement
-schema `1.1`.
-Each accepted user turn produces one HTTP `POST` containing `sessionId`,
-`momentId`, `turn`, the map bounds, `controlledUnitId`, and the current units.
-The request is versioned as `schemaVersion: "1.1"` and explicitly marked
-`stateScope: "authoritative_server_state"`. Here `turn` is the one-based index
-of the current frame being resolved. The model returns a required `positions`
-array of unit IDs and complete `x`/`y` points.
+The session starts with two charges. A pending projectile that is not dodged is
+resolved at the beginning of the next accepted tactical turn, before the user
+command. This keeps the reaction visible and immediate without adding Dodge to
+the four-way decision tree.
 
-The connector response is advisory. Missing teammate targets hold position;
-missing opponent targets use built-in chase behavior. A timeout, transport
-error, non-200 status, oversized/malformed JSON, or any response that cannot be
-safely applied rejects the full response and activates the deterministic policy. The
-wire contract is documented as the `positionModelTurn` webhook in
-[`../contracts/openapi.yaml`](../contracts/openapi.yaml).
+## Authority, determinism, and failure
 
-After all eligibility and coordinate checks pass, the engine records the exact
-accepted target array, session/moment/turn keys, and configured model identity.
-Rejected responses are never recorded as accepted. These rollout records are
-privileged internal metadata, are cleared on reset, and are not serialized in
-the browser-facing session response.
+The Go engine is the sole authority. With no configured model, a fixture seed
+and tactical action sequence produce the same trajectory apart from the session
+ID. Invalid user input leaves state unchanged.
 
-Frame resolution remains server-owned:
+External model calls may be nondeterministic. Accepted responses are retained
+with model name/version in in-memory rollout records; durable exact replay of a
+model-backed session would also require exporting those records and the user's
+actions, which is deferred. A missing key, timeout, transport error, non-200,
+refusal, incomplete response, malformed JSON, illegal action, unknown or
+duplicate unit, or invalid target rejects the model response. The turn remains
+available through deterministic fallback.
 
-1. Validate the user's action and any target.
-2. Apply the controlled unit's class-specific movement/action rule.
-3. Request advisory non-player targets when the connector is enabled.
-4. Validate the response atomically and clamp accepted targets, or run
-   deterministic fallback behavior.
-5. Resolve combat, cooldowns, visibility, scoring, and terminal state.
+`Session.botControl` makes that boundary visible:
 
-## Production components deferred
+| Source | Meaning |
+| --- | --- |
+| `pending` | A bridge is configured, but no tactical turn has completed. |
+| `external-model` | Every live non-controlled unit received an accepted model action; name/version are included. |
+| `deterministic-fallback` | No bridge is configured, or the configured bridge response failed closed. |
 
-- Publisher-specific telemetry adapter and authorization
-- Compact behavioral-cloning trajectory policy
-- Durable export/storage for in-memory external-model rollout records
-- Identity-aware pro-player style models
-- Held-out authorized-match ranking calibration beyond the synthetic regression pack
-- Durable simulator-session storage, authentication, and network-wide abuse controls
-- In-game engine integration and publisher approval
+## Information and security boundary
 
-## Local live telemetry boundary
+Public sessions omit hidden red units and expose only visible/unknown enemy
+counts. Red projectile source IDs are also removed when the source is hidden.
+The model snapshot is more privileged: it contains authoritative units because
+the model is acting for all bots. It must go only to an operator-controlled
+service under an explicit data-use and retention policy.
 
-The Go API includes a bounded, process-local telemetry registry for normalized
-frames plus a durable local store for finalized summaries and analyst drafts.
-An ephemeral collector credential protects ordered frame ingestion;
-the browser receives minimized match summaries, canonical detector signals,
-candidate evidence, and a separate bounded visual trace. The trace uses stable
-A/B aliases and includes only normalized positions, alive state, time, and
-aggregated normalized events. Raw IDs, health, gold, frames, movement traces,
-and tokens are not persisted. Detector evidence is converted to stable A/B
-aliases before a summary or draft reaches disk. Seven-day retention, selectable
-`1..365` day cleanup, single-match deletion, and delete-all controls are exposed
-through the same loopback API. A detected candidate cannot enter the authored library
-directly: it first becomes an incomplete draft guarded by the existing analyst
-authorship and acceptance-test validator.
+The daemon never logs the API key, snapshot, or model output. Requests and
+responses are bounded, the backend client has a shorter fixed deadline than the
+interactive request, and neither service retries model calls. Production use
+still needs authenticated service-to-service transport, allowlisted egress,
+secret management, session authentication, durable storage decisions, and
+publisher review.
 
-See [`live-telemetry.md`](live-telemetry.md) for the local journey and exact
-privacy, finalization, and publication boundaries.
+## Full-map state
 
-## Authored simulation rules
+The engine owns inclusive `0..100` geometry and returns the full map rather than
+focused scenario viewports. Every session contains exactly six canonical
+turrets: blue/red top, middle, and bottom. Turrets have server-supplied
+`hp/maxHp/alive` state and are currently visual landmarks; they do not attack or
+receive simulated damage. React renders server data and does not duplicate
+turret locations as gameplay truth.
 
-Fixture version 2.1 declares unit combat statistics and policies, terrain,
-vision, objectives, escape routes, explicit victory conditions, and reference
-plans. The server resolves a turn in this order: cooldown and defense reset,
-user action, allied policies, enemy policies, visibility, objective and escape
-progress, state-derived advantage, then terminal conditions.
+Unit class profiles define health, move range, and attack range. Fog still
+filters hidden enemies from public session units. Marksman attacks create a
+one-turn `Projectile`; the target path is visible in the public session, subject
+to source-ID redaction for hidden red marksmen.
 
-Reference advice is withheld until the user commits. Complete deterministic
-rollouts for all legal first actions are returned only when the scenario
-ends. They are labelled as authored baselines rather than historical outcomes.
+## Deferred production work
+
+- Publisher-authorized data ingestion and replay adapters
+- Authentication, durable simulator sessions, and network-wide abuse controls
+- Authenticated/encrypted model-service transport and egress allowlists
+- Durable export of accepted model actions for exact replay
+- Calibrated learned outcome estimates and representative evaluation data
+- Navmesh/collision and publisher-specific abilities, items, and timing
+- In-game integration and publisher approval
