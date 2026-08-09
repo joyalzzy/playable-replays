@@ -7,7 +7,7 @@ info:
     Dodge and player-directed projectile fire are separate two-charge reactions
     and are not tactical actions. The optional schema 2.0 bot bridge is
     non-authoritative; any bridge failure causes the Go simulator to use its
-    deterministic fallback.
+    fallback.
 servers:
   - url: http://127.0.0.1:8080
     description: Local Go API
@@ -207,7 +207,7 @@ webhooks:
         operator-configured bridge, conventionally POST /v1/actions. The bridge
         must return exactly one action for every live non-controlled unit.
         Unknown, duplicate, controlled, defeated, omitted, or invalid units
-        invalidate the complete response and activate deterministic fallback.
+        invalidate the complete response and activate fallback.
       requestBody:
         required: true
         content:
@@ -601,7 +601,7 @@ components:
       properties:
         source:
           type: string
-          enum: [pending, external-model, deterministic-fallback]
+          enum: [pending, external-model, fallback]
         modelName:
           type: string
           minLength: 1

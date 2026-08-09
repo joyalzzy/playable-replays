@@ -228,6 +228,6 @@ func TestHTTPModelHonorsCustomClientTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := connector.NextActions(context.Background(), testBotSnapshot()); err == nil {
-		t.Fatal("expected custom timeout to activate deterministic fallback")
+		t.Fatal("expected custom timeout to activate fallback")
 	}
 }

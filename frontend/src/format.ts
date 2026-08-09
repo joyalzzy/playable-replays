@@ -13,7 +13,7 @@ export function turnLabel(turn: number, guidedTurns: number) {
 
 export function botControlLabel(control: BotControl) {
   if (control.source === "external-model") return "AI policy active";
-  if (control.source === "deterministic-fallback") return "Deterministic fallback";
+  if (control.source === "fallback") return "Fallback";
   return "Awaiting AI policy";
 }
 

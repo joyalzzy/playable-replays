@@ -54,7 +54,7 @@ func (e *Engine) Reset(sessionID string) model.Session {
 	e.rng = rand.New(rand.NewSource(e.moment.Seed))
 	e.rollouts = nil
 	e.nextProjectileID = 0
-	botSource := "deterministic-fallback"
+	botSource := "fallback"
 	if e.botModel != nil {
 		botSource = "pending"
 	}
@@ -384,7 +384,7 @@ func (e *Engine) logBotPolicy(modelUsed, fallback bool) {
 	if fallback {
 		action = "fallback"
 		message = "The external bot model was unavailable or unusable; deterministic bot actions were applied for this turn."
-		e.session.BotControl = model.BotControlState{Source: "deterministic-fallback"}
+		e.session.BotControl = model.BotControlState{Source: "fallback"}
 	}
 	e.addLog("policy", "model", action, "", "", 0, message)
 }

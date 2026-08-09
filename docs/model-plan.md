@@ -2,25 +2,30 @@
 
 ## Implemented model path
 
-`model-daemon/` is an implemented Python 3.12 service, not a placeholder. For
-each accepted tactical turn, the Go server can send it a privileged schema
-`2.0` snapshot. The daemon makes a real OpenAI Responses API request with a
-strict JSON Schema and returns one high-level action for every live unit except
-the user-controlled unit.
+The model is a separately trained/fine-tuned unit policy, not an upstream API bridge. Its
+portable runtime is maintained on the `ml-inference` branch because model
+artifacts and inference tooling are intentionally separate from the app on
+`main` and `dev`.
 
-There is no local model stub or simulated success path in the daemon. A missing
-API key, upstream failure, invalid response, or refusal returns non-`200`; the
-Go engine then applies its deterministic bot fallback. This preserves a
-runnable no-key experience while keeping successful `external-model` status
-truthful.
+The exported `unit-policy-v2-carry-safety` model is a transparent linear policy
+with 72 ordered normalized features, four action heads (`move`, `hold`,
+`contest`, and `retreat`), and two movement-regression heads. The
+standard-library `serve.py` process loads the committed JSON artifact locally;
+it makes no upstream network call and requires no API key.
+
+The `ml` branch contains offline replay preparation, training pipelines,
+notebooks, and their tests. The `ml-inference` branch contains only the portable
+artifacts and runtime needed for deployment. Its `manifest.json` records the
+source commit, artifact hashes, feature order, training metadata, and validation
+results.
 
 ## Server-to-server contract
 
 The Go API is configured with the all-or-nothing group:
 
 - `BOT_MODEL_URL`, conventionally `http://127.0.0.1:9000/v1/actions`;
-- `BOT_MODEL_NAME`, a stable operator-owned bridge/policy name; and
-- `BOT_MODEL_VERSION`, the rollout identity shown with accepted results.
+- `BOT_MODEL_NAME`, normally `playable-replays-linear-unit-policy`; and
+- `BOT_MODEL_VERSION`, currently `unit-policy-v2-carry-safety`.
 
 The request declares:
 
@@ -36,23 +41,6 @@ The request declares:
   "legalActions": ["move", "hold", "contest", "retreat"],
   "projectiles": [],
   "units": [
-    {
-      "id": "t1-faker",
-      "team": "blue",
-      "role": "mid",
-      "class": "mage",
-      "fallbackPolicy": "controlled",
-      "position": {"x": 36, "y": 62},
-      "hp": 80,
-      "maxHp": 95,
-      "moveRange": 9,
-      "attackRange": 24,
-      "cooldownTurns": 0,
-      "shield": 0,
-      "guarded": false,
-      "visible": true,
-      "alive": true
-    },
     {
       "id": "blg-knight",
       "team": "red",
@@ -74,13 +62,7 @@ The request declares:
 }
 ```
 
-`units` contains class, fallback policy, position, health, shield/guard state,
-movement/attack ranges, cooldown, visibility, and alive state. Optional objective state and
-pending projectiles provide the context needed for tactical choices. Because
-the daemon acts for both teams, this is privileged authoritative state and must
-never be exposed to a browser-selected endpoint.
-
-The response is deliberately small:
+The service returns exactly one action for every live non-controlled unit:
 
 ```json
 {
@@ -93,67 +75,59 @@ The response is deliberately small:
 }
 ```
 
-The model must return exactly one action for every live non-controlled unit.
-Only `move` may include a target. Dodge is intentionally absent: it is a
-user-only, two-charge server reaction and not part of bot inference or tactical
-search.
+Only `move` may include a target. Dodge is a separate user reaction and is not
+part of model inference or tactical search. Because the policy acts for both
+teams, the request contains privileged authoritative state and must never be
+sent to a browser-selected endpoint.
 
 ## Validation and authority
 
-The daemon validates request shape, size, schema version, state scope, map
-bounds, legal actions, unit identities/classes/state, and the OpenAI response.
-It requests strict Structured Outputs and rejects incomplete, duplicate,
-unknown, illegal, refused, malformed, or oversized output.
+The inference service validates body size, schema version, state scope, map
+bounds, legal actions, and unit state before evaluating the model. Go validates
+the response again. Validation is atomic: one bad or missing action rejects the
+whole result. Move targets must be finite and inside the normalized map; actual
+displacement is then capped by the unit's server-owned class range.
 
-Go validates the daemon response again. Validation is atomic: one bad or
-missing action rejects the whole result. Move targets must be finite and inside
-the normalized map; actual displacement is then capped by the unit's class
-range. Go remains solely responsible for movement resolution, combat,
-projectiles, fog, objective state, advantage, terminal state, and public-state
-redaction.
+Go remains solely responsible for movement resolution, combat, projectiles,
+fog, objective state, advantage, terminal state, and public-state redaction. A
+timeout, transport failure, non-`200`, malformed or oversized response,
+incomplete unit set, illegal action, or invalid target activates fallback once
+for the whole turn. For the same fixture seed and tactical action sequence,
+fallback behavior is deterministic. `Session.botControl` reports `pending`,
+accepted `external-model` with name/version, or `fallback`.
 
-The daemon does not retry. The Go client uses a bounded HTTP timeout and invokes
-deterministic fallback once. `Session.botControl` reports `pending`, accepted
-`external-model` with name/version, or `deterministic-fallback`.
+## Run and validate the model
 
-## Prompt and model configuration
+From a separate checkout of `ml-inference`:
 
-The checked-in `model-daemon/prompt.txt` defines the tactical role and instructs
-the model to use only the supplied state and legal commands. Runtime variables
-are:
+```bash
+python3 serve.py --listen 127.0.0.1:9000
+```
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `OPENAI_API_KEY` | none | Required for a successful model call. |
-| `OPENAI_MODEL` | `gpt-5.6` | Responses API model ID. |
-| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Operator-owned HTTPS API base path; cleartext HTTP is accepted only for a loopback test server. |
-| `OPENAI_TIMEOUT_SECONDS` | `8` | Upstream deadline, bounded to `0.1..120` and below the Go client's nine-second deadline. |
-| `LISTEN_ADDR` | `127.0.0.1:9000` | Daemon bind address; Compose uses `0.0.0.0:9000`. |
+The runtime uses only the Python standard library. Validate the JSON/NPZ export
+and smoke-test inference with:
 
-`BOT_MODEL_VERSION` is operator-supplied provenance rather than an upstream
-claim. When `OPENAI_MODEL` changes, update `BOT_MODEL_VERSION` to the same
-deployed model identifier (or to a distinct, accurate rollout identifier) in
-the same configuration change.
+```bash
+python3 validate_export.py
+python3 infer.py example_snapshot.json --wire-only
+```
 
-The key must remain daemon-side. Never place it in React, a session request,
-fixture, source file, log, screenshot, or committed `.env`.
+NumPy is needed only to read the optional NPZ artifact or run export
+validation. The inference branch README documents Python, Node.js, HTTP, and
+Docker usage.
 
 ## Evaluation gates
 
-Unit tests use a local fake Responses API and require neither a key nor network.
-They cover valid structured output, health, missing keys, invalid snapshots,
-upstream errors, malformed/refused/incomplete output, and HTTP boundary rules.
-The Go connector/engine tests must independently cover response size, malformed
-JSON, unit completeness/uniqueness, target bounds, timeout, atomic rejection,
-and deterministic fallback.
+The committed export records deterministic group-isolated training and
+validation metadata, feature count and order, action accuracy/recall, movement
+error, source composition, leakage checks, and Python/Node parity. Before
+replacing the model or feature contract, also report:
 
-Before changing the model, prompt, or schema, report:
-
-- complete legal-response rate and deterministic-fallback rate;
-- p50/p95/p99 daemon and end-to-end turn latency;
+- complete legal-response rate and fallback rate;
+- p50/p95/p99 inference and end-to-end turn latency;
 - illegal, missing-unit, duplicate-unit, and out-of-bounds rejection counts;
 - action distribution and multi-turn stability across all three fixtures;
-- outcome/reference divergence under repeated model runs; and
+- outcome/reference divergence across the fixture suite; and
 - analyst preference on blinded tactical traces.
 
 Model agreement is not evidence that the system reproduced a professional
@@ -165,11 +139,10 @@ indicator, not a learned or calibrated win probability.
 The engine stores accepted action arrays and configured model identity in
 session-scoped memory. Exact replay after process exit additionally requires
 exporting those arrays with the fixture and user actions; durable export is not
-implemented. Treat model-backed runs as attributable but not durably
-reproducible until that exists.
+implemented.
 
 The source bundle provides reviewed video/caption/event evidence. Scenario map
-coordinates are authored normalized approximations, not replay telemetry. Do
-not send source media, proprietary data, personal data, or new identity-bearing
-state to an external model without authorization and an explicit retention
-policy.
+coordinates are authored normalized approximations, not replay telemetry.
+Professional replay labels are observational associations, not proof of optimal
+play or player intent. Do not add source media, proprietary data, personal data,
+or hidden model snapshots to browser-visible or logged state.

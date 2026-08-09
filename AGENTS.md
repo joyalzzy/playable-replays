@@ -8,9 +8,9 @@ determinism, security, or validation rules below.
 
 ## Mission and non-negotiable boundaries
 
-Playable Replays is a Garena AI Build Challenge 2026 prototype: a shareable
-full-map MOBA tactical board with three replay-derived teaching scenarios from
-the T1–Bilibili Gaming 2024 Worlds Final.
+Playable Replays is a shareable full-map MOBA tactical board with three
+replay-derived teaching scenarios from the T1–Bilibili Gaming 2024 Worlds
+Final.
 
 - The Go simulator is authoritative. Browsers and the bot model submit
   high-level intent; only Go resolves movement, combat, visibility,
@@ -19,9 +19,9 @@ the T1–Bilibili Gaming 2024 Worlds Final.
   Dodge is a separate two-charge reaction endpoint and must never become a
   tactical action or decision-tree branch. No fifth tactical command is
   supported.
-- The browser must never call the model daemon or receive its credential.
+- The browser must never call the model service or receive its endpoint.
 - External model output is advisory and atomically validated. Any unavailable
-  or unusable response activates deterministic Go fallback for the full turn.
+  or unusable response activates Go fallback for the full turn.
 - In no-model/fallback mode, the same fixture seed and tactical action sequence
   produces the same state apart from the generated session ID. Invalid input
   must leave state unchanged.
@@ -66,17 +66,17 @@ output. Names are contextual attribution and do not imply endorsement.
 | `frontend/src/api.ts` | Browser's only HTTP client boundary |
 | `frontend/src/types.ts` | Strict TypeScript mirror of the public API |
 | `frontend/src/components/` | Accessible interaction/rendering components and colocated tests |
-| `model-daemon/` | Standard-library Python bridge from bot snapshot to real OpenAI Responses API Structured Outputs |
 | `contracts/openapi.yaml` | Canonical public Go API and bot-model webhook contract |
 | `contracts/moment.schema.json` | Draft 2020-12 schema for fixture version `3.0` |
 | `fixtures/moments.json` | The three authored source-attributed scenarios |
 | `docs/` | Current architecture, model, authoring, simulator, limitations, and decisions |
-| `.github/workflows/ci.yml` | Go, frontend, and model-daemon validation |
+| `.github/workflows/ci.yml` | Go, frontend, and fixture validation |
 
-`ml/highlight.py` is the only retained offline scorer. It reads authored
-fixture signals and is not part of the runtime product, Compose stack, public
-API, or model path. Do not turn it into a runtime detector without an explicit
-architecture change.
+The repository is split by responsibility: `main` is the stable app, `dev` is
+the gameplay/interface development line, `ml` contains offline preparation and
+training/fine-tuning, and `ml-inference` contains portable model artifacts and the
+dependency-free inference service. Training and inference files are
+intentionally absent from `dev`.
 
 ## Runtime flow
 
@@ -87,11 +87,12 @@ architecture change.
 4. React submits one of the four tactical actions to the turn endpoint.
 5. Go validates the action, resolves pending projectiles, user intent, bot
    behavior, fog, combat, objective/escape state, and outcome.
-6. When configured, Go posts a privileged schema `2.0` snapshot to the model
-   daemon before bot resolution. The daemon makes a real Responses API call and
-   returns every live non-controlled unit's advisory action.
-7. Go accepts the complete response atomically or applies deterministic
-   fallback, then exposes `botControl` status in the session.
+6. When configured, Go posts a privileged schema `2.0` snapshot to the
+   separately deployed `ml-inference` service before bot resolution. The
+   service evaluates the exported linear policy and returns every live
+   non-controlled unit's advisory action.
+7. Go accepts the complete response atomically or applies fallback, then
+   exposes `botControl` status in the session.
 8. When a red projectile targets the controlled unit, React may call the
    separate Dodge endpoint. Go removes the eligible projectile and sidesteps
    without advancing the tactical turn.
@@ -117,13 +118,14 @@ architecture change.
   dependency changes; never commit `node_modules`, `dist`, coverage, or
   TypeScript build artifacts.
 
-### Python model daemon
+### Python inference service
 
-- Python 3.12, standard library only, no import-time network calls.
-- Use type hints and strict boundary validation. Unit tests use a local fake
-  Responses API and must not require a key or external network.
-- Keep the upstream model call in `model-daemon/`; never duplicate simulator
-  rules there.
+- Python 3.12, standard library only at runtime, no upstream model call, and no
+  API key.
+- The portable model, `serve.py`, and export validation live on
+  `ml-inference`; offline pipelines and notebooks live on `ml`.
+- Use type hints and strict boundary validation. Never duplicate simulator
+  rules in the inference service.
 
 Run from the repository root unless noted:
 
@@ -132,11 +134,9 @@ Run from the repository root unless noted:
 | All required checks | `make test` |
 | Go tests | `make test-go` |
 | Frontend type-check/tests/build | `make test-web` |
-| Model-daemon tests | `make test-model` |
 | Validate fixture pack and acceptance cases | `make validate-fixtures` |
-| Start deterministic/configured API | `make dev-api` |
+| Start fallback/configured API | `make dev-api` |
 | Start frontend | `make dev-web` |
-| Start model daemon | `make dev-model` |
 | Build backend/frontend | `make build` |
 | CI-equivalent Go checks | `cd backend && test -z "$(gofmt -l .)" && go vet ./... && go test -race ./...` |
 | Whitespace check | `git diff --check` |
@@ -145,22 +145,17 @@ Run from the repository root unless noted:
 
 | Variable | Owner | Default/purpose |
 | --- | --- | --- |
-| `LISTEN_ADDR` | Go API or daemon | API defaults to `127.0.0.1:8080`; daemon defaults to `127.0.0.1:9000`; Compose sets each service explicitly |
+| `LISTEN_ADDR` | Go API | API defaults to `127.0.0.1:8080`; Compose sets it explicitly |
 | `FIXTURE_PATH` | Go API | `../fixtures/moments.json` from `backend/`; Compose uses `/app/fixtures/moments.json` |
 | `VITE_API_TARGET` | Vite | `http://127.0.0.1:8080`; Compose uses `http://api:8080` |
 | `BOT_MODEL_URL` | Go bot client | Optional absolute HTTP(S) action endpoint, conventionally `http://127.0.0.1:9000/v1/actions` |
-| `BOT_MODEL_NAME` | Go bot client | Required with URL; stable operator-owned bridge/policy name |
+| `BOT_MODEL_NAME` | Go bot client | Required with URL; stable operator-owned policy name |
 | `BOT_MODEL_VERSION` | Go bot client | Required with URL; rollout version shown on accepted turns |
-| `OPENAI_API_KEY` | Model daemon | Required for real model success; no default and never committed/logged |
-| `OPENAI_MODEL` | Model daemon | Defaults to `gpt-5.6` |
-| `OPENAI_BASE_URL` | Model daemon | Defaults to `https://api.openai.com/v1`; operator-owned HTTP(S) path |
-| `OPENAI_TIMEOUT_SECONDS` | Model daemon | Defaults to `8`; bounded to `0.1..120` and kept below the Go client's nine-second deadline |
-
 `BOT_MODEL_URL`, `BOT_MODEL_NAME`, and `BOT_MODEL_VERSION` are all-or-nothing.
-`BOT_MODEL_VERSION` is displayed provenance; whenever `OPENAI_MODEL` changes,
-update it to the same deployed model identifier or another accurate rollout ID.
+`BOT_MODEL_VERSION` is displayed provenance and must match the deployed export
+or another accurate rollout ID.
 Do not add compatibility aliases, local-data settings, or telemetry environment
-variables. Never accept the daemon URL from the browser or a session request;
+variables. Never accept the model URL from the browser or a session request;
 doing so would create an SSRF boundary.
 
 ## Public API contract
@@ -202,7 +197,7 @@ the `Allow` header on 405.
 - `projectiles`: marksman shots pending until the next tactical turn;
 - `dodgeCharges`: starts at two;
 - `dodgeAvailable`: server-computed eligibility; and
-- `botControl`: `pending`, `external-model`, or `deterministic-fallback`, with
+- `botControl`: `pending`, `external-model`, or `fallback`, with
   name/version only for accepted external results.
 
 Only visible/alive red units may render. Hidden red units are omitted from
@@ -222,16 +217,16 @@ best-case/reference search branches over four tactical actions and invokes the
 same Dodge reaction automatically when eligible.
 
 Geometry and canonical turrets live in `backend/internal/engine/geometry.go`.
-Do not make React or the daemon a competing authority. Turrets are currently
+Do not make React or the model service a competing authority. Turrets are currently
 visual landmarks only.
 
 ## Bot model contract
 
-The model daemon exposes:
+The inference service on `ml-inference` exposes:
 
 | Method/path | Contract |
 | --- | --- |
-| `GET /healthz` | Liveness; succeeds even without a configured API key |
+| `GET /healthz` | Liveness and deployed model version |
 | `POST /v1/actions` | Strict schema `2.0` authoritative snapshot to complete advisory action array |
 
 The snapshot has `schemaVersion: "2.0"`,
@@ -257,16 +252,16 @@ Integration rules:
   units atomically.
 - Only Move has a complete finite in-bounds target; other actions have no
   target. Dodge is never legal model output.
-- Cap backend request/response and daemon request/response bodies at their
+- Cap backend request/response and service request/response bodies at their
   source-defined limits; preserve bounded timeouts and no retry.
 - Apply class movement limits and every gameplay consequence only in Go.
-- Missing key, timeout, non-200, malformed/oversized/refused/incomplete output,
-  or any validation failure uses deterministic fallback once.
+- Timeout, non-200, malformed/oversized/incomplete output, or any validation
+  failure uses fallback once.
 - Record accepted actions with schema/model identity in session memory; clear
   records on reset. Do not claim durable replay without exporting them.
 - Do not log API keys, privileged snapshots, or model outputs.
-- Version schema changes and update daemon, connector, OpenAPI, tests, Compose,
-  env example, README, and this guide together.
+- Version schema changes and update the `ml-inference` service, connector,
+  OpenAPI, tests, Compose, env example, README, and this guide together.
 
 ## Fixture invariants
 
@@ -327,7 +322,7 @@ calibrated confidence and no runtime detector is supported.
 
 - Use `snake_case`, type hints, bounded parsing, deterministic validation, and
   no hidden retries.
-- Keep daemon tests network-free through local fake servers.
+- Keep inference-service tests network-free.
 - Do not add a second engine, state store, or local fake model success.
 
 ## Change and validation matrix
@@ -336,7 +331,7 @@ calibrated confidence and no runtime detector is supported.
 | --- | --- |
 | Go API/engine/model | `gofmt`, `go vet ./...`, `go test -race ./...`; update OpenAPI, TypeScript, client/UI, and tests for public changes |
 | Frontend | `npm ci`, `npm run check`, `npm test -- --run`, `npm run build`; add accessible behavior tests |
-| Model daemon/connector | Python daemon tests plus Go connector/engine tests for success, timeout, malformed, oversized, refusal, completeness, identity, bounds, and fallback |
+| Model service/connector | Inference export checks plus Go connector/engine tests for success, timeout, malformed, oversized, completeness, identity, bounds, and fallback |
 | Fixtures/contracts | Update schema/loader together; run validator, Go tests, frontend type-check, and relevant contract checks |
 | Runtime/docs | `docker compose config`, YAML parse where available, `make -n`, stale-string search, and `git diff --check` |
 
@@ -352,6 +347,6 @@ calibrated confidence and no runtime detector is supported.
   failures.
 
 A change is done only when implementation, contracts, types, tests, fixtures,
-runtime configuration, and current docs agree; deterministic fallback still
-works; attribution and authored-coordinate disclosure remain explicit; no
+runtime configuration, and current docs agree; fallback remains deterministic;
+attribution and authored-coordinate disclosure remain explicit; no
 sensitive data was introduced; and the final diff is scoped and validated.
