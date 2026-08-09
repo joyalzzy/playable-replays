@@ -128,7 +128,7 @@ export function BeginnerGuide({ onBack, onStartTutorial }: BeginnerGuideProps) {
             <li>
               <GuideIconTooltip
                 label="Gold ring"
-                description="Identifies the one blue unit controlled by your commands. Other units receive complete external-model actions, with a deterministic fallback when needed."
+                description="Identifies the one blue unit controlled by your commands. Other units receive complete external-model actions, with fallback when needed."
                 variant="signal"
               >
                 <i className="beginner-guide__signal beginner-guide__signal--gold" />

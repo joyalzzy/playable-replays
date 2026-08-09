@@ -15,11 +15,15 @@ describe("botControlLabel", () => {
   it("does not expose configured provider or model identities", () => {
     const label = botControlLabel({
       source: "external-model",
-      modelName: "openai-npc-actions",
-      modelVersion: "gpt-5.6"
+      modelName: "playable-replays-linear-unit-policy",
+      modelVersion: "unit-policy-v2-carry-safety"
     });
 
     expect(label).toBe("AI policy active");
-    expect(label).not.toMatch(/gpt|openai/i);
+    expect(label).not.toMatch(/linear|carry-safety/i);
+  });
+
+  it("uses the public fallback name", () => {
+    expect(botControlLabel({ source: "fallback" })).toBe("Fallback");
   });
 });

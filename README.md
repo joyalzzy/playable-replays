@@ -1,8 +1,8 @@
 # Playable Replays
 
-Playable Replays is a Garena AI Build Challenge 2026 prototype: a shareable
-web tactical board built around three teaching scenarios from the T1–Bilibili
-Gaming 2024 Worlds Final. Choose a high-level command, inspect the authoritative
+Playable Replays is a shareable web tactical board built around three teaching
+scenarios. Choose a high-level
+command, inspect the authoritative
 simulation, react to incoming marksman projectiles with a separate two-charge
 Dodge control, and compare the result with an authored decision tree. Live play
 continues until one team has at least twice the opposing team's summed remaining
@@ -27,14 +27,26 @@ telemetry and are not replay-exact historical positions**.
   projectile and repositions the controlled unit without advancing the turn.
 - A Go HTTP API and authoritative simulator for movement, combat, fog, class
   limits, projectile resolution, objectives, outcomes, and reference search.
-- A Python model daemon that makes a real OpenAI Responses API call for every
-  live non-controlled unit's advisory action. Invalid or unavailable model
-  output falls back to deterministic Go policies.
+- A separately trained linear unit-policy model, served from the
+  `ml-inference` branch, that proposes every live non-controlled unit's
+  advisory action. Invalid or unavailable model output uses Go fallback
+  policies.
 - OpenAPI and JSON Schema contracts, executable fixture acceptance cases,
-  frontend/backend/model-daemon tests, Docker Compose, and GitHub Actions.
+  frontend/backend tests, Docker Compose, and GitHub Actions.
 
 There is no live telemetry ingestion, telemetry dashboard, local telemetry
 storage, or runtime scenario-generation workflow.
+
+## Branches
+
+The submission is intentionally split across four branches:
+
+| Branch | Contents |
+| --- | --- |
+| `main` | Stable Go API, React client, fixtures, contracts, and runtime integration |
+| `dev` | Current gameplay and interface development line |
+| `ml` | Offline replay preparation, training/fine-tuning pipelines, notebooks, and ML tests |
+| `ml-inference` | Portable trained policy artifacts, included in the app branches at `ml-inference/` as a Git submodule |
 
 ## Scenarios
 
@@ -53,7 +65,8 @@ they are not ratings of the named players.
 
 ## Quick start
 
-Requirements: Go 1.26.5+, Node.js 22+, and Python 3.12+.
+Requirements for the app: Go 1.26.5+ and Node.js 22+. Python 3.12+ is
+required only when running the model from the separate `ml-inference` branch.
 
 Run all local checks:
 
@@ -61,7 +74,7 @@ Run all local checks:
 make test
 ```
 
-Run the deterministic fallback experience in two terminals:
+Run the fallback experience in two terminals:
 
 ```bash
 make dev-api
@@ -74,47 +87,54 @@ make dev-web
 Open <http://localhost:5173>. Vite proxies `/api` and `/healthz` to the Go API
 at `http://127.0.0.1:8080`.
 
-### Run with the real model bridge
+### Run with the trained model
 
-Start the model daemon with an operator-owned OpenAI API key:
+Pull the pinned inference submodule from the repository root:
 
 ```bash
-OPENAI_API_KEY='your-key' make dev-model
+git submodule update --init --recursive
 ```
 
-Then configure the Go API to call it:
+In a separate terminal, start its dependency-free Python endpoint:
+
+```bash
+cd ml-inference
+python3 serve.py --listen 127.0.0.1:9000
+```
+
+In another terminal, return to the repository root and configure the Go API to
+call that endpoint:
 
 ```bash
 BOT_MODEL_URL=http://127.0.0.1:9000/v1/actions \
-BOT_MODEL_NAME=openai-npc-actions \
-BOT_MODEL_VERSION=gpt-5.6 \
+BOT_MODEL_NAME=playable-replays-linear-unit-policy \
+BOT_MODEL_VERSION=unit-policy-v2-carry-safety \
 make dev-api
 ```
 
-Start the web app with `make dev-web`. The API key belongs only in the daemon
-environment; never put it in the browser, fixtures, source, or a committed
-`.env` file. If you override `OPENAI_MODEL`, update `BOT_MODEL_VERSION` to the
-same deployed model identifier or another accurate rollout identifier.
+Start the web app with `make dev-web`. The model service requires no API key
+and must remain server-side; never expose its endpoint through the browser or
+accept it from a session request.
 
-Docker Compose starts all three services and configures the server-to-server
-bridge:
+For Docker Compose, first build the model image from the initialized submodule,
+then start the app stack:
 
 ```bash
-cp .env.example .env
-# Set OPENAI_API_KEY in .env for real model-backed bot turns.
+docker build -t playable-replays-unit-policy ./ml-inference
 docker compose up --build
 ```
 
-Without a key, the daemon deliberately returns a non-success response and the
-Go engine uses its deterministic fallback, so the local stack remains playable.
+Without model configuration, the Go engine uses fallback and the local app
+remains playable.
 
 ## Runtime architecture
 
 The browser sends one validated tactical action to Go. At each accepted turn,
-Go may send a schema `2.0` privileged snapshot to the model daemon. The daemon
-uses strict Structured Outputs to request one legal action for every live unit
-except the user-controlled unit. Go rejects the entire response if any unit or
-action is missing, duplicated, unknown, malformed, illegal, or out of bounds.
+Go may send a schema `2.0` privileged snapshot to the separately deployed
+`ml-inference` service. It evaluates the exported 72-feature linear policy and
+returns one legal action for every live unit except the user-controlled unit.
+Go rejects the entire response if any unit or action is missing, duplicated,
+unknown, malformed, illegal, or out of bounds.
 Accepted Move targets are still constrained by server-owned class movement
 limits, and Go alone resolves damage, visibility, projectiles, objectives, and
 the 2:1 team-health terminal state.
@@ -124,7 +144,7 @@ the 2:1 team-health terminal state.
 - `pending`: a model is configured but no turn has completed yet;
 - `external-model`: a complete model response was accepted, with model name and
   version; or
-- `deterministic-fallback`: no model is configured or the configured call was
+- `fallback`: no model is configured or the configured call was
   unavailable or unusable.
 
 See [docs/architecture.md](docs/architecture.md) and
@@ -172,9 +192,10 @@ POST /api/v1/sessions/{id}/dodge
 POST /api/v1/sessions/{id}/reset
 ```
 
-The model daemon exposes `GET /healthz` and `POST /v1/actions`. The browser must
-never call the model daemon directly. See [contracts/openapi.yaml](contracts/openapi.yaml)
-and [model-daemon/README.md](model-daemon/README.md) for exact payloads.
+The inference service on `ml-inference` exposes `GET /healthz` and
+`POST /v1/actions`. The browser must never call it directly. See
+[contracts/openapi.yaml](contracts/openapi.yaml) and the `ml-inference` branch's
+README for exact payloads and startup commands.
 
 ## Repository layout
 
@@ -182,10 +203,15 @@ and [model-daemon/README.md](model-daemon/README.md) for exact payloads.
 | --- | --- |
 | `backend/` | Go API, authoritative simulator, fixture loading, and tests |
 | `frontend/` | React full-map tactical board and component/API tests |
-| `model-daemon/` | Bounded Python bridge from schema `2.0` bot snapshots to the OpenAI Responses API |
+| `ml-inference/` | Git submodule pinned to the standalone trained-policy artifacts, Python inference endpoint, Dockerfile, and export validators |
 | `contracts/` | Public OpenAPI contract and fixture JSON Schema |
 | `fixtures/moments.json` | Version `3.0` pack containing the three authored scenarios |
 | `docs/` | Architecture, model, simulator, and authoring decisions |
+
+Training code is at the repository root on the `ml` branch. The exported model,
+dependency-free Python server, Dockerfile, and validation utilities are on the
+`ml-inference` branch and are pinned into the app checkout through the
+`ml-inference/` submodule.
 
 Validate the authored pack from `backend/`:
 

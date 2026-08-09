@@ -106,7 +106,7 @@ export function MainMenu({
       </section>
 
       <footer className="menu-footer">
-        Replay-derived scenarios · authoritative simulation · deterministic fallback
+        Replay-derived scenarios · authoritative simulation · fallback
       </footer>
     </main>
   );

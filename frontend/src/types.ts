@@ -102,7 +102,7 @@ export type Projectile = {
 };
 
 export type BotControl = {
-  source: "pending" | "external-model" | "deterministic-fallback";
+  source: "pending" | "external-model" | "fallback";
   modelName?: string;
   modelVersion?: string;
 };

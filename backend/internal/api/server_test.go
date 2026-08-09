@@ -117,7 +117,7 @@ func TestJourney(t *testing.T) {
 	}
 	if len(session.Turrets) != 6 || len(session.Projectiles) != 0 || session.ProjectileCharges != 2 ||
 		!session.ProjectileAvailable || session.DodgeCharges != 2 ||
-		session.DodgeAvailable || session.BotControl.Source != "deterministic-fallback" {
+		session.DodgeAvailable || session.BotControl.Source != "fallback" {
 		t.Fatalf("create response omitted the map, Dodge, or bot-control contract: %+v", session)
 	}
 	turn := request(t, handler, http.MethodPost, "/api/v1/sessions/"+session.ID+"/turns", `{"action":{"type":"contest"},"targetUnitId":"red"}`)

@@ -104,7 +104,7 @@ export function ReplayHelp() {
           <ol className="replay-help__steps">
             <li><span>1</span><div><strong>Read the goal</strong><p>Check the win condition, visible threats, and unknown contacts.</p></div></li>
             <li><span>2</span><div><strong>Choose a command</strong><p>Think about safety, range, terrain, and what the opposing team may do next.</p></div></li>
-            <li><span>3</span><div><strong>Commit the turn</strong><p>Non-player units receive complete tactical commands from the external model, with a deterministic fallback if it cannot respond.</p></div></li>
+            <li><span>3</span><div><strong>Commit the turn</strong><p>Non-player units receive complete tactical commands from the external model, with fallback if it cannot respond.</p></div></li>
             <li><span>4</span><div><strong>Review the result</strong><p>Use the causal trace and post-commit reference to understand what your choice caused.</p></div></li>
           </ol>
 

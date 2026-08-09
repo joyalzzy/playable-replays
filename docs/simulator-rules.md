@@ -124,8 +124,8 @@ visibility, and state rules. The model never controls the user's unit and
 cannot issue Dodge.
 
 No configured model, or any model/transport/validation failure, activates the
-deterministic policy for that turn. `botControl.source` reports `pending`,
-`external-model`, or `deterministic-fallback`; accepted external results also
+fallback policy for that turn. `botControl.source` reports `pending`,
+`external-model`, or `fallback`; accepted external results also
 include operator-configured model name/version.
 
 Built-in unit policies remain intentionally compact. An authored elimination
@@ -195,5 +195,5 @@ alternatives in the debrief.
 - Projectiles are one-turn targeted teaching mechanics, not physical collision
   simulation.
 - Advantage weights and scenario rules are authored and uncalibrated.
-- Model output can vary; deterministic fallback and reference lines remain the
+- Model output can vary; fallback and reference lines remain the
   stable comparison baseline.
