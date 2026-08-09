@@ -1,0 +1,14 @@
+interface:
+  display_name: Extract Esports Replay Moments
+  short_description: Turn match VODs into project-ready replay data
+  default_prompt: Use $extract-esports-replay-moments to extract pivotal moments and
+    export a validated Playable Replays v3.0 scenario pack.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
