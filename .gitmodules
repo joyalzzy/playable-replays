@@ -1,0 +1,4 @@
+[submodule "playable-replays"]
+	path = ml-inference
+	url = git@github.com:joyalzzy/playable-replays.git
+	branch = ml-inference

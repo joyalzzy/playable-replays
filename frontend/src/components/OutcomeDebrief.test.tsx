@@ -6,10 +6,33 @@ import { OutcomeDebrief } from "./OutcomeDebrief";
 
 afterEach(cleanup);
 
+const gumayusi = {
+  id: "t1-gumayusi",
+  team: "blue" as const,
+  role: "Gumayusi · marksman",
+  class: "marksman" as const,
+  policy: "controlled",
+  position: { x: 48, y: 48 },
+  hp: 92,
+  maxHp: 110,
+  moveRange: 8,
+  attackRange: 28,
+  attackDamage: 24,
+  moveSpeed: 8,
+  armor: 8,
+  visionRange: 34,
+  attackCooldown: 2,
+  cooldownTurns: 0,
+  shield: 0,
+  guarded: false,
+  visible: true,
+  alive: true
+};
+
 const terminalSession: Session = {
   id: "s1",
   momentId: "m1",
-  controlledUnitId: "blue",
+  controlledUnitId: "t1-gumayusi",
   scenarioGoal: "Secure the objective.",
   turn: 2,
   maxTurns: 3,
@@ -65,9 +88,11 @@ const terminalSession: Session = {
     ]
   },
   legalActions: ["move", "hold", "contest", "retreat"],
-  units: [],
+  units: [gumayusi],
   turrets: [],
   projectiles: [],
+  projectileCharges: 0,
+  projectileAvailable: false,
   dodgeCharges: 2,
   dodgeAvailable: false,
   botControl: { source: "external-model", modelName: "test-policy", modelVersion: "1" },
@@ -76,12 +101,29 @@ const terminalSession: Session = {
 };
 
 describe("OutcomeDebrief", () => {
-  it("shows causal outcome and post-scenario reference rollouts", () => {
+  it("personalizes the causal review while preserving its counterfactual limits", () => {
     render(<OutcomeDebrief session={terminalSession} busy={false} onReplay={vi.fn()} />);
-    expect(screen.getByRole("heading", { name: /scenario secured/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "What would Gumayusi do here?" })).toBeInTheDocument();
+    expect(screen.getByText(/scenario secured\./i)).toBeInTheDocument();
+    expect(screen.getByText(/authored coaching counterfactual/i)).toHaveTextContent(/not a claim about Gumayusi’s actual intent/i);
     expect(screen.getAllByText("Blue secured the core.")).toHaveLength(2);
     expect(screen.getByText(/reference rollouts · not historical outcomes/i)).toBeInTheDocument();
     expect(screen.getByText(/contest/i)).toBeInTheDocument();
+  });
+
+  it("keeps the review focused on the featured pro after control transfers", () => {
+    const transferredSession: Session = {
+      ...terminalSession,
+      controlledUnitId: "t1-keria",
+      units: [
+        { ...gumayusi, hp: 0, alive: false },
+        { ...gumayusi, id: "t1-keria", role: "Keria · support", class: "support", policy: "support" }
+      ]
+    };
+
+    render(<OutcomeDebrief session={transferredSession} busy={false} onReplay={vi.fn()} />);
+    expect(screen.getByRole("heading", { name: "What would Gumayusi do here?" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /what would keria do/i })).not.toBeInTheDocument();
   });
 
   it("reveals a selectable, reasoned best-case turn sequence", () => {

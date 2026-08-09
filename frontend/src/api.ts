@@ -47,10 +47,21 @@ export function createSession(momentId: string): Promise<Session> {
   });
 }
 
-export function takeTurn(sessionId: string, action: Action): Promise<Session> {
+export function takeTurn(sessionId: string, action: Action, targetUnitId?: string): Promise<Session> {
   return request<Session>(`/api/v1/sessions/${sessionId}/turns`, {
     method: "POST",
-    body: JSON.stringify({ action })
+    body: JSON.stringify({ action, ...(targetUnitId ? { targetUnitId } : {}) })
+  });
+}
+
+export function fireProjectile(
+  sessionId: string,
+  sourceUnitId: string,
+  targetUnitId: string
+): Promise<Session> {
+  return request<Session>(`/api/v1/sessions/${sessionId}/fire`, {
+    method: "POST",
+    body: JSON.stringify({ sourceUnitId, targetUnitId })
   });
 }
 

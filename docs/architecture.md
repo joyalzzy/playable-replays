@@ -2,8 +2,8 @@
 
 ## Product boundary
 
-Playable Replays is a Garena AI Build Challenge 2026 web prototype for three
-short tactical teaching scenarios. It is a full-map simulator, not an in-game
+Playable Replays is a web prototype for three short tactical teaching
+scenarios. It is a full-map simulator, not an in-game
 replay, live telemetry product, or proprietary game-engine implementation.
 
 The scenario evidence comes from the supplied T1–Bilibili Gaming Worlds 2024
@@ -18,8 +18,7 @@ flowchart TD
     A["Reviewed source bundle"] --> B["Three authored fixtures"]
     B --> C["Go authoritative simulator"]
     C <--> D["React full-map board"]
-    C --> E["Python model daemon"]
-    E --> F["OpenAI Responses API"]
+    C --> E["Python inference service (ml-inference)"]
     C -. "failure fallback" .-> C
 ```
 
@@ -32,11 +31,11 @@ changing a scenario is an offline, analyst-reviewed fixture change.
 | --- | --- | --- |
 | React frontend | Interaction, accessible controls, full-map rendering, range/stat display, timeline, logs, and debrief | Legality, hidden state, damage, model credentials, or fallback rules |
 | Go API | Strict HTTP boundary, in-memory sessions, per-session locking, rate limits, and public-state filtering | Browser-only model calls or durable telemetry storage |
-| Go engine | Movement, class limits, fog, combat, projectiles, Dodge, objectives, outcomes, references, and deterministic fallback | External model inference or replay-exact claims |
-| Python model daemon | Strict schema `2.0` validation and a real OpenAI Responses API call for advisory bot actions | Authoritative state mutation, retries, local fake success, or browser access |
+| Go engine | Movement, class limits, fog, combat, projectiles, Dodge, objectives, outcomes, references, and fallback | External model inference or replay-exact claims |
+| Python inference service (`ml-inference/` submodule) | Evaluate the exported 72-feature linear policy and return advisory bot actions | Authoritative state mutation, retries, training, or browser access |
 | Fixture pack | Three teaching states, source evidence, authored rules, reference lines, and acceptance cases | Raw media, secrets, or claimed measured map coordinates |
 
-The browser talks only to the Go API. The daemon URL and identity are
+The browser talks only to the Go API. The model-service URL and identity are
 operator-owned startup configuration; a session or browser request can never
 select an arbitrary outbound URL.
 
@@ -48,20 +47,27 @@ select an arbitrary outbound URL.
 3. Go resets per-turn defense, ticks cooldowns, increments the turn, and
    resolves any projectile left pending from the previous turn.
 4. If the controlled unit survives, Go resolves its command and visibility.
-5. When configured, Go sends one privileged schema `2.0` snapshot to the model
-   daemon. The snapshot includes the legal four-action set, all authoritative
+5. When configured, Go sends one privileged schema `2.0` snapshot to the
+   inference service. The snapshot includes the legal four-action set, all
    units, objective state, projectiles, and `controlledUnitId`.
-6. The daemon requests exactly one action for every live non-controlled unit.
+6. The service evaluates the exported policy for every live non-controlled unit.
 7. Go validates the response atomically. A complete valid response supplies bot
-   intent; any failure uses deterministic built-in actions for the whole turn.
+   intent; any failure uses built-in fallback actions for the whole turn.
 8. Go resolves allied and enemy behavior, visibility, objective/escape state,
-   rules-based advantage, terminal state, and reference output.
+   rules-based advantage, the universal 2:1 team-health terminal check, and
+   reference output. If the controlled unit falls before that threshold,
+   control transfers deterministically to a surviving teammate.
 9. React receives a complete public `Session` snapshot.
 
 Move targets from the model are bounded to `0..100` and then constrained by
 each unit's server-owned class movement range during resolution. The model can
 never set health, damage, cooldowns, visibility, projectile results, advantage,
 or terminal state.
+
+The fixture's `maxTurns` is an authored coaching/reference horizon rather than
+a live-play cap. The API continues accepting the same four commands after that
+horizon while the session remains active. Only summed remaining team health can
+finish play: a team wins once it has at least twice its opponent's total HP.
 
 ## Dodge flow
 
@@ -83,21 +89,21 @@ The Go engine is the sole authority. With no configured model, a fixture seed
 and tactical action sequence produce the same trajectory apart from the session
 ID. Invalid user input leaves state unchanged.
 
-External model calls may be nondeterministic. Accepted responses are retained
-with model name/version in in-memory rollout records; durable exact replay of a
-model-backed session would also require exporting those records and the user's
-actions, which is deferred. A missing key, timeout, transport error, non-200,
-refusal, incomplete response, malformed JSON, illegal action, unknown or
-duplicate unit, or invalid target rejects the model response. The turn remains
-available through deterministic fallback.
+Accepted model-service responses are retained with model name/version in
+in-memory rollout records; durable exact replay of a model-backed session would
+also require exporting those records and the user's actions, which is deferred.
+A timeout, transport error, non-200, incomplete response, malformed JSON,
+illegal action, unknown or duplicate unit, or invalid target rejects the model
+response. The turn remains available through fallback, whose behavior is
+deterministic for the same seed and tactical action sequence.
 
 `Session.botControl` makes that boundary visible:
 
 | Source | Meaning |
 | --- | --- |
-| `pending` | A bridge is configured, but no tactical turn has completed. |
+| `pending` | A model service is configured, but no tactical turn has completed. |
 | `external-model` | Every live non-controlled unit received an accepted model action; name/version are included. |
-| `deterministic-fallback` | No bridge is configured, or the configured bridge response failed closed. |
+| `fallback` | No model service is configured, or its response failed closed. |
 
 ## Information and security boundary
 
@@ -107,10 +113,10 @@ The model snapshot is more privileged: it contains authoritative units because
 the model is acting for all bots. It must go only to an operator-controlled
 service under an explicit data-use and retention policy.
 
-The daemon never logs the API key, snapshot, or model output. Requests and
-responses are bounded, the backend client has a shorter fixed deadline than the
-interactive request, and neither service retries model calls. Production use
-still needs authenticated service-to-service transport, allowlisted egress,
+The inference service never logs snapshots or model output. Requests and
+responses are bounded, the backend client has a fixed deadline, and neither
+service retries model calls. Production use still needs authenticated
+service-to-service transport, allowlisted egress,
 secret management, session authentication, durable storage decisions, and
 publisher review.
 

@@ -105,12 +105,15 @@ After complete action validation, one tactical turn resolves in this order:
    status, and recalculate vision again.
 8. Update objective control and escape progress.
 9. Recalculate scenario advantage.
-10. Evaluate terminal conditions and reveal the authored reference for that
-    turn.
+10. Compare summed remaining team health and finish only when either team has
+    at least twice the other's total; otherwise reveal the authored reference
+    for that turn when one remains in the teaching horizon.
 11. Update Dodge availability and, for a terminal state, build the debrief.
 
 If a pending projectile eliminates the controlled unit at step 3, later action
-and bot resolution are skipped; outcome/reference/debrief state still updates.
+and bot resolution are skipped. If the team-health deficit is not yet 2:1,
+control transfers deterministically to the first surviving teammate for the
+next turn. If no teammate survives, the zero-health team loses.
 
 ## Bot actions and fallback
 
@@ -121,8 +124,8 @@ visibility, and state rules. The model never controls the user's unit and
 cannot issue Dodge.
 
 No configured model, or any model/transport/validation failure, activates the
-deterministic policy for that turn. `botControl.source` reports `pending`,
-`external-model`, or `deterministic-fallback`; accepted external results also
+fallback policy for that turn. `botControl.source` reports `pending`,
+`external-model`, or `fallback`; accepted external results also
 include operator-configured model name/version.
 
 Built-in unit policies remain intentionally compact. An authored elimination
@@ -156,22 +159,33 @@ Objective control advances from living units inside the authored radius;
 escape progress advances only under authored safe-zone rules. Advantage combines
 the authored initial state with team health, surviving-unit ratios, objective
 progress, pressure on an authored target, and escape progress, then clamps to a
-bounded display range. Explicit fixture victory/defeat rules determine terminal
-status.
+bounded display range. These remain tactical signals and teaching context; they
+do not directly finish a scenario.
+
+The only terminal comparison is summed current HP across all authoritative
+units on each team. Blue wins when blue total health is at least twice red total
+health. Blue loses when red total health is at least twice blue total health.
+The comparison runs after every accepted tactical turn. `maxTurns` bounds the
+authored reference and exhaustive teaching search, not live play, so an active
+session continues beyond it until one of these health thresholds is reached.
+The final advantage display is adjusted to reflect the terminal status, but
+advantage does not decide that status.
 
 ## Reference outcomes and best case
 
-The current turn's authored reference is hidden until the learner commits.
-When a scenario ends, deterministic reference rollouts compare the four legal
+The current turn's authored reference is hidden until the learner commits and
+is available only inside the authored `maxTurns` teaching horizon. When a
+scenario ends, deterministic reference rollouts compare the four legal
 opening commands using authored continuations. The calculated best allied line
-exhaustively searches all four commands at every remaining turn; Move uses the
-scenario's authored default target rather than every possible coordinate.
+exhaustively searches all four commands through the authored horizon; Move uses
+the scenario's authored default target rather than every possible coordinate.
 
 Reference simulation invokes the same separate Dodge reaction automatically
 when an incoming projectile is eligible and a charge remains. Thus projectile
 handling is represented without making Dodge a fifth search branch. Paths rank
-by terminal outcome, rules-based advantage, allied health, opponent health, and
-resolution time, and expose causal events and alternatives in the debrief.
+by threshold outcome (or an unresolved horizon), rules-based advantage, allied
+health, opponent health, and resolution time, and expose causal events and
+alternatives in the debrief.
 
 ## Known limits
 
@@ -181,5 +195,5 @@ resolution time, and expose causal events and alternatives in the debrief.
 - Projectiles are one-turn targeted teaching mechanics, not physical collision
   simulation.
 - Advantage weights and scenario rules are authored and uncalibrated.
-- Model output can vary; deterministic fallback and reference lines remain the
+- Model output can vary; fallback and reference lines remain the
   stable comparison baseline.

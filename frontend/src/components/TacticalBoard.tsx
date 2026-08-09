@@ -38,6 +38,9 @@ type Props = {
   target?: Point;
   targeting: boolean;
   onTarget: (point: Point) => void;
+  attackTargetIds?: string[];
+  selectedAttackTargetId?: string;
+  onAttackTarget?: (unitId: string) => void;
 };
 
 const clamp = (value: number, minimum: number, maximum: number) =>
@@ -105,7 +108,10 @@ export function TacticalBoard({
   unknownEnemyCount,
   target,
   targeting,
-  onTarget
+  onTarget,
+  attackTargetIds,
+  selectedAttackTargetId,
+  onAttackTarget
 }: Props) {
   const [hoverPoint, setHoverPoint] = useState<Point>();
   const [selectedUnitId, setSelectedUnitId] = useState(controlledUnitId);
@@ -114,6 +120,9 @@ export function TacticalBoard({
   const visibleUnits = units.filter((unit) => unit.visible && unit.alive);
   const controlledUnit = visibleUnits.find((unit) => unit.id === controlledUnitId);
   const selectedUnit = visibleUnits.find((unit) => unit.id === selectedUnitId) ?? controlledUnit;
+  const candidateAttackTargetIds = attackTargetIds ?? [];
+  const selectingAttackTarget = attackTargetIds !== undefined;
+  const rangeUnit = selectingAttackTarget ? controlledUnit : selectedUnit;
   const viewportWidth = 100;
   const viewportHeight = 100;
 
@@ -282,11 +291,11 @@ export function TacticalBoard({
           </span>
         );
       })}
-      {selectedUnit && (
+      {rangeUnit && (
         <RangeIndicator
-          unit={selectedUnit}
+          unit={rangeUnit}
           kind="attack"
-          projectedPosition={projectPoint(selectedUnit.position)}
+          projectedPosition={projectPoint(rangeUnit.position)}
           viewportWidth={viewportWidth}
           viewportHeight={viewportHeight}
         />
@@ -312,6 +321,8 @@ export function TacticalBoard({
           : (facingAngles.current.get(unit.id) ?? movementFacingAngle(unit.team));
         previousPositions.current.set(unit.id, { ...unit.position });
         facingAngles.current.set(unit.id, facing);
+        const attackTarget = candidateAttackTargetIds.includes(unit.id);
+        const selectedAttackTarget = attackTarget && unit.id === selectedAttackTargetId;
         return (
           <button
             key={unit.id}
@@ -322,6 +333,8 @@ export function TacticalBoard({
               `unit--class-${unit.class}`,
               unit.id === controlledUnitId ? "unit--controlled" : "",
               unit.guarded ? "unit--guarded" : "",
+              attackTarget ? "unit--attack-target" : "",
+              selectedAttackTarget ? "unit--attack-target-selected" : "",
               selected ? "unit--selected" : ""
             ].filter(Boolean).join(" ")}
             style={{
@@ -331,9 +344,12 @@ export function TacticalBoard({
             } as CSSProperties}
             title={`${unit.class} ${unit.role}: ${unit.hp}/${unit.maxHp} HP · ${unit.moveRange} movement · ${unit.attackRange} attack range`}
             type="button"
-            aria-label={`${unit.team} ${unit.class} unit, ${unit.hp} of ${unit.maxHp} health${unit.id === controlledUnitId ? ", controlled" : ""}`}
-            aria-pressed={selected}
-            onClick={() => setSelectedUnitId(unit.id)}
+            aria-label={`${unit.team} ${unit.class} unit, ${unit.hp} of ${unit.maxHp} health${unit.id === controlledUnitId ? ", controlled" : ""}${attackTarget ? ", selectable attack target" : ""}`}
+            aria-pressed={attackTarget ? selectedAttackTarget : selected}
+            onClick={() => {
+              setSelectedUnitId(unit.id);
+              if (attackTarget) onAttackTarget?.(unit.id);
+            }}
             onFocus={() => setSelectedUnitId(unit.id)}
           >
             <span className="unit__sprite" aria-hidden="true" />
@@ -374,6 +390,11 @@ export function TacticalBoard({
       {targeting && controlledUnit && (
         <span className="board__hint">
           Choose a point within {controlledUnit.moveRange} map units
+        </span>
+      )}
+      {selectingAttackTarget && controlledUnit && (
+        <span className="board__hint">
+          Select a highlighted enemy within {controlledUnit.attackRange} attack range
         </span>
       )}
       </div>

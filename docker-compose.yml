@@ -1,14 +1,7 @@
 services:
-  model-daemon:
-    build:
-      context: model-daemon
-      dockerfile: Dockerfile
-    environment:
-      LISTEN_ADDR: 0.0.0.0:9000
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
-      OPENAI_TIMEOUT_SECONDS: ${OPENAI_TIMEOUT_SECONDS:-8}
+  model:
+    image: playable-replays-unit-policy
+    build: ml-inference
     expose:
       - "9000"
 
@@ -19,13 +12,13 @@ services:
     environment:
       LISTEN_ADDR: 0.0.0.0:8080
       FIXTURE_PATH: /app/fixtures/moments.json
-      BOT_MODEL_URL: ${BOT_MODEL_URL:-http://model-daemon:9000/v1/actions}
-      BOT_MODEL_NAME: ${BOT_MODEL_NAME:-openai-npc-actions}
-      BOT_MODEL_VERSION: ${BOT_MODEL_VERSION:-gpt-5.6}
+      BOT_MODEL_URL: ${BOT_MODEL_URL:-http://model:9000/v1/actions}
+      BOT_MODEL_NAME: ${BOT_MODEL_NAME:-playable-replays-linear-unit-policy}
+      BOT_MODEL_VERSION: ${BOT_MODEL_VERSION:-unit-policy-v2-carry-safety}
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
-      model-daemon:
+      model:
         condition: service_healthy
 
   web:

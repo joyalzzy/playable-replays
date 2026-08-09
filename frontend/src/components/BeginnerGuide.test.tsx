@@ -18,6 +18,8 @@ describe("BeginnerGuide", () => {
     expect(screen.getByRole("heading", { name: "Four signals to watch" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Know the roles" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "How the replay works" })).not.toBeInTheDocument();
+    expect(screen.getByText(/disengage faster toward the Blue base/i)).toBeInTheDocument();
+    expect(screen.queryByText(/safe (?:zone|area)/i)).not.toBeInTheDocument();
 
     const carryIcon = screen.getByRole("button", { name: "About Carry" });
     const carryTooltipID = carryIcon.getAttribute("aria-describedby");

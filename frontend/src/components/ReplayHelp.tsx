@@ -104,7 +104,7 @@ export function ReplayHelp() {
           <ol className="replay-help__steps">
             <li><span>1</span><div><strong>Read the goal</strong><p>Check the win condition, visible threats, and unknown contacts.</p></div></li>
             <li><span>2</span><div><strong>Choose a command</strong><p>Think about safety, range, terrain, and what the opposing team may do next.</p></div></li>
-            <li><span>3</span><div><strong>Commit the turn</strong><p>Non-player units receive complete tactical commands from the external model, with a deterministic fallback if it cannot respond.</p></div></li>
+            <li><span>3</span><div><strong>Commit the turn</strong><p>Non-player units receive complete tactical commands from the external model, with fallback if it cannot respond.</p></div></li>
             <li><span>4</span><div><strong>Review the result</strong><p>Use the causal trace and post-commit reference to understand what your choice caused.</p></div></li>
           </ol>
 
@@ -171,9 +171,9 @@ export function ReplayHelp() {
               symbol={<span className="replay-symbol replay-symbol--objective" aria-hidden="true"><span /></span>}
             />
             <LegendCard
-              title="Safe zone"
-              description="Dashed blue areas mark authored tower, gate, pocket, or exit destinations used for escapes."
-              symbol={<span className="replay-symbol replay-symbol--safe" aria-hidden="true">SAFE</span>}
+              title="Blue base"
+              description="The dashed blue area marks the Blue base destination used when retreating."
+              symbol={<span className="replay-symbol replay-symbol--safe" aria-hidden="true">BASE</span>}
             />
             <LegendCard
               title="Brush"
@@ -233,7 +233,7 @@ export function ReplayHelp() {
             </article>
             <article>
               <strong>Retreat</strong>
-              <p>Move 20% faster toward the scenario's safe zone and reduce incoming damage while disengaging.</p>
+              <p>Move 20% faster toward the Blue base and reduce incoming damage while disengaging.</p>
             </article>
           </div>
 

@@ -170,6 +170,6 @@ func (e *Engine) botSnapshot() BotSnapshot {
 		MapBounds:        MapBounds{MinX: MapMin, MaxX: MapMax, MinY: MapMin, MaxY: MapMax},
 		ControlledUnitID: e.session.ControlledUnitID,
 		LegalActions:     slices.Clone(actionTypes), Objective: objective,
-		Projectiles: append([]model.Projectile(nil), e.session.Projectiles...), Units: units,
+		Projectiles: append([]model.Projectile{}, e.session.Projectiles...), Units: units,
 	}
 }

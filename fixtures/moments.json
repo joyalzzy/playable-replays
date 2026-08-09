@@ -452,31 +452,80 @@
         ],
         "acceptanceTests": [
           {
-            "name": "bank-the-trade",
+            "name": "build-two-to-one-lead",
             "actions": [
               {
-                "type": "retreat"
-              },
-              {
-                "type": "retreat"
-              },
-              {
-                "type": "retreat"
+                "type": "contest"
               },
               {
                 "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 34,
+                  "y": 58
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 34,
+                  "y": 58
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 34,
+                  "y": 58
+                }
               }
             ],
             "dodgeBeforeTurns": [
-              2
+              2,
+              4
             ],
             "expectedStatus": "won",
-            "expectedTerminalTurn": 4,
-            "expectedOutcomeContains": "disengaged"
+            "expectedTerminalTurn": 12,
+            "expectedOutcomeContains": "Your team reached a 2:1"
           },
           {
-            "name": "overstay-and-fall",
+            "name": "cede-two-to-one-deficit",
             "actions": [
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
+              {
+                "type": "hold"
+              },
               {
                 "type": "hold"
               },
@@ -492,8 +541,8 @@
             ],
             "dodgeBeforeTurns": [],
             "expectedStatus": "lost",
-            "expectedTerminalTurn": 4,
-            "expectedOutcomeContains": "eliminated"
+            "expectedTerminalTurn": 8,
+            "expectedOutcomeContains": "opposing team reached a 2:1"
           }
         ]
       }
@@ -968,19 +1017,59 @@
         ],
         "acceptanceTests": [
           {
-            "name": "wait-for-carry",
+            "name": "build-two-to-one-lead",
             "actions": [
               {
-                "type": "hold"
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
               },
               {
                 "type": "contest"
               },
               {
-                "type": "hold"
+                "type": "retreat"
               },
               {
                 "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
               }
             ],
             "dodgeBeforeTurns": [
@@ -988,23 +1077,101 @@
               4
             ],
             "expectedStatus": "won",
-            "expectedTerminalTurn": 4,
-            "expectedOutcomeContains": "isolated"
+            "expectedTerminalTurn": 12,
+            "expectedOutcomeContains": "Your team reached a 2:1"
           },
           {
-            "name": "force-too-early",
+            "name": "cede-two-to-one-deficit",
             "actions": [
               {
-                "type": "contest"
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
               },
               {
-                "type": "contest"
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 46,
+                  "y": 45
+                }
               }
             ],
             "dodgeBeforeTurns": [],
             "expectedStatus": "lost",
-            "expectedTerminalTurn": 2,
-            "expectedOutcomeContains": "primary damage dealer"
+            "expectedTerminalTurn": 12,
+            "expectedOutcomeContains": "opposing team reached a 2:1"
           }
         ]
       }
@@ -1461,45 +1628,130 @@
         ],
         "acceptanceTests": [
           {
-            "name": "local-reengage",
+            "name": "build-two-to-one-lead",
             "actions": [
               {
                 "type": "contest"
               },
               {
-                "type": "contest"
+                "type": "retreat"
+              },
+              {
+                "type": "retreat"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 47,
+                  "y": 48
+                }
               },
               {
                 "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 47,
+                  "y": 48
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 47,
+                  "y": 48
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 47,
+                  "y": 48
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 47,
+                  "y": 48
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 47,
+                  "y": 48
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 47,
+                  "y": 48
+                }
+              },
+              {
+                "type": "contest"
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 47,
+                  "y": 48
+                }
+              },
+              {
+                "type": "move",
+                "target": {
+                  "x": 47,
+                  "y": 48
+                }
               }
             ],
             "dodgeBeforeTurns": [
-              2
+              2,
+              4
             ],
             "expectedStatus": "won",
-            "expectedTerminalTurn": 3,
-            "expectedOutcomeContains": "isolated"
+            "expectedTerminalTurn": 19,
+            "expectedOutcomeContains": "Your team reached a 2:1"
           },
           {
-            "name": "count-only-retreat",
+            "name": "cede-two-to-one-deficit",
             "actions": [
               {
                 "type": "retreat"
               },
               {
-                "type": "hold"
+                "type": "retreat"
               },
               {
                 "type": "retreat"
               },
               {
-                "type": "hold"
+                "type": "retreat"
               }
             ],
             "dodgeBeforeTurns": [],
             "expectedStatus": "lost",
             "expectedTerminalTurn": 4,
-            "expectedOutcomeContains": "local target window"
+            "expectedOutcomeContains": "opposing team reached a 2:1"
           }
         ]
       }

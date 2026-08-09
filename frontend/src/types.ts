@@ -102,7 +102,7 @@ export type Projectile = {
 };
 
 export type BotControl = {
-  source: "pending" | "external-model" | "deterministic-fallback";
+  source: "pending" | "external-model" | "fallback";
   modelName?: string;
   modelVersion?: string;
 };
@@ -169,6 +169,8 @@ export type Session = {
   units: Unit[];
   turrets: Turret[];
   projectiles: Projectile[];
+  projectileCharges: number;
+  projectileAvailable: boolean;
   dodgeCharges: number;
   dodgeAvailable: boolean;
   botControl: BotControl;

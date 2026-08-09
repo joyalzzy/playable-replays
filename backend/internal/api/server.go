@@ -64,6 +64,7 @@ func (s *Server) Handler() http.Handler {
 	router.handle(http.MethodPost, "/api/v1/sessions", s.createSession)
 	router.handle(http.MethodGet, "/api/v1/sessions/{id}", s.getSession)
 	router.handle(http.MethodPost, "/api/v1/sessions/{id}/turns", s.applyTurn)
+	router.handle(http.MethodPost, "/api/v1/sessions/{id}/fire", s.fireProjectile)
 	router.handle(http.MethodPost, "/api/v1/sessions/{id}/dodge", s.dodge)
 	router.handle(http.MethodPost, "/api/v1/sessions/{id}/reset", s.resetSession)
 	return s.middleware(router)
@@ -134,13 +135,41 @@ func (s *Server) applyTurn(w http.ResponseWriter, r *http.Request) {
 	if !s.allowSessionMutation(w, entry) {
 		return
 	}
-	state, err := entry.engine.ApplyContext(r.Context(), request.Action)
+	state, err := entry.engine.ApplyTargetedContext(r.Context(), request.Action, request.TargetUnitID)
 	if errors.Is(err, engine.ErrIllegalAction) {
 		writeError(w, http.StatusUnprocessableEntity, "illegal_action", err.Error())
 		return
 	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "simulation_error", "the simulator could not resolve the turn")
+		return
+	}
+	writeJSON(w, http.StatusOK, state)
+}
+
+func (s *Server) fireProjectile(w http.ResponseWriter, r *http.Request) {
+	var request model.FireProjectileRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	entry, ok := s.session(r.PathValue("id"))
+	if !ok {
+		writeError(w, http.StatusNotFound, "session_not_found", "the requested session does not exist")
+		return
+	}
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+	if !s.allowSessionMutation(w, entry) {
+		return
+	}
+	state, err := entry.engine.FireProjectile(request.SourceUnitID, request.TargetUnitID)
+	if errors.Is(err, engine.ErrProjectileUnavailable) {
+		writeError(w, http.StatusUnprocessableEntity, "projectile_unavailable", "no eligible marksman can fire at the selected target or no projectile charges remain")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "simulation_error", "the simulator could not fire the projectile")
 		return
 	}
 	writeJSON(w, http.StatusOK, state)

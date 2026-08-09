@@ -83,6 +83,9 @@ func TestBotModelSuppliesEveryNonPlayerAction(t *testing.T) {
 		len(stub.snapshot.LegalActions) != 4 || len(stub.snapshot.Projectiles) != 0 {
 		t.Fatalf("unexpected bot-model snapshot: calls=%d snapshot=%+v", stub.calls, stub.snapshot)
 	}
+	if stub.snapshot.Projectiles == nil {
+		t.Fatal("empty projectiles must remain an array in the bot-model request")
+	}
 	if !reflect.DeepEqual(stub.snapshot.LegalActions, []string{"move", "hold", "contest", "retreat"}) {
 		t.Fatalf("snapshot exposed the wrong action vocabulary: %v", stub.snapshot.LegalActions)
 	}
@@ -166,9 +169,9 @@ func TestInvalidBotActionResponseFallsBackAtomically(t *testing.T) {
 			if !reflect.DeepEqual(baseline.Units, modeled.Units) ||
 				!reflect.DeepEqual(baseline.Projectiles, modeled.Projectiles) ||
 				baseline.Advantage != modeled.Advantage || baseline.Status != modeled.Status {
-				t.Fatal("invalid model response partially mutated gameplay instead of using deterministic fallback")
+				t.Fatal("invalid model response partially mutated gameplay instead of using fallback")
 			}
-			if modeled.BotControl.Source != "deterministic-fallback" ||
+			if modeled.BotControl.Source != "fallback" ||
 				!logContains(modeled, "deterministic bot actions were applied") || len(e.RolloutRecords()) != 0 {
 				t.Fatalf("invalid response was not rejected atomically: control=%+v log=%+v records=%+v",
 					modeled.BotControl, modeled.Log, e.RolloutRecords())
@@ -197,7 +200,7 @@ func TestFailedOrUnidentifiedBotModelUsesDeterministicFallback(t *testing.T) {
 				!reflect.DeepEqual(baseline.Projectiles, modeled.Projectiles) || len(e.RolloutRecords()) != 0 {
 				t.Fatal("failed or unidentified bot-model output did not fail closed")
 			}
-			if modeled.BotControl.Source != "deterministic-fallback" {
+			if modeled.BotControl.Source != "fallback" {
 				t.Fatalf("fallback provenance was not exposed: %+v", modeled.BotControl)
 			}
 		})
@@ -215,7 +218,7 @@ func TestNoModelKeepsBotMovementDeterministic(t *testing.T) {
 	if got := sessionUnit(t, a, "blue-support").Position; got != (model.Point{X: 20, Y: 50}) {
 		t.Fatalf("built-in support policy unexpectedly moved: %+v", got)
 	}
-	if a.BotControl.Source != "deterministic-fallback" {
+	if a.BotControl.Source != "fallback" {
 		t.Fatalf("no-model session omitted deterministic provenance: %+v", a.BotControl)
 	}
 }
