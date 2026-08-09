@@ -1,0 +1,134 @@
+{
+  "contents": "training source, curricula, replay adapter, feature/schema/model code, tests, and training scripts",
+  "deploymentDockerfileIncluded": false,
+  "externalReplayDatasetsIncluded": false,
+  "files": [
+    {
+      "bytes": 3621,
+      "path": "README.md",
+      "sha256": "9dbbfd6b4a96bb90eb21d82e28961c8d8d0c28b99a875e536a558e717e8886fc"
+    },
+    {
+      "bytes": 51,
+      "path": "ml/__init__.py",
+      "sha256": "e4cc30230c25bee8ba5d70e92723f5d74c00b0f72323e6b08519fdfc23155774"
+    },
+    {
+      "bytes": 186,
+      "path": "ml/unit_policy/__init__.py",
+      "sha256": "1ff5c079892478a5a03b5fad35fded65ce572283028eaa2b0956428e7167f644"
+    },
+    {
+      "bytes": 3602,
+      "path": "ml/unit_policy/carry_aggression.py",
+      "sha256": "7a953fbc165d5f0d97f5eb23a8b5604fa86309d1eadc9ecdfecb22cd4fdc5660"
+    },
+    {
+      "bytes": 12909,
+      "path": "ml/unit_policy/carry_safety.py",
+      "sha256": "01568885ed2a4126da2d47cb0d0a1c3e9c05ed3d9c517cd505cd447f20fcf3eb"
+    },
+    {
+      "bytes": 2869,
+      "path": "ml/unit_policy/carry_v1_style.py",
+      "sha256": "7af8d6660eb8b5c8a9b72e9c8c24c25c97e42f7b9800fe9f312ee38dbd2f144e"
+    },
+    {
+      "bytes": 983,
+      "path": "ml/unit_policy/demo.py",
+      "sha256": "d2048087174cefdde1a5665ee8ef0f2d05a6f8b07e2f63555cc33119dd6d0037"
+    },
+    {
+      "bytes": 11495,
+      "path": "ml/unit_policy/demonstrations.py",
+      "sha256": "9a179756093c9cb46f5ed15455e5698384eeaacc830d32122b4ccf745df9a091"
+    },
+    {
+      "bytes": 10359,
+      "path": "ml/unit_policy/features.py",
+      "sha256": "a281a842f67a46a6a2dd662453bf615d11c1ead61dcb5d607b0612af3c29e577"
+    },
+    {
+      "bytes": 5835,
+      "path": "ml/unit_policy/model.py",
+      "sha256": "b21016a0eabc0a7d9faa0033c83909ed577ece390e5691a71f35743507c32567"
+    },
+    {
+      "bytes": 0,
+      "path": "ml/unit_policy/models/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 4209,
+      "path": "ml/unit_policy/policy.py",
+      "sha256": "fcaf6cd07432cbff88b9a3f697cda5bffab445ec1e15a51fde62b0ac2396177e"
+    },
+    {
+      "bytes": 11940,
+      "path": "ml/unit_policy/replay_adapter.py",
+      "sha256": "9d62fd954243a5ee12809a29053125a6b4b3800e7080afc094a38c784f2661a4"
+    },
+    {
+      "bytes": 9370,
+      "path": "ml/unit_policy/schema.py",
+      "sha256": "fd91fba880a651e158bb81816a75ffd61ed82b46d3772ba71b3189497f0b3d9d"
+    },
+    {
+      "bytes": 43,
+      "path": "ml/unit_policy/tests/__init__.py",
+      "sha256": "4df5f51bf5204b7fc8506670824cfd53677c960e5d665031d7c7cec5565b6717"
+    },
+    {
+      "bytes": 855,
+      "path": "ml/unit_policy/tests/test_carry_safety.py",
+      "sha256": "e54799dd2f8aac5dd82843196893dd590c54236f80d2847e98ae4d249379ad14"
+    },
+    {
+      "bytes": 958,
+      "path": "ml/unit_policy/tests/test_model.py",
+      "sha256": "eed8507f732eb2c8bb076bb342da82925864f105125b4fdeb8314c8a081fe67b"
+    },
+    {
+      "bytes": 1947,
+      "path": "ml/unit_policy/tests/test_replay_adapter.py",
+      "sha256": "befcb1485fca4547fe625881c515e29435fa31b9e9bc5807c722b4472ca8f758"
+    },
+    {
+      "bytes": 716,
+      "path": "ml/unit_policy/tests/test_schema_features.py",
+      "sha256": "70ef5b09a3e6077293c49a70d4f4f79c0d091fcebdb36bfb13c343b2a624a2b0"
+    },
+    {
+      "bytes": 956,
+      "path": "ml/unit_policy/tests/test_training.py",
+      "sha256": "996c49bcdefeab6d5fbe94f6fc0b3a88854d035fec7c8e51298a43be65e3d9f1"
+    },
+    {
+      "bytes": 16244,
+      "path": "ml/unit_policy/training.py",
+      "sha256": "b49bcb29482d4f57ea880cc4abe88a6c1598ec082eae77cb0131b868fbf0d8e6"
+    },
+    {
+      "bytes": 71,
+      "path": "requirements.txt",
+      "sha256": "1415bde5e89af95bc37063fba11d1bee93510934b098240265fd3a677f5bb321"
+    },
+    {
+      "bytes": 82,
+      "path": "run_tests.sh",
+      "sha256": "bff4e952d9de838fea7244d3553d46f15e98d6c3ffcdc643a0969fcb00161dcc"
+    },
+    {
+      "bytes": 281,
+      "path": "train_carry_safety.sh",
+      "sha256": "f32e85975344a32c869f1ed97963ba7198404c5fc83636cc3402a82e5319c3f0"
+    }
+  ],
+  "inferenceServerIncluded": false,
+  "name": "playable-replays-training-pipeline",
+  "pretrainedModelArtifactsIncluded": false,
+  "python": "3.12 standard library only",
+  "sourceBranch": "agent/ml-unit-policy",
+  "sourceCommit": "a2d9287c4fe87c47eefa4f5b5aef39cc54e5c438",
+  "sourceRepository": "joyalzzy/playable-replays"
+}
