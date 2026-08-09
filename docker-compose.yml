@@ -1,6 +1,7 @@
 services:
   model:
     image: playable-replays-unit-policy
+    build: ml-inference
     expose:
       - "9000"
 
