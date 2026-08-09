@@ -1,7 +1,7 @@
 # Playable Replays
 
 Playable Replays is a shareable web tactical board built around three teaching
-scenarios from the T1–Bilibili Gaming 2024 Worlds Final. Choose a high-level
+scenarios. Choose a high-level
 command, inspect the authoritative
 simulation, react to incoming marksman projectiles with a separate two-charge
 Dodge control, and compare the result with an authored decision tree. Live play
