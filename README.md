@@ -46,7 +46,7 @@ The submission is intentionally split across four branches:
 | `main` | Stable Go API, React client, fixtures, contracts, and runtime integration |
 | `dev` | Current gameplay and interface development line |
 | `ml` | Offline replay preparation, training/fine-tuning pipelines, notebooks, and ML tests |
-| `ml-inference` | Portable trained policy artifacts and the standalone Python inference service |
+| `ml-inference` | Portable trained policy artifacts, included in the app branches at `ml-inference/` as a Git submodule |
 
 ## Scenarios
 
@@ -89,16 +89,21 @@ at `http://127.0.0.1:8080`.
 
 ### Run with the trained model
 
-Check out the inference bundle beside the app and start its dependency-free
-Python service:
+Pull the pinned inference submodule from the repository root:
 
 ```bash
-git worktree add ../playable-replays-ml-inference origin/ml-inference
-cd ../playable-replays-ml-inference
+git submodule update --init --recursive
+```
+
+In a separate terminal, start its dependency-free Python endpoint:
+
+```bash
+cd ml-inference
 python3 serve.py --listen 127.0.0.1:9000
 ```
 
-From the `dev` worktree, configure the Go API to call that service:
+In another terminal, return to the repository root and configure the Go API to
+call that endpoint:
 
 ```bash
 BOT_MODEL_URL=http://127.0.0.1:9000/v1/actions \
@@ -111,11 +116,11 @@ Start the web app with `make dev-web`. The model service requires no API key
 and must remain server-side; never expose its endpoint through the browser or
 accept it from a session request.
 
-For Docker Compose, first build the model image from its branch, then start the
-app stack:
+For Docker Compose, first build the model image from the initialized submodule,
+then start the app stack:
 
 ```bash
-docker build -t playable-replays-unit-policy ../playable-replays-ml-inference
+docker build -t playable-replays-unit-policy ./ml-inference
 docker compose up --build
 ```
 
@@ -198,13 +203,15 @@ README for exact payloads and startup commands.
 | --- | --- |
 | `backend/` | Go API, authoritative simulator, fixture loading, and tests |
 | `frontend/` | React full-map tactical board and component/API tests |
+| `ml-inference/` | Git submodule pinned to the standalone trained-policy artifacts, Python inference endpoint, Dockerfile, and export validators |
 | `contracts/` | Public OpenAPI contract and fixture JSON Schema |
 | `fixtures/moments.json` | Version `3.0` pack containing the three authored scenarios |
 | `docs/` | Architecture, model, simulator, and authoring decisions |
 
-Training code is at the repository root on `ml`; the exported model,
-dependency-free Python server, Dockerfile, and validation utilities are at the
-repository root on `ml-inference`. They are intentionally absent from `dev`.
+Training code is at the repository root on the `ml` branch. The exported model,
+dependency-free Python server, Dockerfile, and validation utilities are on the
+`ml-inference` branch and are pinned into the app checkout through the
+`ml-inference/` submodule.
 
 Validate the authored pack from `backend/`:
 

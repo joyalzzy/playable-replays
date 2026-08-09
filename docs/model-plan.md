@@ -5,7 +5,8 @@
 The model is a separately trained/fine-tuned unit policy, not an upstream API bridge. Its
 portable runtime is maintained on the `ml-inference` branch because model
 artifacts and inference tooling are intentionally separate from the app on
-`main` and `dev`.
+`main` and `dev`. App branches pin that runtime at `ml-inference/` as a Git
+submodule.
 
 The exported `unit-policy-v2-carry-safety` model is a transparent linear policy
 with 72 ordered normalized features, four action heads (`move`, `hold`,
@@ -98,9 +99,16 @@ accepted `external-model` with name/version, or `fallback`.
 
 ## Run and validate the model
 
-From a separate checkout of `ml-inference`:
+Initialize the pinned submodule from the repository root:
 
 ```bash
+git submodule update --init --recursive
+```
+
+Then start the endpoint from the submodule:
+
+```bash
+cd ml-inference
 python3 serve.py --listen 127.0.0.1:9000
 ```
 

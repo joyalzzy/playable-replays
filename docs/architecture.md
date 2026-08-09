@@ -32,7 +32,7 @@ changing a scenario is an offline, analyst-reviewed fixture change.
 | React frontend | Interaction, accessible controls, full-map rendering, range/stat display, timeline, logs, and debrief | Legality, hidden state, damage, model credentials, or fallback rules |
 | Go API | Strict HTTP boundary, in-memory sessions, per-session locking, rate limits, and public-state filtering | Browser-only model calls or durable telemetry storage |
 | Go engine | Movement, class limits, fog, combat, projectiles, Dodge, objectives, outcomes, references, and fallback | External model inference or replay-exact claims |
-| Python inference service (`ml-inference`) | Evaluate the exported 72-feature linear policy and return advisory bot actions | Authoritative state mutation, retries, training, or browser access |
+| Python inference service (`ml-inference/` submodule) | Evaluate the exported 72-feature linear policy and return advisory bot actions | Authoritative state mutation, retries, training, or browser access |
 | Fixture pack | Three teaching states, source evidence, authored rules, reference lines, and acceptance cases | Raw media, secrets, or claimed measured map coordinates |
 
 The browser talks only to the Go API. The model-service URL and identity are

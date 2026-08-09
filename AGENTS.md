@@ -66,6 +66,7 @@ output. Names are contextual attribution and do not imply endorsement.
 | `frontend/src/api.ts` | Browser's only HTTP client boundary |
 | `frontend/src/types.ts` | Strict TypeScript mirror of the public API |
 | `frontend/src/components/` | Accessible interaction/rendering components and colocated tests |
+| `ml-inference/` | Git submodule pinned to the standalone policy artifacts, dependency-free Python endpoint, Dockerfile, and export validators |
 | `contracts/openapi.yaml` | Canonical public Go API and bot-model webhook contract |
 | `contracts/moment.schema.json` | Draft 2020-12 schema for fixture version `3.0` |
 | `fixtures/moments.json` | The three authored source-attributed scenarios |
@@ -75,8 +76,8 @@ output. Names are contextual attribution and do not imply endorsement.
 The repository is split by responsibility: `main` is the stable app, `dev` is
 the gameplay/interface development line, `ml` contains offline preparation and
 training/fine-tuning, and `ml-inference` contains portable model artifacts and the
-dependency-free inference service. Training and inference files are
-intentionally absent from `dev`.
+dependency-free inference service. App branches include that inference branch
+at `ml-inference/` as a pinned Git submodule.
 
 ## Runtime flow
 
@@ -122,8 +123,8 @@ intentionally absent from `dev`.
 
 - Python 3.12, standard library only at runtime, no upstream model call, and no
   API key.
-- The portable model, `serve.py`, and export validation live on
-  `ml-inference`; offline pipelines and notebooks live on `ml`.
+- The portable model, `serve.py`, and export validation live in the
+  `ml-inference/` submodule; offline pipelines and notebooks live on `ml`.
 - Use type hints and strict boundary validation. Never duplicate simulator
   rules in the inference service.
 
@@ -137,6 +138,8 @@ Run from the repository root unless noted:
 | Validate fixture pack and acceptance cases | `make validate-fixtures` |
 | Start fallback/configured API | `make dev-api` |
 | Start frontend | `make dev-web` |
+| Pull inference submodule | `git submodule update --init --recursive` |
+| Start inference service | `cd ml-inference && python3 serve.py --listen 127.0.0.1:9000` |
 | Build backend/frontend | `make build` |
 | CI-equivalent Go checks | `cd backend && test -z "$(gofmt -l .)" && go vet ./... && go test -race ./...` |
 | Whitespace check | `git diff --check` |
