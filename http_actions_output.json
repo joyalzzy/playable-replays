@@ -1,0 +1,1 @@
+{"actions":[{"unitId":"blue-support","action":{"type":"move","target":{"x":44.651439,"y":48.871837}}},{"unitId":"blue-marksman","action":{"type":"move","target":{"x":41.700847,"y":51.676171}}},{"unitId":"red-assassin","action":{"type":"move","target":{"x":44.0,"y":50.0}}},{"unitId":"red-tank","action":{"type":"move","target":{"x":64.73049,"y":51.739413}}}]}

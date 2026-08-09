@@ -1,0 +1,165 @@
+{
+  "exportFormat": "playable-replays-unit-policy-inference-bundle",
+  "exportFormatVersion": 1,
+  "exportedAt": "2026-08-08T14:16:29.999698Z",
+  "files": {
+    "README.md": {
+      "bytes": 3252,
+      "sha256": "e66d77c9113c538486a829c2d5899f2e6c8ba83e73a00fa34c9a36cbfd225277"
+    },
+    "example_features.json": {
+      "bytes": 809,
+      "sha256": "151225b3205e5b883dac6a07595ec4cba7621fb23c0a28d17c8feff3215c58dd"
+    },
+    "example_features_output_node.json": {
+      "bytes": 474,
+      "sha256": "84bbc183ba50dcecec000281965c5b21635144267e40f395eaaa9964e882ca8e"
+    },
+    "example_features_output_python.json": {
+      "bytes": 475,
+      "sha256": "c85e3b1970a8f5a9b8793b33181a24c8e05414877d5ae85f37ea4480ba25d92b"
+    },
+    "example_output.json": {
+      "bytes": 3551,
+      "sha256": "aedf31475c469d6858d21ffed35df008a524846574cfcf26c146c4397e24a885"
+    },
+    "example_snapshot.json": {
+      "bytes": 1966,
+      "sha256": "6226b50ba094bfdd09e6907bb26bdcd61908d169df91938717bce61f5e0252a8"
+    },
+    "feature_names.json": {
+      "bytes": 1717,
+      "sha256": "737975f47d3cd844b44a02ed1a84d67e8b674411bd61c5bffae0939926dce8b3"
+    },
+    "healthz_output.json": {
+      "bytes": 60,
+      "sha256": "de026763ea9ed405b9363a4e2814c5dfeb12c872d61ac943db93353c07e922ac"
+    },
+    "http_actions_output.json": {
+      "bytes": 359,
+      "sha256": "5802817d9c5b32dc279f8c800bd9eeee38347faab58d5315a88c5e6d9ef8dcff"
+    },
+    "infer.py": {
+      "bytes": 21993,
+      "sha256": "e3b238c6285dddeb7821d36052fab719ff7c1093a5131875f018bbe16cc0cb71"
+    },
+    "infer_features.mjs": {
+      "bytes": 1714,
+      "sha256": "42e321c87e6e4ea1f3f6b5c00103367d40d1da7d20a0f990d62db8ba624e78f1"
+    },
+    "serve.py": {
+      "bytes": 3430,
+      "sha256": "54cc777e13e4ece3393198440628712aa860f35f6f3c5787a8513fa737c74d66"
+    },
+    "unit_policy_v2_carry_safety.json": {
+      "bytes": 11763,
+      "sha256": "99f558b451811e52b8d35e1bb503844abb8197879dc542276b65a0c3f297ad57"
+    },
+    "unit_policy_v2_carry_safety.npz": {
+      "bytes": 5150,
+      "sha256": "91041f86891c2d8e0f5a01bec636501d6aeb7f6c18a102818242adb4b2edda65"
+    },
+    "validate_export.py": {
+      "bytes": 1794,
+      "sha256": "c3e3f0c136d7428c3d84d4f0ee1f39f02829c6f8bea6f14e212212700d68c027"
+    }
+  },
+  "model": {
+    "actionOrder": [
+      "move",
+      "hold",
+      "contest",
+      "retreat"
+    ],
+    "actionWeightsShape": [
+      4,
+      72
+    ],
+    "featureCount": 72,
+    "format": "playable-replays-linear-unit-policy",
+    "formatVersion": 1,
+    "metadata": {
+      "actionAccuracy": 0.852439,
+      "carryBehavior": [
+        "retreat when caught",
+        "kite before engage",
+        "contest behind peel"
+      ],
+      "carrySafetyCurriculumExamples": 6500,
+      "classWeights": {
+        "contest": 1.19203,
+        "hold": 2.28595,
+        "move": 0.620884,
+        "retreat": 1.153059
+      },
+      "disclosure": "Professional replay labels are observational outcome associations. Synthetic and reviewed examples remain separately identified; the model is not proof of optimal play or player intent.",
+      "epochs": 36,
+      "groupOverlap": 0,
+      "leakageAudit": {
+        "futureOutcomeFieldsUsedAsInputs": false,
+        "groupOverlap": 0,
+        "matchGroupedReplaySplit": true
+      },
+      "movementMae": 0.226203,
+      "perActionRecall": {
+        "contest": 0.887828,
+        "hold": 0.681159,
+        "move": 0.841654,
+        "retreat": 0.914855
+      },
+      "runtimeHardcodedCarryOverride": false,
+      "seed": 2026,
+      "sourceExamples": {
+        "training": {
+          "carry-safety-curriculum": 7129,
+          "synthetic-bootstrap": 4077
+        },
+        "validation": {
+          "carry-safety-curriculum": 1537,
+          "synthetic-bootstrap": 923
+        }
+      },
+      "sourceWeights": {
+        "training": {
+          "carry-safety-curriculum": 15493.2,
+          "synthetic-bootstrap": 1426.95
+        },
+        "validation": {
+          "carry-safety-curriculum": 3355.8,
+          "synthetic-bootstrap": 323.05
+        }
+      },
+      "splitStrategy": "deterministic group-isolated split",
+      "trainingExamples": 11206,
+      "trainingGroups": 11206,
+      "trainingSource": "weighted mixed demonstrations",
+      "validationExamples": 2460,
+      "validationGroups": 2460,
+      "weightedActionAccuracy": 0.965465,
+      "weightedMovementMae": 0.108824
+    },
+    "movementWeightsShape": [
+      2,
+      72
+    ],
+    "policyVersion": "unit-policy-v2-carry-safety"
+  },
+  "source": {
+    "branch": "agent/ml-unit-policy",
+    "commit": "a2d9287c4fe87c47eefa4f5b5aef39cc54e5c438",
+    "gitBlobSha1": "db1fd4022ed5f79611fb3214c561db81950ae931",
+    "path": "ml/unit_policy/models/unit_policy_v1.json",
+    "repository": "joyalzzy/playable-replays"
+  },
+  "validation": {
+    "exampleMarksmanAction": "move",
+    "exampleMarksmanTarget": {
+      "x": 41.700847,
+      "y": 51.676171
+    },
+    "httpHealthAndActionsSmoke": true,
+    "jsonMatchesSourceGitBlob": true,
+    "jsonNpzExactValueParity": true,
+    "pythonNodeFeatureInferenceParity": true
+  }
+}
